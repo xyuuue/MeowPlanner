@@ -3,6 +3,7 @@ const translations = {
     metaTitle: "MeowPlanner - FuFu's Calendar Planner",
     metaDescription: "MeowPlanner is a FuFu calendar planner for classes, focus, habits, schedules, and to-dos.",
     brandAria: "MeowPlanner home",
+    languageAria: "Language",
     navAria: "Primary navigation",
     navFeatures: "Features",
     navCalendar: "Calendar",
@@ -80,6 +81,7 @@ const translations = {
     metaTitle: "MeowPlanner - FuFu 的喵系时间规划器",
     metaDescription: "MeowPlanner 是一款 FuFu 喵系日历规划器，用来管理课程、专注、习惯、日程和待办。",
     brandAria: "MeowPlanner 首页",
+    languageAria: "语言",
     navAria: "主导航",
     navFeatures: "功能",
     navCalendar: "日历",
@@ -157,9 +159,30 @@ const translations = {
 
 const storageKey = "meowplannerLanguage";
 
+function normalizeLanguage(language) {
+  return translations[language] ? language : "en";
+}
+
+function readStoredLanguage() {
+  try {
+    return localStorage.getItem(storageKey);
+  } catch {
+    return null;
+  }
+}
+
+function storeLanguage(language) {
+  try {
+    localStorage.setItem(storageKey, language);
+  } catch {
+    // Storage can be blocked in private or restricted browser contexts.
+  }
+}
+
 function applyLanguage(language) {
-  const dictionary = translations[language] || translations.en;
-  document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
+  const selectedLanguage = normalizeLanguage(language);
+  const dictionary = translations[selectedLanguage];
+  document.documentElement.lang = selectedLanguage === "zh" ? "zh-Hans" : "en";
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     const key = element.dataset.i18n;
     if (dictionary[key]) element.textContent = dictionary[key];
@@ -173,9 +196,9 @@ function applyLanguage(language) {
     if (dictionary[key]) element.setAttribute("aria-label", dictionary[key]);
   });
   document.querySelectorAll("[data-language-option]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.languageOption === language));
+    button.setAttribute("aria-pressed", String(button.dataset.languageOption === selectedLanguage));
   });
-  localStorage.setItem(storageKey, language);
+  storeLanguage(selectedLanguage);
 }
 
 document.querySelectorAll("[data-language-option]").forEach((button) => {
@@ -189,5 +212,5 @@ document.querySelectorAll("[data-disabled-download]").forEach((link) => {
   });
 });
 
-const initialLanguage = localStorage.getItem(storageKey) || "en";
+const initialLanguage = readStoredLanguage() || "en";
 applyLanguage(initialLanguage);

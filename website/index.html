@@ -27,7 +27,7 @@
         <a href="#privacy" data-i18n="navPrivacy">Privacy</a>
       </nav>
       <div class="header-actions">
-        <div class="language-switcher" aria-label="Language">
+        <div class="language-switcher" role="group" aria-label="Language" data-i18n-aria="languageAria">
           <button type="button" data-language-option="en" aria-pressed="true">EN</button>
           <button type="button" data-language-option="zh" aria-pressed="false">中文</button>
         </div>
@@ -39,7 +39,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="soft-label">
-            <span class="mini-paw">•</span>
+            <span class="mini-paw" aria-hidden="true">•</span>
             <span data-i18n="softLabel">FuFu keeps the calendar cozy</span>
           </p>
           <h1 id="hero-title" data-i18n="heroTitle">A FuFu calendar planner for classes, focus, and tiny habits</h1>
@@ -53,7 +53,7 @@
           <p class="availability-note" data-i18n="availabilityNote">The final download flow will be enabled after the DMG is ready.</p>
         </div>
 
-        <div class="hero-product" id="calendar" aria-label="MeowPlanner calendar preview" data-i18n-aria="calendarPreviewAria">
+        <div class="hero-product" id="calendar" role="region" aria-label="MeowPlanner calendar preview" data-i18n-aria="calendarPreviewAria">
           <div class="calendar-preview">
             <div class="calendar-preview-header">
               <div>
@@ -98,12 +98,12 @@
           <p data-i18n="featuresText">MeowPlanner combines the planning surfaces already in the app: calendar, agenda, to-dos, timetable, focus, habits, and a Today widget source.</p>
         </div>
         <div class="feature-grid">
-          <article><span>cal</span><h3 data-i18n="featureCalendarTitle">Calendar + agenda</h3><p data-i18n="featureCalendarText">Month grid with date colors, selected-day schedules, Chinese calendar details, completed schedule display, and FuFu's daily note.</p></article>
-          <article><span>paw</span><h3 data-i18n="featureTodoTitle">To-dos by group</h3><p data-i18n="featureTodoText">Daily tasks and grouped to-do lists beside the calendar, so planning feels like a daily page.</p></article>
-          <article><span>W16</span><h3 data-i18n="featureTimetableTitle">Course timetable</h3><p data-i18n="featureTimetableText">Weekly class grid with semester weeks, course colors, teachers, rooms, and holiday-aware display.</p></article>
-          <article><span>cat</span><h3 data-i18n="featureFocusTitle">Focus + habits</h3><p data-i18n="featureFocusText">FuFu focus blocks, recent focus history, habit check-ins, streaks, and tiny encouragement.</p></article>
-          <article><span>wid</span><h3 data-i18n="featureWidgetTitle">Today widget source</h3><p data-i18n="featureWidgetText">WidgetKit Today widget source for quick schedule summaries.</p></article>
-          <article><span>Mac</span><h3 data-i18n="featureLocalTitle">Local-first planning</h3><p data-i18n="featureLocalText">SwiftData models are CloudKit-ready, while v1 stays focused on your own Mac planner workflow.</p></article>
+          <article><span aria-hidden="true">cal</span><h3 data-i18n="featureCalendarTitle">Calendar + agenda</h3><p data-i18n="featureCalendarText">Month grid with date colors, selected-day schedules, Chinese calendar details, completed schedule display, and FuFu's daily note.</p></article>
+          <article><span aria-hidden="true">paw</span><h3 data-i18n="featureTodoTitle">To-dos by group</h3><p data-i18n="featureTodoText">Daily tasks and grouped to-do lists beside the calendar, so planning feels like a daily page.</p></article>
+          <article><span aria-hidden="true">W16</span><h3 data-i18n="featureTimetableTitle">Course timetable</h3><p data-i18n="featureTimetableText">Weekly class grid with semester weeks, course colors, teachers, rooms, and holiday-aware display.</p></article>
+          <article><span aria-hidden="true">cat</span><h3 data-i18n="featureFocusTitle">Focus + habits</h3><p data-i18n="featureFocusText">FuFu focus blocks, recent focus history, habit check-ins, streaks, and tiny encouragement.</p></article>
+          <article><span aria-hidden="true">wid</span><h3 data-i18n="featureWidgetTitle">Today widget source</h3><p data-i18n="featureWidgetText">WidgetKit Today widget source for quick schedule summaries.</p></article>
+          <article><span aria-hidden="true">Mac</span><h3 data-i18n="featureLocalTitle">Local-first planning</h3><p data-i18n="featureLocalText">SwiftData models are CloudKit-ready, while v1 stays focused on your own Mac planner workflow.</p></article>
         </div>
       </section>
 
@@ -157,9 +157,9 @@
           <h2 id="more-apps-title" data-i18n="moreAppsTitle">FuFu can help in more tiny Mac tools</h2>
         </div>
         <div class="app-links">
-          <a href="https://pastepaw.vercel.app/" target="_blank" rel="noreferrer"><span>clip</span><strong>PastePaw</strong><small data-i18n="pastepawText">FuFu clipboard helper for macOS.</small></a>
-          <a href="https://slackerbuddy.vercel.app/" target="_blank" rel="noreferrer"><span>cat</span><strong>SlackerBuddy</strong><small data-i18n="slackerText">FuFu desktop pet for mindful breaks.</small></a>
-          <a href="https://xyuuue.github.io/yueling-qiu/" target="_blank" rel="noreferrer"><span>YQ</span><strong data-i18n="portfolioTitle">Portfolio</strong><small data-i18n="portfolioText">The project home behind the FuFu series.</small></a>
+          <a href="https://pastepaw.vercel.app/" target="_blank" rel="noreferrer"><span aria-hidden="true">clip</span><strong>PastePaw</strong><small data-i18n="pastepawText">FuFu clipboard helper for macOS.</small></a>
+          <a href="https://slackerbuddy.vercel.app/" target="_blank" rel="noreferrer"><span aria-hidden="true">cat</span><strong>SlackerBuddy</strong><small data-i18n="slackerText">FuFu desktop pet for mindful breaks.</small></a>
+          <a href="https://xyuuue.github.io/yueling-qiu/" target="_blank" rel="noreferrer"><span aria-hidden="true">YQ</span><strong data-i18n="portfolioTitle">Portfolio</strong><small data-i18n="portfolioText">The project home behind the FuFu series.</small></a>
         </div>
       </section>
     </main>
