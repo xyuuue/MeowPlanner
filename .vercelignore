@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+.codex/
+.git/
+.superpowers/
+.swiftpm/
+.vercel/
+DerivedData/
+build/
+dist/
+meowplanner_asset_pack_no_blue/
+*.xcuserstate
+xcuserdata/
