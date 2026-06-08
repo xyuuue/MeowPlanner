@@ -121,40 +121,15 @@ public enum MonthPlannerGridBuilder {
                 )
             }
 
-        let todoItems = todos
+        let matchingTodos = todos
             .filter {
                 guard let dueDate = $0.dueDate else {
                     return false
                 }
                 return calendar.isDate(dueDate, inSameDayAs: date)
             }
-            .sorted {
-                switch ($0.dueDate, $1.dueDate) {
-                case let (lhs?, rhs?):
-                    lhs < rhs
-                case (.some, .none):
-                    true
-                case (.none, .some):
-                    false
-                case (.none, .none):
-                    $0.createdAt < $1.createdAt
-                }
-            }
-            .sorted {
-                if $0.isCompleted != $1.isCompleted {
-                    return !$0.isCompleted
-                }
-                switch ($0.dueDate, $1.dueDate) {
-                case let (lhs?, rhs?):
-                    return lhs < rhs
-                case (.some, .none):
-                    return true
-                case (.none, .some):
-                    return false
-                case (.none, .none):
-                    return $0.createdAt < $1.createdAt
-                }
-            }
+
+        let todoItems = TodoListPlanner.visibleTodos(matchingTodos, filter: .all)
             .map {
                 MonthPlannerItem(
                     id: $0.id,

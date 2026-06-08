@@ -147,6 +147,7 @@ public struct WidgetPlannerSnapshot: Codable, Equatable, Sendable {
         public let notes: String
         public let dueDate: Date?
         public let groupID: UUID?
+        public let sortOrder: Int?
         public let isCompleted: Bool
         public let completedAt: Date?
         public let reminderDate: Date?
@@ -159,6 +160,7 @@ public struct WidgetPlannerSnapshot: Codable, Equatable, Sendable {
             notes = todo.notes
             dueDate = todo.dueDate
             groupID = todo.groupID
+            sortOrder = todo.sortOrder
             isCompleted = todo.isCompleted
             completedAt = todo.completedAt
             reminderDate = todo.reminderDate
@@ -173,6 +175,7 @@ public struct WidgetPlannerSnapshot: Codable, Equatable, Sendable {
                 notes: notes,
                 dueDate: dueDate,
                 groupID: groupID,
+                sortOrder: sortOrder,
                 isCompleted: isCompleted,
                 completedAt: completedAt,
                 reminderDate: reminderDate,

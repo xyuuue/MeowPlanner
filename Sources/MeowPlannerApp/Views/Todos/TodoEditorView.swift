@@ -14,12 +14,14 @@ struct TodoEditorView: View {
     @State private var notes = ""
 
     private let groups: [TodoGroup]
+    private let defaultSortOrder: Int?
     private var todo: TodoItem?
 
     init(
         defaultDate: Date,
         groups: [TodoGroup],
         defaultGroupID: UUID? = nil,
+        defaultSortOrder: Int? = nil,
         todo: TodoItem? = nil
     ) {
         _title = State(initialValue: todo?.title ?? "")
@@ -28,6 +30,7 @@ struct TodoEditorView: View {
         _selectedGroupID = State(initialValue: todo?.groupID ?? defaultGroupID)
         _notes = State(initialValue: todo?.notes ?? "")
         self.groups = groups
+        self.defaultSortOrder = defaultSortOrder
         self.todo = todo
     }
 
@@ -97,6 +100,7 @@ struct TodoEditorView: View {
                 notes: notes,
                 dueDate: hasDueDate ? dueDate : nil,
                 groupID: selectedGroupID,
+                sortOrder: defaultSortOrder,
                 reminderDate: hasDueDate ? dueDate : nil,
                 createdAt: now,
                 updatedAt: now

@@ -10,13 +10,13 @@ const translations = {
     navDownload: "Download",
     navMoreApps: "More FuFu Apps",
     navPrivacy: "Privacy",
-    navCta: "Coming soon",
+    navCta: "Download",
     softLabel: "FuFu keeps the calendar cozy",
     heroTitle: "A FuFu calendar planner for classes, focus, and tiny habits",
     heroText: "MeowPlanner turns the month grid into a soft command center: schedules, to-dos, timetable weeks, focus blocks, and habit streaks all stay visible with FuFu nearby.",
-    primaryCta: "Download coming soon",
+    primaryCta: "Download DMG",
     secondaryCta: "Explore calendar",
-    availabilityNote: "The final download flow will be enabled after the DMG is ready.",
+    availabilityNote: "The macOS DMG is ready for local-first planning on your Mac.",
     calendarPreviewAria: "MeowPlanner calendar preview",
     calendarMonth: "June 2026",
     calendarWeek: "Week 23 - FuFu plan view",
@@ -52,11 +52,11 @@ const translations = {
     workflowFourTitle: "Check habits",
     workflowFourText: "Close the day with tiny streaks.",
     downloadLabel: "下载流程 / Download flow",
-    downloadTitle: "DMG coming soon on FuFu's release calendar",
-    downloadText: "A small release-calendar card keeps the disabled download state honest until packaging is complete.",
-    releaseCardText: "FuFu will unlock this button after packaging.",
-    downloadButton: "DMG coming soon",
-    checksumButton: "SHA-256 pending",
+    downloadTitle: "Download MeowPlanner for Mac",
+    downloadText: "Use the DMG to install MeowPlanner into Applications, then open it once to let macOS register the app and widget extension.",
+    releaseCardText: "Release 1.0.9 for macOS 14 and newer.",
+    downloadButton: "Download DMG",
+    checksumButton: "View SHA-256",
     downloadStepsAria: "Download flow",
     stepOneTitle: "Download day",
     stepOneText: "Save MeowPlanner.dmg when the release opens.",
@@ -88,13 +88,13 @@ const translations = {
     navDownload: "下载",
     navMoreApps: "更多 FuFu 应用",
     navPrivacy: "隐私",
-    navCta: "即将开放",
+    navCta: "下载",
     softLabel: "FuFu 让日历变得更温柔",
     heroTitle: "FuFu 的喵系日历规划器",
     heroText: "MeowPlanner 把月历变成一个温柔的 FuFu 规划中心：日程、待办、课程周、专注块和习惯打卡都可以放在同一个时间视图里。",
-    primaryCta: "下载即将开放",
+    primaryCta: "下载 DMG",
     secondaryCta: "查看日历功能",
-    availabilityNote: "DMG 准备完成后，这里的下载流程会正式开放。",
+    availabilityNote: "macOS DMG 已准备好，可以下载安装到你的 Mac。",
     calendarPreviewAria: "MeowPlanner 日历预览",
     calendarMonth: "2026 年 6 月",
     calendarWeek: "第 23 周 - FuFu 规划视图",
@@ -130,11 +130,11 @@ const translations = {
     workflowFourTitle: "打卡习惯",
     workflowFourText: "用小小的连续记录结束一天。",
     downloadLabel: "下载流程 / Download flow",
-    downloadTitle: "FuFu 的发布日历即将开放 DMG 下载",
-    downloadText: "发布日历卡片会保留下载位置，同时在打包完成前保持诚实的即将开放状态。",
-    releaseCardText: "打包完成后，FuFu 会解锁这个按钮。",
-    downloadButton: "DMG 即将开放",
-    checksumButton: "SHA-256 待生成",
+    downloadTitle: "下载 MeowPlanner for Mac",
+    downloadText: "使用 DMG 把 MeowPlanner 安装到 Applications，然后首次打开一次，让 macOS 注册 app 和 widget extension。",
+    releaseCardText: "1.0.9 版本，适用于 macOS 14 及更新版本。",
+    downloadButton: "下载 DMG",
+    checksumButton: "查看 SHA-256",
     downloadStepsAria: "下载流程",
     stepOneTitle: "下载日",
     stepOneText: "发布开放后保存 MeowPlanner.dmg。",
@@ -203,13 +203,6 @@ function applyLanguage(language) {
 
 document.querySelectorAll("[data-language-option]").forEach((button) => {
   button.addEventListener("click", () => applyLanguage(button.dataset.languageOption));
-});
-
-document.querySelectorAll("[data-disabled-download]").forEach((link) => {
-  link.addEventListener("click", (event) => {
-    event.preventDefault();
-    document.querySelector("#download")?.scrollIntoView({ behavior: "smooth" });
-  });
 });
 
 const initialLanguage = readStoredLanguage() || "en";

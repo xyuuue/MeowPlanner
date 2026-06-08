@@ -819,10 +819,37 @@ struct XcodeWidgetProjectTests {
         #expect(todoHomeSource.contains("persistPaletteColors"))
         #expect(todoHomeSource.contains("preferences.first?.eventColorHexes"))
         #expect(!todoHomeSource.contains("ColorPicker(PlannerCopy.text(.color"))
-        #expect(todoHomeSource.contains("groupColorHex: TodoListPlanner.groupColorHex"))
+        #expect(todoHomeSource.contains("let groupColorHex = TodoListPlanner.groupColorHex"))
         #expect(todoHomeSource.contains("MeowPlannerTheme.color(hex: groupColorHex)"))
         #expect(todoHomeSource.contains("group.colorHex = colorHex"))
         #expect(!todoHomeSource.contains("group.colorHex = MeowPlannerTheme.hex(color: color)"))
+    }
+
+    @Test("todo module supports persisted drag reordering")
+    func todoModuleSupportsPersistedDragReordering() throws {
+        let root = try packageRoot()
+        let todoModelFile = root.appendingPathComponent("Sources/MeowPlannerCore/Models/TodoItem.swift")
+        let plannerFile = root.appendingPathComponent("Sources/MeowPlannerCore/Services/TodoListPlanner.swift")
+        let todoHomeFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift")
+        let todoEditorFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift")
+        let rootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+
+        let todoModelSource = try String(contentsOf: todoModelFile, encoding: .utf8)
+        let plannerSource = try String(contentsOf: plannerFile, encoding: .utf8)
+        let todoHomeSource = try String(contentsOf: todoHomeFile, encoding: .utf8)
+        let todoEditorSource = try String(contentsOf: todoEditorFile, encoding: .utf8)
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+
+        #expect(todoModelSource.contains("public var sortOrder: Int?"))
+        #expect(plannerSource.contains("public static func reorderedTodos("))
+        #expect(todoHomeSource.contains(".draggable(todo.id.uuidString)"))
+        #expect(todoHomeSource.contains(".dropDestination(for: String.self)"))
+        #expect(todoHomeSource.contains("private func moveTodo"))
+        #expect(todoHomeSource.contains("TodoListPlanner.reorderedTodos"))
+        #expect(todoHomeSource.contains("TodoListPlanner.reorderedTodosAfterCompletionChange"))
+        #expect(todoEditorSource.contains("defaultSortOrder"))
+        #expect(todoEditorSource.contains("sortOrder: defaultSortOrder"))
+        #expect(rootSource.contains("String(todo.sortOrder ?? -1)"))
     }
 
     @Test("settings header localizes FuFu planner subtitle")

@@ -5,6 +5,9 @@ MODE="${1:-run}"
 APP_NAME="MeowPlanner"
 BUNDLE_ID="com.yuelingqiu.MeowPlanner"
 MIN_SYSTEM_VERSION="14.0"
+CONFIGURATION="${CONFIGURATION:-Debug}"
+XCODE_DESTINATION="${XCODE_DESTINATION:-}"
+XCODE_ONLY_ACTIVE_ARCH="${ONLY_ACTIVE_ARCH:-}"
 TEMP_ENTITLEMENTS_FILE=""
 
 cleanup_temp_entitlements() {
@@ -26,20 +29,30 @@ APP_BINARY="$APP_MACOS/$APP_NAME"
 INSTALL_BINARY="$INSTALL_BUNDLE/Contents/MacOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 XCODE_DERIVED_DATA="$ROOT_DIR/build/XcodeRun"
-XCODE_APP="$XCODE_DERIVED_DATA/Build/Products/Debug/$APP_NAME.app"
+XCODE_APP="$XCODE_DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 
 cd "$ROOT_DIR"
 
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
 build_with_xcode() {
-  xcodebuild \
+  local xcodebuild_args=(
     -project "$ROOT_DIR/$APP_NAME.xcodeproj" \
     -scheme "$APP_NAME" \
-    -configuration Debug \
+    -configuration "$CONFIGURATION" \
     -derivedDataPath "$XCODE_DERIVED_DATA" \
-    CODE_SIGNING_ALLOWED=NO \
-    build
+    CODE_SIGNING_ALLOWED=NO
+  )
+
+  if [[ -n "$XCODE_DESTINATION" ]]; then
+    xcodebuild_args+=(-destination "$XCODE_DESTINATION")
+  fi
+
+  if [[ -n "$XCODE_ONLY_ACTIVE_ARCH" ]]; then
+    xcodebuild_args+=(ONLY_ACTIVE_ARCH="$XCODE_ONLY_ACTIVE_ARCH")
+  fi
+
+  xcodebuild "${xcodebuild_args[@]}" build
 
   rm -rf "$APP_BUNDLE"
   mkdir -p "$DIST_DIR"

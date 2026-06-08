@@ -42,7 +42,7 @@ public enum TodoListPlanner {
         _ todos: [TodoItem],
         filter: TodoGroupFilter
     ) -> [TodoItem] {
-        todos
+        let filteredTodos = todos
             .filter { todo in
                 switch filter {
                 case .all:
@@ -51,7 +51,62 @@ public enum TodoListPlanner {
                     todo.groupID == groupID
                 }
             }
-            .sorted(by: todoSort)
+
+        if usesCustomOrdering(filteredTodos) {
+            return filteredTodos.sorted(by: customTodoSort)
+        }
+
+        return filteredTodos.sorted(by: automaticTodoSort)
+    }
+
+    public static func usesCustomOrdering(_ todos: [TodoItem]) -> Bool {
+        !todos.isEmpty && todos.allSatisfy { $0.sortOrder != nil }
+    }
+
+    public static func nextSortOrder(after todos: [TodoItem]) -> Int? {
+        guard usesCustomOrdering(todos) else {
+            return nil
+        }
+
+        return (todos.compactMap(\.sortOrder).max() ?? -1) + 1
+    }
+
+    @discardableResult
+    public static func reorderedTodos(
+        _ visibleTodos: [TodoItem],
+        moving source: IndexSet,
+        to destination: Int,
+        at date: Date = Date()
+    ) -> [TodoItem] {
+        let reorderedTodos = reordered(visibleTodos, moving: source, to: destination)
+        for (index, todo) in reorderedTodos.enumerated() {
+            todo.sortOrder = index
+            todo.updatedAt = date
+        }
+        return reorderedTodos
+    }
+
+    @discardableResult
+    public static func reorderedTodosAfterCompletionChange(
+        _ visibleTodos: [TodoItem],
+        changedTodo: TodoItem,
+        at date: Date = Date()
+    ) -> [TodoItem] {
+        var reorderedTodos = visibleTodos.filter { $0.id != changedTodo.id }
+        let insertionIndex: Int
+
+        if changedTodo.isCompleted {
+            insertionIndex = reorderedTodos.count
+        } else {
+            insertionIndex = reorderedTodos.firstIndex(where: \.isCompleted) ?? reorderedTodos.count
+        }
+
+        reorderedTodos.insert(changedTodo, at: insertionIndex)
+        for (index, todo) in reorderedTodos.enumerated() {
+            todo.sortOrder = index
+            todo.updatedAt = date
+        }
+        return reorderedTodos
     }
 
     public static func groupName(
@@ -91,7 +146,7 @@ public enum TodoListPlanner {
         }
     }
 
-    private static func todoSort(_ lhs: TodoItem, _ rhs: TodoItem) -> Bool {
+    private static func automaticTodoSort(_ lhs: TodoItem, _ rhs: TodoItem) -> Bool {
         if lhs.isCompleted != rhs.isCompleted {
             return !lhs.isCompleted
         }
@@ -114,5 +169,53 @@ public enum TodoListPlanner {
         }
 
         return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+    }
+
+    private static func customTodoSort(_ lhs: TodoItem, _ rhs: TodoItem) -> Bool {
+        switch (lhs.sortOrder, rhs.sortOrder) {
+        case let (left?, right?):
+            if left != right {
+                return left < right
+            }
+        case (.some, .none):
+            return true
+        case (.none, .some):
+            return false
+        case (.none, .none):
+            break
+        }
+
+        if lhs.createdAt != rhs.createdAt {
+            return lhs.createdAt < rhs.createdAt
+        }
+
+        return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+    }
+
+    private static func reordered(
+        _ todos: [TodoItem],
+        moving source: IndexSet,
+        to destination: Int
+    ) -> [TodoItem] {
+        let sourceIndexes = Array(source).sorted()
+        guard !sourceIndexes.isEmpty else {
+            return todos
+        }
+
+        var movingTodos: [TodoItem] = []
+        var remainingTodos: [TodoItem] = []
+
+        for (index, todo) in todos.enumerated() {
+            if source.contains(index) {
+                movingTodos.append(todo)
+            } else {
+                remainingTodos.append(todo)
+            }
+        }
+
+        let movedBeforeDestination = sourceIndexes.filter { $0 < destination }.count
+        let insertionIndex = max(0, min(remainingTodos.count, destination - movedBeforeDestination))
+        remainingTodos.insert(contentsOf: movingTodos, at: insertionIndex)
+        return remainingTodos
     }
 }

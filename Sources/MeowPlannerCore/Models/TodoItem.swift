@@ -8,6 +8,7 @@ public final class TodoItem {
     public var notes: String
     public var dueDate: Date?
     public var groupID: UUID?
+    public var sortOrder: Int?
     public var isCompleted: Bool
     public var completedAt: Date?
     public var reminderDate: Date?
@@ -20,6 +21,7 @@ public final class TodoItem {
         notes: String = "",
         dueDate: Date? = nil,
         groupID: UUID? = nil,
+        sortOrder: Int? = nil,
         isCompleted: Bool = false,
         completedAt: Date? = nil,
         reminderDate: Date? = nil,
@@ -31,6 +33,7 @@ public final class TodoItem {
         self.notes = notes
         self.dueDate = dueDate
         self.groupID = groupID
+        self.sortOrder = sortOrder
         self.isCompleted = isCompleted
         self.completedAt = completedAt
         self.reminderDate = reminderDate

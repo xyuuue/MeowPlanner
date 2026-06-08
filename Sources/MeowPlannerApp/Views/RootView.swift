@@ -397,6 +397,7 @@ struct RootView: View {
             todo.notes,
             todo.dueDate.map(dateToken) ?? "",
             todo.groupID?.uuidString ?? "",
+            String(todo.sortOrder ?? -1),
             String(todo.isCompleted),
             todo.completedAt.map(dateToken) ?? "",
             todo.reminderDate.map(dateToken) ?? "",

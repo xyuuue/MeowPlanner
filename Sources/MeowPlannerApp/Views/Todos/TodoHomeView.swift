@@ -13,6 +13,7 @@ struct TodoHomeView: View {
     @State private var editingTodo: TodoItem?
     @State private var showingGroupEditor = false
     @State private var editingGroup: TodoGroup?
+    @State private var dropTargetTodoID: UUID?
 
     var body: some View {
         ZStack {
@@ -36,6 +37,10 @@ struct TodoHomeView: View {
                     ScrollView(.vertical) {
                         LazyVStack(alignment: .leading, spacing: 10) {
                             ForEach(visibleTodos) { todo in
+                                let groupColorHex = TodoListPlanner.groupColorHex(
+                                    for: todo,
+                                    groups: groups
+                                )
                                 TodoRowView(
                                     todo: todo,
                                     groupName: TodoListPlanner.groupName(
@@ -43,16 +48,35 @@ struct TodoHomeView: View {
                                         groups: groups,
                                         defaultName: defaultGroupTitle
                                     ),
-                                    groupColorHex: TodoListPlanner.groupColorHex(
-                                        for: todo,
-                                        groups: groups
-                                    ),
+                                    groupColorHex: groupColorHex,
                                     showsGroupTag: selectedFilter == .all,
                                     completeAction: { toggleCompletion(todo) },
                                     editAction: { editingTodo = todo },
                                     deleteAction: { deleteTodo(todo) }
                                 )
+                                .scaleEffect(dropTargetTodoID == todo.id ? 1.01 : 1)
+                                .animation(.easeInOut(duration: 0.12), value: dropTargetTodoID)
+                                .draggable(todo.id.uuidString) {
+                                    TodoDragPreviewView(title: todo.title, groupColorHex: groupColorHex)
+                                }
+                                .dropDestination(for: String.self) { itemIdentifiers, _ in
+                                    guard let draggedIdentifier = itemIdentifiers.first else {
+                                        return false
+                                    }
+                                    return moveTodo(draggedIdentifier: draggedIdentifier, before: todo.id)
+                                } isTargeted: { isTargeted in
+                                    dropTargetTodoID = isTargeted ? todo.id : nil
+                                }
                             }
+
+                            Color.clear
+                                .frame(height: 28)
+                                .dropDestination(for: String.self) { itemIdentifiers, _ in
+                                    guard let draggedIdentifier = itemIdentifiers.first else {
+                                        return false
+                                    }
+                                    return moveTodo(draggedIdentifier: draggedIdentifier, before: nil)
+                                }
                         }
                         .padding(.bottom, 28)
                     }
@@ -70,7 +94,8 @@ struct TodoHomeView: View {
             TodoEditorView(
                 defaultDate: Date(),
                 groups: groups,
-                defaultGroupID: defaultGroupIDForNewTodo
+                defaultGroupID: defaultGroupIDForNewTodo,
+                defaultSortOrder: defaultSortOrderForNewTodo
             )
         }
         .sheet(isPresented: Binding(get: { editingTodo != nil }, set: { if !$0 { editingTodo = nil } })) {
@@ -234,6 +259,10 @@ struct TodoHomeView: View {
         }
     }
 
+    private var defaultSortOrderForNewTodo: Int? {
+        TodoListPlanner.nextSortOrder(after: visibleTodos)
+    }
+
     private var selectedEditableGroup: TodoGroup? {
         editableGroup(for: selectedFilter)
     }
@@ -262,12 +291,20 @@ struct TodoHomeView: View {
     }
 
     private func toggleCompletion(_ todo: TodoItem) {
+        let currentTodos = visibleTodos
+        let now = Date()
+
         if todo.isCompleted {
-            todo.reopen()
+            todo.reopen(at: now)
         } else {
-            todo.markCompleted()
+            todo.markCompleted(at: now)
         }
 
+        TodoListPlanner.reorderedTodosAfterCompletionChange(
+            currentTodos,
+            changedTodo: todo,
+            at: now
+        )
         syncWidgetTimelineAfterMutation()
     }
 
@@ -276,9 +313,68 @@ struct TodoHomeView: View {
         syncWidgetTimelineAfterMutation()
     }
 
+    @discardableResult
+    private func moveTodo(draggedIdentifier: String, before targetID: UUID?) -> Bool {
+        guard let draggedID = UUID(uuidString: draggedIdentifier) else {
+            return false
+        }
+
+        let currentTodos = visibleTodos
+        guard let sourceIndex = currentTodos.firstIndex(where: { $0.id == draggedID }) else {
+            return false
+        }
+
+        let destinationIndex: Int
+        if let targetID {
+            guard let targetIndex = currentTodos.firstIndex(where: { $0.id == targetID }) else {
+                return false
+            }
+            guard targetIndex != sourceIndex && targetIndex != sourceIndex + 1 else {
+                dropTargetTodoID = nil
+                return false
+            }
+            destinationIndex = targetIndex
+        } else {
+            guard sourceIndex != currentTodos.count - 1 else {
+                dropTargetTodoID = nil
+                return false
+            }
+            destinationIndex = currentTodos.count
+        }
+
+        TodoListPlanner.reorderedTodos(
+            currentTodos,
+            moving: IndexSet(integer: sourceIndex),
+            to: destinationIndex
+        )
+        dropTargetTodoID = nil
+        syncWidgetTimelineAfterMutation()
+        return true
+    }
+
     private func syncWidgetTimelineAfterMutation() {
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+    }
+}
+
+private struct TodoDragPreviewView: View {
+    var title: String
+    var groupColorHex: String
+
+    var body: some View {
+        Text(title)
+            .font(.callout.weight(.semibold))
+            .lineLimit(1)
+            .foregroundStyle(MeowPlannerTheme.cocoa)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 220, alignment: .leading)
+            .background(MeowPlannerTheme.color(hex: groupColorHex).opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(MeowPlannerTheme.color(hex: groupColorHex).opacity(0.24), lineWidth: 1)
+            }
     }
 }
 
@@ -295,6 +391,12 @@ private struct TodoRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 16, height: 18)
+                .accessibilityHidden(true)
+
             Button(action: completeAction) {
                 Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .semibold))
