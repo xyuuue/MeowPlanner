@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="metaTitle">MeowPlanner - FuFu's Calendar Planner</title>
+    <meta
+      name="description"
+      content="MeowPlanner is a FuFu calendar planner for classes, focus, habits, schedules, and to-dos."
+      data-i18n-content="metaDescription"
+    />
+    <link rel="icon" type="image/png" href="/assets/meowplanner-icon.png" />
+    <link rel="apple-touch-icon" href="/assets/meowplanner-icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="MeowPlanner home" data-i18n-aria="brandAria">
+        <img src="./assets/meowplanner-icon.png" alt="" />
+        <span>MeowPlanner</span>
+      </a>
+      <nav aria-label="Primary navigation" data-i18n-aria="navAria">
+        <a href="#features" data-i18n="navFeatures">Features</a>
+        <a href="#calendar" data-i18n="navCalendar">Calendar</a>
+        <a href="#download" data-i18n="navDownload">Download</a>
+        <a href="#more-apps" data-i18n="navMoreApps">More FuFu Apps</a>
+        <a href="#privacy" data-i18n="navPrivacy">Privacy</a>
+      </nav>
+      <div class="header-actions">
+        <div class="language-switcher" aria-label="Language">
+          <button type="button" data-language-option="en" aria-pressed="true">EN</button>
+          <button type="button" data-language-option="zh" aria-pressed="false">中文</button>
+        </div>
+        <a class="nav-cta is-disabled" href="#download" aria-disabled="true" data-disabled-download data-i18n="navCta">Coming soon</a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="soft-label">
+            <span class="mini-paw">•</span>
+            <span data-i18n="softLabel">FuFu keeps the calendar cozy</span>
+          </p>
+          <h1 id="hero-title" data-i18n="heroTitle">A FuFu calendar planner for classes, focus, and tiny habits</h1>
+          <p class="hero-text" data-i18n="heroText">
+            MeowPlanner turns the month grid into a soft command center: schedules, to-dos, timetable weeks, focus blocks, and habit streaks all stay visible with FuFu nearby.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-button is-disabled" href="#download" aria-disabled="true" data-disabled-download data-i18n="primaryCta">Download coming soon</a>
+            <a class="secondary-button" href="#calendar" data-i18n="secondaryCta">Explore calendar</a>
+          </div>
+          <p class="availability-note" data-i18n="availabilityNote">The final download flow will be enabled after the DMG is ready.</p>
+        </div>
+
+        <div class="hero-product" id="calendar" aria-label="MeowPlanner calendar preview" data-i18n-aria="calendarPreviewAria">
+          <div class="calendar-preview">
+            <div class="calendar-preview-header">
+              <div>
+                <strong data-i18n="calendarMonth">June 2026</strong>
+                <span data-i18n="calendarWeek">Week 23 - FuFu plan view</span>
+              </div>
+              <div class="calendar-status">
+                <span data-i18n="calendarStatus">3 schedules</span>
+                <img src="./assets/fufu-idle.png" alt="FuFu" />
+              </div>
+            </div>
+            <div class="weekday-row" aria-hidden="true">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="month-grid" aria-hidden="true">
+              <span class="outside">31</span><span>1</span><span class="selected">2<small>paw</small></span><span>3</span><span class="busy blush">4</span><span>5</span><span>6</span>
+              <span>7</span><span class="busy lavender">8</span><span>9</span><span>10</span><span class="busy gold">11</span><span>12</span><span>13</span>
+              <span>14</span><span>15</span><span class="busy peach">16</span><span>17</span><span>18</span><span class="busy green">19</span><span>20</span>
+            </div>
+            <div class="calendar-cards">
+              <article>
+                <strong data-i18n="focusCardTitle">FuFu focus</strong>
+                <span data-i18n="focusCardText">25 min block at 2:00 PM</span>
+              </article>
+              <article>
+                <strong data-i18n="classCardTitle">Class week</strong>
+                <span data-i18n="classCardText">W16 timetable visible</span>
+              </article>
+            </div>
+          </div>
+          <div class="fufu-bubble">
+            <img src="./assets/fufu-idle.png" alt="" />
+            <p><strong data-i18n="fufuBubbleTitle">FuFu says:</strong> <span data-i18n="fufuBubbleText">Tuesday has room for one tiny focus block.</span></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="section features-section" aria-labelledby="features-title">
+        <div class="section-heading">
+          <p class="soft-label" data-i18n="featuresLabel">More calendar, more FuFu</p>
+          <h2 id="features-title" data-i18n="featuresTitle">Plan the day without leaving FuFu's world</h2>
+          <p data-i18n="featuresText">MeowPlanner combines the planning surfaces already in the app: calendar, agenda, to-dos, timetable, focus, habits, and a Today widget source.</p>
+        </div>
+        <div class="feature-grid">
+          <article><span>cal</span><h3 data-i18n="featureCalendarTitle">Calendar + agenda</h3><p data-i18n="featureCalendarText">Month grid with date colors, selected-day schedules, Chinese calendar details, completed schedule display, and FuFu's daily note.</p></article>
+          <article><span>paw</span><h3 data-i18n="featureTodoTitle">To-dos by group</h3><p data-i18n="featureTodoText">Daily tasks and grouped to-do lists beside the calendar, so planning feels like a daily page.</p></article>
+          <article><span>W16</span><h3 data-i18n="featureTimetableTitle">Course timetable</h3><p data-i18n="featureTimetableText">Weekly class grid with semester weeks, course colors, teachers, rooms, and holiday-aware display.</p></article>
+          <article><span>cat</span><h3 data-i18n="featureFocusTitle">Focus + habits</h3><p data-i18n="featureFocusText">FuFu focus blocks, recent focus history, habit check-ins, streaks, and tiny encouragement.</p></article>
+          <article><span>wid</span><h3 data-i18n="featureWidgetTitle">Today widget source</h3><p data-i18n="featureWidgetText">WidgetKit Today widget source for quick schedule summaries.</p></article>
+          <article><span>Mac</span><h3 data-i18n="featureLocalTitle">Local-first planning</h3><p data-i18n="featureLocalText">SwiftData models are CloudKit-ready, while v1 stays focused on your own Mac planner workflow.</p></article>
+        </div>
+      </section>
+
+      <section class="section workflow-section" aria-labelledby="workflow-title">
+        <div class="section-heading compact">
+          <h2 id="workflow-title" data-i18n="workflowTitle">A day in four small moves</h2>
+        </div>
+        <div class="workflow-grid">
+          <article><span>1</span><h3 data-i18n="workflowOneTitle">Pick today</h3><p data-i18n="workflowOneText">Start from the month grid and selected-day agenda.</p></article>
+          <article><span>2</span><h3 data-i18n="workflowTwoTitle">See classes</h3><p data-i18n="workflowTwoText">Use the timetable to keep course weeks visible.</p></article>
+          <article><span>3</span><h3 data-i18n="workflowThreeTitle">Focus once</h3><p data-i18n="workflowThreeText">Run one calm FuFu focus block.</p></article>
+          <article><span>4</span><h3 data-i18n="workflowFourTitle">Check habits</h3><p data-i18n="workflowFourText">Close the day with tiny streaks.</p></article>
+        </div>
+      </section>
+
+      <section id="download" class="section download-section" aria-labelledby="download-title">
+        <div class="download-panel">
+          <div class="download-copy">
+            <p class="soft-label" data-i18n="downloadLabel">下载流程 / Download flow</p>
+            <h2 id="download-title" data-i18n="downloadTitle">DMG coming soon on FuFu's release calendar</h2>
+            <p data-i18n="downloadText">A small release-calendar card keeps the disabled download state honest until packaging is complete.</p>
+            <div class="release-card">
+              <span>soon</span>
+              <div><strong>MeowPlanner.dmg</strong><p data-i18n="releaseCardText">FuFu will unlock this button after packaging.</p></div>
+            </div>
+            <div class="download-actions">
+              <a class="primary-button is-disabled" href="#download" aria-disabled="true" data-disabled-download data-i18n="downloadButton">DMG coming soon</a>
+              <a class="secondary-button dark is-disabled" href="#download" aria-disabled="true" data-disabled-download data-i18n="checksumButton">SHA-256 pending</a>
+            </div>
+          </div>
+          <ol class="download-steps" aria-label="Download flow" data-i18n-aria="downloadStepsAria">
+            <li><span>1</span><div><strong data-i18n="stepOneTitle">Download day</strong><p data-i18n="stepOneText">Save MeowPlanner.dmg when the release opens.</p></div></li>
+            <li><span>2</span><div><strong data-i18n="stepTwoTitle">Install</strong><p data-i18n="stepTwoText">Open the DMG and drag MeowPlanner into Applications.</p></div></li>
+            <li><span>3</span><div><strong data-i18n="stepThreeTitle">Open once</strong><p data-i18n="stepThreeText">Control-click MeowPlanner and choose Open if macOS asks.</p></div></li>
+            <li><span>4</span><div><strong data-i18n="stepFourTitle">Plan with FuFu</strong><p data-i18n="stepFourText">Open the calendar, pick today, and let FuFu sit beside the plan.</p></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="privacy" class="section privacy-section" aria-labelledby="privacy-title">
+        <div class="section-heading">
+          <p class="soft-label" data-i18n="privacyLabel">Local-first planning</p>
+          <h2 id="privacy-title" data-i18n="privacyTitle">Your calendar stays on your Mac</h2>
+          <p data-i18n="privacyText">MeowPlanner is designed around local schedules, to-dos, focus history, habits, and timetable data. SwiftData models are CloudKit-ready, but v1 does not promise account sync or third-party calendar sync.</p>
+        </div>
+      </section>
+
+      <section id="more-apps" class="section more-apps-section" aria-labelledby="more-apps-title">
+        <div class="section-heading">
+          <p class="soft-label" data-i18n="moreAppsLabel">Want more FuFu apps?</p>
+          <h2 id="more-apps-title" data-i18n="moreAppsTitle">FuFu can help in more tiny Mac tools</h2>
+        </div>
+        <div class="app-links">
+          <a href="https://pastepaw.vercel.app/" target="_blank" rel="noreferrer"><span>clip</span><strong>PastePaw</strong><small data-i18n="pastepawText">FuFu clipboard helper for macOS.</small></a>
+          <a href="https://slackerbuddy.vercel.app/" target="_blank" rel="noreferrer"><span>cat</span><strong>SlackerBuddy</strong><small data-i18n="slackerText">FuFu desktop pet for mindful breaks.</small></a>
+          <a href="https://xyuuue.github.io/yueling-qiu/" target="_blank" rel="noreferrer"><span>YQ</span><strong data-i18n="portfolioTitle">Portfolio</strong><small data-i18n="portfolioText">The project home behind the FuFu series.</small></a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <img src="./assets/meowplanner-icon.png" alt="" />
+      <span data-i18n="footerText">MeowPlanner · FuFu's calendar planner for schedules, classes, focus, and habits</span>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
