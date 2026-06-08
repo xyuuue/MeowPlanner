@@ -1,0 +1,1192 @@
+import MeowPlannerCore
+import SwiftData
+import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
+
+enum MainWindowLaunchCoordinator {
+    @MainActor
+    static private var isHandlingWidgetLaunch = false
+    @MainActor
+    static private var lastWidgetLaunchHandledAt = Date.distantPast
+    @MainActor
+    static private var didRequestInitialMainWindow = false
+
+    @MainActor
+    static func openInitialMainWindowIfNeeded(openWindow: @escaping () -> Void) {
+        guard !didRequestInitialMainWindow else {
+            return
+        }
+
+        didRequestInitialMainWindow = true
+        openOrFocusMainWindowFromAppLifecycle(openWindow: openWindow)
+    }
+
+    @MainActor
+    static func openOrFocusMainWindowFromAppLifecycle(openWindow: @escaping () -> Void) {
+        openOrFocusMainWindow(openWindow: openWindow, settlingAttempts: 4)
+    }
+
+    @MainActor
+    static func focusSystemCreatedMainWindowFromExternalURL(
+        openWindow: @escaping () -> Void,
+        settlingAttempts: Int = 40
+    ) {
+        let now = Date()
+        guard !isHandlingWidgetLaunch else {
+            return
+        }
+
+        guard now.timeIntervalSince(lastWidgetLaunchHandledAt) > 0.35 else {
+            return
+        }
+
+        isHandlingWidgetLaunch = true
+        lastWidgetLaunchHandledAt = now
+
+        Task { @MainActor in
+            defer {
+                isHandlingWidgetLaunch = false
+            }
+
+            NSApplication.shared.activate(ignoringOtherApps: true)
+
+            if let target = focusAndSanitizeMainWindow() {
+                target.makeKey()
+                return
+            }
+
+            for _ in 0..<settlingAttempts {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                if let target = focusAndSanitizeMainWindow() {
+                    target.makeKey()
+                    return
+                }
+            }
+
+            openWindow()
+
+            for _ in 0..<20 {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                if let target = focusAndSanitizeMainWindow() {
+                    target.makeKey()
+                    return
+                }
+            }
+        }
+    }
+
+    @MainActor
+    static func openOrFocusMainWindow(openWindow: @escaping () -> Void, settlingAttempts: Int = 24) {
+        let now = Date()
+        guard !isHandlingWidgetLaunch else {
+            return
+        }
+
+        guard now.timeIntervalSince(lastWidgetLaunchHandledAt) > 0.35 else {
+            return
+        }
+
+        isHandlingWidgetLaunch = true
+        lastWidgetLaunchHandledAt = now
+
+        Task { @MainActor in
+            defer {
+                isHandlingWidgetLaunch = false
+            }
+
+            NSApplication.shared.activate(ignoringOtherApps: true)
+
+            // If the app already has a main window, focus it and close duplicates.
+            if let target = focusAndSanitizeMainWindow() {
+                target.makeKey()
+                return
+            }
+
+            // Allow system launch/open timing to settle (e.g. auto-open on URL tap).
+            for _ in 0..<settlingAttempts {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                if let target = focusAndSanitizeMainWindow() {
+                    target.makeKey()
+                    return
+                }
+            }
+
+            if findMainWindow() == nil {
+                openWindow()
+            }
+
+            for _ in 0..<40 {
+                if let target = focusAndSanitizeMainWindow() {
+                    target.makeKey()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 120_000_000)
+            }
+
+            // In case duplicate windows are created by the system during cold launch,
+            // keep one candidate and close extras.
+            if let target = focusCandidateWindow() {
+                closeDuplicateCandidateWindows(keeping: target)
+                if !target.isVisible {
+                    target.makeKeyAndOrderFront(nil)
+                } else {
+                    target.makeKey()
+                }
+                target.orderFrontRegardless()
+            }
+        }
+    }
+
+    @MainActor
+    private static func focusAndSanitizeMainWindow() -> NSWindow? {
+        guard let targetWindow = focusCandidateWindow() else {
+            return nil
+        }
+
+        if targetWindow.isMiniaturized {
+            targetWindow.deminiaturize(nil)
+        }
+
+        closeDuplicateCandidateWindows(keeping: targetWindow)
+
+        if !targetWindow.isVisible {
+            targetWindow.makeKeyAndOrderFront(nil)
+        } else {
+            targetWindow.makeKey()
+        }
+        targetWindow.orderFrontRegardless()
+        return targetWindow
+    }
+
+    @MainActor
+    private static func focusCandidateWindow() -> NSWindow? {
+        var candidates = mainWindowCandidates()
+        guard !candidates.isEmpty else {
+            return nil
+        }
+
+        candidates.sort(by: { lhs, rhs in
+            if lhs.isMiniaturized != rhs.isMiniaturized {
+                return !lhs.isMiniaturized && rhs.isMiniaturized
+            }
+            if lhs.isVisible != rhs.isVisible {
+                return lhs.isVisible
+            }
+            return lhs.windowNumber < rhs.windowNumber
+        })
+
+        return candidates.first
+    }
+
+    @MainActor
+    private static func closeDuplicateCandidateWindows(keeping target: NSWindow) {
+        for candidate in primaryMainWindowCandidates() where candidate !== target {
+            candidate.close()
+        }
+    }
+
+    @MainActor
+    private static func findMainWindow() -> NSWindow? {
+        focusCandidateWindow()
+    }
+
+    @MainActor
+    private static func mainWindowCandidates() -> [NSWindow] {
+        let candidateWindows = NSApplication.shared.windows
+        let primaryCandidates = primaryMainWindowCandidates()
+
+        if !primaryCandidates.isEmpty {
+            return primaryCandidates
+        }
+
+        return candidateWindows.filter { window in
+            window.level == .normal || window.level == .floating
+        }
+    }
+
+    @MainActor
+    private static func primaryMainWindowCandidates() -> [NSWindow] {
+        NSApplication.shared.windows.filter { window in
+            window.identifier?.rawValue == "main" || window.title == "MeowPlanner"
+        }
+    }
+}
+
+struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.appLanguage) private var appLanguage
+    @AppStorage("meowplanner.sidebar.sectionOrder") private var sidebarSectionOrderRaw = AppSection.defaultSidebarOrderStorageValue
+    @Query(sort: \PlannerEvent.startDate) private var widgetEvents: [PlannerEvent]
+    @Query(sort: \TodoItem.createdAt) private var widgetTodos: [TodoItem]
+    @Query(sort: \Habit.createdAt) private var widgetHabits: [Habit]
+    @Query private var widgetPreferences: [PlannerPreference]
+    @Environment(\.modelContext) private var modelContext
+    @State private var selection: AppSection = .calendar
+    @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
+    @State private var calendarRenderToken = UUID()
+    @State private var pendingWidgetRefreshTask: Task<Void, Never>?
+
+    var body: some View {
+        #if os(macOS)
+        NavigationSplitView(columnVisibility: $sidebarVisibility) {
+            List {
+                ForEach(orderedSections) { section in
+                    Button {
+                        selection = section
+                    } label: {
+                        SidebarSectionRow(section: section, language: appLanguage, isSelected: selection == section)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel(section.title(language: appLanguage))
+                    .listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+                .onMove(perform: moveSidebarSections)
+            }
+            .tint(MeowPlannerTheme.softBrownHighlight)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(MeowPlannerTheme.plannerGradient)
+            .navigationTitle("MeowPlanner")
+            .navigationSplitViewColumnWidth(min: 96, ideal: 210, max: 260)
+        } detail: {
+            ZStack {
+                MeowPlannerTheme.plannerGradient
+                    .ignoresSafeArea()
+
+                sectionView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .onAppear {
+            scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
+        }
+        .onChange(of: widgetSnapshotSignature) { _, _ in
+            scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 180_000_000)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 260_000_000)
+            }
+        }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .meowPlannerOpenSection)) { notification in
+            guard let rawSection = notification.object as? String,
+                  let section = AppSection(rawValue: rawSection)
+            else {
+                return
+            }
+
+            if section == .calendar {
+                refreshCalendarAfterExternalOpen()
+            } else {
+                selection = section
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .meowPlannerExternalOpenURL)) { _ in
+            refreshCalendarAfterExternalOpen()
+        }
+        #endif
+        #else
+        TabView(selection: $selection) {
+            ForEach(orderedSections) { section in
+                sectionContent(for: section)
+                    .tabItem {
+                        Label(section.title(language: appLanguage), systemImage: section.systemImage)
+                    }
+                    .tag(section)
+            }
+        }
+        .background(MeowPlannerTheme.plannerGradient)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
+        }
+        .onChange(of: widgetSnapshotSignature) { _, _ in
+            scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 180_000_000)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 260_000_000)
+            }
+        }
+        #endif
+    }
+
+    private var orderedSections: [AppSection] {
+        AppSection.orderedSections(from: sidebarSectionOrderRaw)
+    }
+
+    private var widgetPreference: PlannerPreference {
+        widgetPreferences.first ?? PlannerPreference.defaults
+    }
+
+    private var activeWidgetHabitCount: Int {
+        widgetHabits.filter { $0.archivedAt == nil }.count
+    }
+
+    private var widgetSnapshotSignature: String {
+        [
+            widgetEvents.map(eventSignature).joined(separator: ";"),
+            widgetTodos.map(todoSignature).joined(separator: ";"),
+            String(activeWidgetHabitCount),
+            String(widgetPreference.weekStartPreference.rawValue),
+            String(widgetPreference.showChineseCalendar),
+            String(widgetPreference.showCompletedSchedules),
+            String(widgetPreference.completedSchedulesUseStrikethrough)
+        ].joined(separator: "||")
+    }
+
+    private func moveSidebarSections(from source: IndexSet, to destination: Int) {
+        var reordered = orderedSections
+        reordered.move(fromOffsets: source, toOffset: destination)
+        sidebarSectionOrderRaw = AppSection.sidebarStorageValue(for: reordered)
+    }
+
+    private func publishWidgetSnapshot(reload: Bool = false) {
+        WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext, shouldReload: reload)
+    }
+
+    private func scheduleWidgetSnapshotRefresh(reload: Bool = false, delayNanoseconds: UInt64? = nil) {
+        pendingWidgetRefreshTask?.cancel()
+        pendingWidgetRefreshTask = Task { @MainActor in
+            if let delayNanoseconds, delayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            publishWidgetSnapshot(reload: reload)
+        }
+    }
+
+    private func refreshCalendarAfterExternalOpen() {
+        selection = .calendar
+
+        Task { @MainActor in
+            await Task.yield()
+            calendarRenderToken = UUID()
+        }
+    }
+
+    private func eventSignature(_ event: PlannerEvent) -> String {
+        [
+            event.id.uuidString,
+            event.title,
+            dateToken(event.startDate),
+            event.endDate.map(dateToken) ?? "",
+            String(event.isAllDay),
+            String(event.isCompleted),
+            event.completedAt.map(dateToken) ?? "",
+            String(event.reminderOffsetMinutes ?? -1),
+            String(describing: event.repeatRule),
+            event.tagName,
+            event.colorHex,
+            dateToken(event.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func todoSignature(_ todo: TodoItem) -> String {
+        [
+            todo.id.uuidString,
+            todo.title,
+            todo.notes,
+            todo.dueDate.map(dateToken) ?? "",
+            todo.groupID?.uuidString ?? "",
+            String(todo.isCompleted),
+            todo.completedAt.map(dateToken) ?? "",
+            todo.reminderDate.map(dateToken) ?? "",
+            dateToken(todo.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func dateToken(_ date: Date) -> String {
+        String(date.timeIntervalSince1970)
+    }
+
+    @ViewBuilder
+    private var sectionView: some View {
+        sectionContent(for: selection)
+    }
+
+    @ViewBuilder
+    private func sectionContent(for section: AppSection) -> some View {
+        switch section {
+        case .calendar:
+            CalendarHomeView()
+                .id(calendarRenderToken)
+        case .todo:
+            TodoHomeView()
+        case .schedule:
+            ScheduleAgendaView()
+        case .timetable:
+            CourseTimetableView()
+        case .focus:
+            FocusView()
+        case .settings:
+            SettingsView()
+        }
+    }
+}
+
+private enum ScheduleAgendaMode: String, CaseIterable, Identifiable {
+    case daily
+    case weekly
+
+    var id: String { rawValue }
+
+    func title(language: AppLanguage) -> String {
+        switch self {
+        case .daily:
+            switch language {
+            case .english: "Daily"
+            case .chinese: "每日"
+            }
+        case .weekly:
+            switch language {
+            case .english: "Weekly"
+            case .chinese: "每周"
+            }
+        }
+    }
+}
+
+private struct ScheduleAgendaView: View {
+    @Environment(\.appLanguage) private var appLanguage
+    @Query(sort: \PlannerEvent.startDate) private var events: [PlannerEvent]
+    @Query private var preferences: [PlannerPreference]
+
+    @State private var mode: ScheduleAgendaMode = .daily
+    @State private var selectedDate = Date()
+    @State private var isEarlyMorningExpanded = false
+    @State private var showingScheduleDatePicker = false
+
+    private var calendar: Calendar {
+        preference.weekStartPreference.configuredCalendar
+    }
+
+    var body: some View {
+        ZStack {
+            MeowPlannerTheme.fufuPlannerBackground
+                .overlay {
+                    MeowPlannerTheme.plannerGradient.opacity(0.88)
+                }
+                .overlay {
+                    scheduleBackgroundMotifs
+                }
+                .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 14) {
+                scheduleHeader
+
+                ScheduleTimeGridView(
+                    mode: mode,
+                    selectedDate: selectedDate,
+                    dayDates: mode == .daily ? [selectedDate] : weekDates,
+                    events: events,
+                    timeCollapseEnabled: scheduleTimeCollapseEnabled,
+                    collapsedStartHour: scheduleCollapsedStartHour,
+                    collapsedEndHour: scheduleCollapsedEndHour,
+                    timeDisplayPreference: timeDisplayPreference,
+                    showCompletedSchedules: showCompletedSchedules,
+                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                    isEarlyMorningExpanded: $isEarlyMorningExpanded,
+                    language: appLanguage,
+                    calendar: calendar
+                )
+                .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(MeowPlannerTheme.caramel.opacity(0.16), lineWidth: 1)
+                }
+                .background {
+                    HorizontalSwipeScrollDetector { horizontal in
+                        moveDate(by: horizontal < 0 ? 1 : -1)
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var scheduleHeader: some View {
+        HStack(alignment: .center, spacing: 16) {
+            FuFuAssetImage(size: 58)
+            scheduleDatePickerButton
+
+            Spacer()
+
+            scheduleModePicker
+        }
+    }
+
+    private var scheduleModePicker: some View {
+        Picker(PlannerCopy.text(.scheduleView, language: appLanguage), selection: $mode) {
+            ForEach(ScheduleAgendaMode.allCases) { option in
+                Text(option.title(language: appLanguage)).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 180)
+    }
+
+    private var scheduleDatePickerButton: some View {
+        Button {
+            showingScheduleDatePicker.toggle()
+        } label: {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selectedDate.formatted(.dateTime.month(.wide).year()))
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                    Text(selectedDate.formatted(.dateTime.weekday(.wide).month().day().year()))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if showChineseCalendar {
+                        Text(selectedChineseCalendarInfo.displayText)
+                            .font(.caption.weight(selectedChineseCalendarInfo.isFestival ? .bold : .medium))
+                            .foregroundStyle(selectedChineseCalendarInfo.isFestival ? MeowPlannerTheme.blush : MeowPlannerTheme.caramel)
+                    }
+                }
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.bold())
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingScheduleDatePicker, arrowEdge: .bottom) {
+            ScheduleDatePickerPanel(
+                selectedDate: $selectedDate,
+                mode: $mode,
+                showChineseCalendar: showChineseCalendar,
+                language: appLanguage,
+                calendar: calendar
+            )
+        }
+    }
+
+    private var preference: PlannerPreference {
+        preferences.first ?? PlannerPreference.defaults
+    }
+
+    private var scheduleCollapsedStartHour: Int {
+        PlannerPreference.normalizedCollapsedHourRange(
+            start: preferences.first?.scheduleCollapsedStartHour ?? PlannerPreference.defaults.scheduleCollapsedStartHour,
+            end: preferences.first?.scheduleCollapsedEndHour ?? PlannerPreference.defaults.scheduleCollapsedEndHour
+        ).start
+    }
+
+    private var scheduleCollapsedEndHour: Int {
+        PlannerPreference.normalizedCollapsedHourRange(
+            start: preferences.first?.scheduleCollapsedStartHour ?? PlannerPreference.defaults.scheduleCollapsedStartHour,
+            end: preferences.first?.scheduleCollapsedEndHour ?? PlannerPreference.defaults.scheduleCollapsedEndHour
+        ).end
+    }
+
+    private var scheduleTimeCollapseEnabled: Bool {
+        preference.scheduleTimeCollapseEnabled
+    }
+
+    private var timeDisplayPreference: TimeDisplayPreference {
+        preference.timeDisplayPreference
+    }
+
+    private var showCompletedSchedules: Bool {
+        preference.showCompletedSchedules
+    }
+
+    private var completedSchedulesUseStrikethrough: Bool {
+        preference.completedSchedulesUseStrikethrough
+    }
+
+    private var showChineseCalendar: Bool {
+        preference.showChineseCalendar
+    }
+
+    private var selectedChineseCalendarInfo: ChineseCalendarDayInfo {
+        ChineseCalendarInfoProvider.info(for: selectedDate, calendar: calendar)
+    }
+
+    private var scheduleBackgroundMotifs: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 240, weight: .bold))
+                    .foregroundStyle(MeowPlannerTheme.fufuPawTint.opacity(0.10))
+                    .rotationEffect(.degrees(-12))
+                    .position(x: proxy.size.width * 0.18, y: proxy.size.height * 0.58)
+
+                Image(systemName: "pawprint")
+                    .font(.system(size: 170, weight: .semibold))
+                    .foregroundStyle(MeowPlannerTheme.caramel.opacity(0.13))
+                    .rotationEffect(.degrees(8))
+                    .position(x: proxy.size.width * 0.52, y: proxy.size.height * 0.30)
+
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 260, weight: .bold))
+                    .foregroundStyle(MeowPlannerTheme.blush.opacity(0.10))
+                    .rotationEffect(.degrees(15))
+                    .position(x: proxy.size.width * 0.84, y: proxy.size.height * 0.62)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var weekDates: [Date] {
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else {
+            return [selectedDate]
+        }
+
+        return (0..<7).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: weekInterval.start)
+        }
+    }
+
+    private func moveDate(by value: Int) {
+        let component: Calendar.Component = mode == .daily ? .day : .weekOfYear
+        selectedDate = calendar.date(byAdding: component, value: value, to: selectedDate) ?? selectedDate
+    }
+
+}
+
+private struct ScheduleDatePickerPanel: View {
+    @Binding var selectedDate: Date
+    @Binding var mode: ScheduleAgendaMode
+    var showChineseCalendar: Bool
+    var language: AppLanguage
+    var calendar: Calendar
+
+    @State private var displayedMonth = Date()
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker(PlannerCopy.text(.scheduleView, language: language), selection: $mode) {
+                ForEach(ScheduleAgendaMode.allCases) { option in
+                    Text(option.title(language: language)).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack {
+                Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
+                    .font(.headline.bold())
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+
+                Spacer()
+
+                monthNavigationButton(systemImage: "chevron.left", offset: -1)
+                monthNavigationButton(systemImage: "chevron.right", offset: 1)
+            }
+
+            HStack {
+                ForEach(weekdaySymbols, id: \.self) { symbol in
+                    Text(symbol)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            LazyVGrid(columns: columns, spacing: 6) {
+                ForEach(inlineCalendarDays, id: \.self) { date in
+                    dayButton(for: date)
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 330)
+        .background(MeowPlannerTheme.fufuPlannerBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(MeowPlannerTheme.blush.opacity(0.22), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .onAppear {
+            displayedMonth = monthStart(for: selectedDate)
+        }
+    }
+
+    private var weekdaySymbols: [String] {
+        let symbols = language == .chinese
+            ? ["日", "一", "二", "三", "四", "五", "六"]
+            : calendar.shortWeekdaySymbols
+        let startIndex = max(0, min(6, calendar.firstWeekday - 1))
+        return Array(symbols[startIndex...]) + Array(symbols[..<startIndex])
+    }
+
+    private var inlineCalendarDays: [Date] {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: displayedMonth),
+              let firstWeek = calendar.dateInterval(of: .weekOfMonth, for: monthInterval.start)
+        else {
+            return []
+        }
+
+        return (0..<42).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: firstWeek.start)
+        }
+    }
+
+    private func monthNavigationButton(systemImage: String, offset: Int) -> some View {
+        Button {
+            displayedMonth = calendar.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+        } label: {
+            Image(systemName: systemImage)
+                .font(.caption.bold())
+                .frame(width: 28, height: 28)
+                .background(MeowPlannerTheme.warmCream.opacity(0.26), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func dayButton(for date: Date) -> some View {
+        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+        let isInDisplayedMonth = calendar.isDate(date, equalTo: displayedMonth, toGranularity: .month)
+        let info = ChineseCalendarInfoProvider.info(for: date, calendar: calendar)
+
+        return Button {
+            selectDate(date)
+        } label: {
+            VStack(spacing: 1) {
+                Text(date.formatted(.dateTime.day()))
+                    .font(.caption.weight(isSelected ? .bold : .medium))
+                if showChineseCalendar {
+                    Text(info.displayText)
+                        .font(.system(size: 8, weight: info.isFestival ? .bold : .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+            .foregroundStyle(dayForeground(isSelected: isSelected, isInDisplayedMonth: isInDisplayedMonth, info: info))
+            .frame(maxWidth: .infinity)
+            .frame(height: showChineseCalendar ? 36 : 30)
+            .background(isSelected ? MeowPlannerTheme.caramel : MeowPlannerTheme.warmCream.opacity(0.22), in: RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func dayForeground(isSelected: Bool, isInDisplayedMonth: Bool, info: ChineseCalendarDayInfo) -> Color {
+        if isSelected {
+            return .white
+        }
+        if info.isFestival {
+            return MeowPlannerTheme.blush
+        }
+        return isInDisplayedMonth ? MeowPlannerTheme.cocoa : MeowPlannerTheme.cocoa.opacity(0.36)
+    }
+
+    private func selectDate(_ date: Date) {
+        let time = calendar.dateComponents([.hour, .minute, .second], from: selectedDate)
+        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        var merged = DateComponents()
+        merged.year = day.year
+        merged.month = day.month
+        merged.day = day.day
+        merged.hour = time.hour
+        merged.minute = time.minute
+        merged.second = time.second
+        selectedDate = calendar.date(from: merged) ?? date
+        displayedMonth = monthStart(for: date)
+    }
+
+    private func monthStart(for date: Date) -> Date {
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: components) ?? date
+    }
+}
+
+private struct ScheduleTimeGridView: View {
+    var mode: ScheduleAgendaMode
+    var selectedDate: Date
+    var dayDates: [Date]
+    var events: [PlannerEvent]
+    var timeCollapseEnabled: Bool
+    var collapsedStartHour: Int
+    var collapsedEndHour: Int
+    var timeDisplayPreference: TimeDisplayPreference
+    var showCompletedSchedules: Bool
+    var completedSchedulesUseStrikethrough: Bool
+    @Binding var isEarlyMorningExpanded: Bool
+    var language: AppLanguage
+    var calendar: Calendar
+
+    private let hourRowHeight: CGFloat = 64
+    private let timeColumnWidth: CGFloat = 58
+    private let allDayLaneHeight: CGFloat = 46
+    private let earlyMorningCollapsedHeight: CGFloat = 44
+    private var earlyMorningHours: [Int] {
+        Array(collapsedStartHour..<collapsedEndHour)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            weekdayHeader
+            allDayLane
+
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    if timeCollapseEnabled {
+                        earlyMorningToggle
+                    }
+                    timeGrid
+                }
+            }
+            .verticalPageScrollOnly()
+            .scrollContentBackground(.hidden)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var weekdayHeader: some View {
+        HStack(spacing: 0) {
+            Text(mode == .daily ? selectedDate.formatted(.dateTime.month().day()) : "")
+                .frame(width: timeColumnWidth, alignment: .leading)
+                .foregroundStyle(.secondary)
+
+            ForEach(dayDates, id: \.self) { date in
+                VStack(spacing: 3) {
+                    Text(date.formatted(.dateTime.weekday(.abbreviated)))
+                        .font(.subheadline.weight(.semibold))
+                    Text(date.formatted(.dateTime.day()))
+                        .font(calendar.isDateInToday(date) ? .headline.bold() : .subheadline)
+                        .padding(.horizontal, calendar.isDateInToday(date) ? 8 : 0)
+                        .padding(.vertical, calendar.isDateInToday(date) ? 2 : 0)
+                        .background(calendar.isDateInToday(date) ? MeowPlannerTheme.blush : .clear, in: Capsule())
+                        .foregroundStyle(calendar.isDateInToday(date) ? .white : MeowPlannerTheme.cocoa)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(MeowPlannerTheme.cream.opacity(0.46))
+    }
+
+    private var allDayLane: some View {
+        HStack(spacing: 0) {
+            Text(PlannerCopy.text(.allDay, language: language))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: timeColumnWidth, alignment: .leading)
+
+            ForEach(dayDates, id: \.self) { date in
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(allDayEvents(on: date).prefix(2)) { event in
+                        eventPill(event)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 6)
+                .overlay(alignment: .trailing) {
+                    Rectangle()
+                        .fill(MeowPlannerTheme.caramel.opacity(0.10))
+                        .frame(width: 1)
+                }
+            }
+        }
+        .frame(height: allDayLaneHeight)
+        .padding(.horizontal, 12)
+        .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.62))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(MeowPlannerTheme.caramel.opacity(0.18))
+                .frame(height: 1)
+        }
+    }
+
+    private var earlyMorningToggle: some View {
+        Button {
+            isEarlyMorningExpanded.toggle()
+        } label: {
+            HStack(spacing: 10) {
+                Text("\(formatHour(collapsedStartHour))-\(formatHour(collapsedEndHour))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                    .frame(width: timeColumnWidth, alignment: .leading)
+                Image(systemName: isEarlyMorningExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.bold())
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                Text(isEarlyMorningExpanded ? "Expanded" : "Collapsed")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .frame(height: earlyMorningCollapsedHeight)
+            .background(MeowPlannerTheme.warmCream.opacity(0.22))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var timeGrid: some View {
+        GeometryReader { proxy in
+            let dayWidth = max(80, (proxy.size.width - timeColumnWidth - 24) / CGFloat(max(dayDates.count, 1)))
+
+            ZStack(alignment: .topLeading) {
+                hourRows(dayWidth: dayWidth)
+
+                ForEach(Array(dayDates.enumerated()), id: \.element) { index, date in
+                    ForEach(timedEvents(on: date)) { event in
+                        eventBlock(event)
+                            .frame(width: max(70, dayWidth - 12), height: eventHeight(event))
+                            .offset(
+                                x: timeColumnWidth + 12 + CGFloat(index) * dayWidth + 6,
+                                y: eventOffset(event)
+                            )
+                    }
+                }
+
+                currentTimeLine(dayWidth: dayWidth)
+            }
+            .frame(height: gridHeight)
+        }
+        .frame(height: gridHeight)
+    }
+
+    private func hourRows(dayWidth: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            ForEach(visibleHours, id: \.self) { hour in
+                HStack(spacing: 0) {
+                    Text(hourLabel(hour))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(MeowPlannerTheme.caramel.opacity(0.72))
+                        .frame(width: timeColumnWidth, alignment: .leading)
+                        .padding(.leading, 12)
+
+                    ForEach(dayDates, id: \.self) { date in
+                        Rectangle()
+                            .fill(calendar.isDateInToday(date) ? MeowPlannerTheme.fufuBlue.opacity(0.035) : Color.white.opacity(0.10))
+                            .frame(width: dayWidth, height: hourRowHeight)
+                            .overlay(alignment: .top) {
+                                Rectangle()
+                                    .fill(MeowPlannerTheme.caramel.opacity(0.14))
+                                    .frame(height: 1)
+                            }
+                            .overlay(alignment: .trailing) {
+                                Rectangle()
+                                    .fill(MeowPlannerTheme.caramel.opacity(0.10))
+                                    .frame(width: 1)
+                            }
+                    }
+                }
+                .frame(height: hourRowHeight)
+            }
+        }
+    }
+
+    private func eventBlock(_ event: PlannerEvent) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(event.title)
+                .font(.caption.weight(.bold))
+                .lineLimit(1)
+                .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
+            Text(eventTimeSummary(event))
+                .font(.caption2)
+                .lineLimit(1)
+                .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
+            if !event.tagName.isEmpty {
+                Text(event.tagName)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.86), in: RoundedRectangle(cornerRadius: 6))
+        .shadow(color: MeowPlannerTheme.coffee.opacity(0.10), radius: 4, y: 2)
+    }
+
+    private func eventPill(_ event: PlannerEvent) -> some View {
+        Text(event.title)
+            .font(.caption2.weight(.semibold))
+            .lineLimit(1)
+            .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(.white)
+            .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.86), in: Capsule())
+    }
+
+    private func currentTimeLine(dayWidth: CGFloat) -> some View {
+        Group {
+            if shouldShowCurrentTimeLine {
+                HStack(spacing: 0) {
+                    Text(currentTimeText)
+                        .font(.caption.bold())
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(MeowPlannerTheme.blush, in: Capsule())
+                        .frame(width: timeColumnWidth, alignment: .leading)
+
+                    Rectangle()
+                        .fill(MeowPlannerTheme.blush)
+                        .frame(width: currentTimeLineWidth(dayWidth: dayWidth), height: 2)
+                }
+                .offset(x: 12, y: currentTimeOffset)
+            }
+        }
+    }
+
+    private var visibleHours: [Int] {
+        if !timeCollapseEnabled || isEarlyMorningExpanded {
+            return Array(0..<24)
+        }
+
+        return Array(0..<collapsedStartHour) + Array(collapsedEndHour..<24)
+    }
+
+    private var firstVisibleHour: Int {
+        visibleHours.first ?? 0
+    }
+
+    private var gridHeight: CGFloat {
+        CGFloat(visibleHours.count) * hourRowHeight
+    }
+
+    private var shouldShowCurrentTimeLine: Bool {
+        let now = Date()
+        guard visibleHours.contains(calendar.component(.hour, from: now)) else {
+            return false
+        }
+        return dayDates.contains { calendar.isDate($0, inSameDayAs: now) }
+    }
+
+    private var currentTimeOffset: CGFloat {
+        timeOffset(for: Date())
+    }
+
+    private var currentTimeText: String {
+        formatTime(Date())
+    }
+
+    private func currentTimeLineWidth(dayWidth: CGFloat) -> CGFloat {
+        if mode == .daily {
+            return dayWidth
+        }
+        return dayWidth * CGFloat(dayDates.count)
+    }
+
+    private func eventHeight(_ event: PlannerEvent) -> CGFloat {
+        guard let endDate = event.endDate else {
+            return max(34, hourRowHeight * 0.62)
+        }
+        let duration = max(1_800, endDate.timeIntervalSince(event.startDate))
+        return max(34, CGFloat(duration / 3_600) * hourRowHeight - 4)
+    }
+
+    private func eventOffset(_ event: PlannerEvent) -> CGFloat {
+        timeOffset(for: event.startDate) + 3
+    }
+
+    private func timeOffset(for date: Date) -> CGFloat {
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        guard let hourIndex = visibleHours.firstIndex(of: hour) else {
+            let insertionIndex = visibleHours.firstIndex { $0 > hour } ?? visibleHours.count
+            return CGFloat(max(0, insertionIndex)) * hourRowHeight
+        }
+        return (CGFloat(hourIndex) + CGFloat(minute) / 60.0) * hourRowHeight
+    }
+
+    private func hourLabel(_ hour: Int) -> String {
+        formatHour(hour)
+    }
+
+    private func formatHour(_ hour: Int) -> String {
+        switch timeDisplayPreference {
+        case .twentyFourHour:
+            return String(format: "%02d:00", hour)
+        case .twelveHour:
+            let period = hour < 12 ? "AM" : "PM"
+            let hourValue = hour % 12 == 0 ? 12 : hour % 12
+            return "\(hourValue):00 \(period)"
+        }
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        switch timeDisplayPreference {
+        case .twentyFourHour:
+            return String(format: "%02d:%02d", hour, minute)
+        case .twelveHour:
+            let period = hour < 12 ? "AM" : "PM"
+            let hourValue = hour % 12 == 0 ? 12 : hour % 12
+            return String(format: "%d:%02d %@", hourValue, minute, period)
+        }
+    }
+
+    private func eventTimeSummary(_ event: PlannerEvent) -> String {
+        if event.isAllDay {
+            return PlannerCopy.text(.allDay, language: language)
+        }
+
+        guard let endDate = event.endDate else {
+            return formatTime(event.startDate)
+        }
+
+        return "\(formatTime(event.startDate))-\(formatTime(endDate))"
+    }
+
+    private func allDayEvents(on date: Date) -> [PlannerEvent] {
+        events(on: date).filter(\.isAllDay)
+    }
+
+    private func timedEvents(on date: Date) -> [PlannerEvent] {
+        events(on: date).filter { !$0.isAllDay }
+    }
+
+    private func events(on date: Date) -> [PlannerEvent] {
+        events
+            .filter { eventOccurs($0, on: date) }
+            .filter { event in showCompletedSchedules || !event.isCompleted }
+            .sorted { $0.startDate < $1.startDate }
+    }
+
+    private func eventOccurs(_ event: PlannerEvent, on date: Date) -> Bool {
+        event.occurs(on: date, calendar: calendar)
+    }
+}
+
+#if os(macOS)
+private struct SidebarSectionRow: View {
+    var section: AppSection
+    var language: AppLanguage
+    var isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: section.systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .frame(width: 24, height: 24)
+
+            Text(section.title(language: language))
+                .font(.body.weight(.semibold))
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(isSelected ? Color.white : MeowPlannerTheme.cocoa)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .background(isSelected ? MeowPlannerTheme.softBrownHighlight : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityLabel(section.title(language: language))
+    }
+}
+#endif

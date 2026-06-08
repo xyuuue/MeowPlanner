@@ -3,9 +3,13 @@
 build/
 DerivedData/
 dist/
+__pycache__/
+*.pyc
 *.xcuserstate
 xcuserdata/
 .swiftpm/
-.codex/logs/
+.codex/
 .vercel/
 .superpowers/
+meowplanner_asset_pack_no_blue/
+18f8d383-a2bb-4137-a04d-66c1701f5de7.png
