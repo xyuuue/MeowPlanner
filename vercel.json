@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/website/index.html" },
+    { "source": "/styles.css", "destination": "/website/styles.css" },
+    { "source": "/script.js", "destination": "/website/script.js" },
     { "source": "/assets/:path*", "destination": "/website/assets/:path*" },
     { "source": "/downloads/:path*", "destination": "/website/downloads/:path*" }
   ]
