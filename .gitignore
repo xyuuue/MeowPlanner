@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+build/
+DerivedData/
+dist/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.codex/logs/
+.vercel/
+.superpowers/
