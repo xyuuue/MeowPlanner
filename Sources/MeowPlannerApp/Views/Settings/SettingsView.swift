@@ -27,6 +27,7 @@ struct SettingsView: View {
     @State private var showingTimeCollapsePanel = false
     @State private var showingEventColorEditor = false
     @State private var eventColorEditorHex = PlannerPreference.defaultEventColorHexes[0]
+    @State private var eventColorEditorOriginalHex: String?
 
     var body: some View {
         Form {
@@ -118,6 +119,7 @@ struct SettingsView: View {
                             SettingsEventColorSwatch(
                                 colorHex: colorHex,
                                 canDelete: eventColorHexes.count > 1,
+                                onEdit: { openEventColorEditor(colorHex) },
                                 onDelete: { deleteEventColor(colorHex) }
                             )
                         }
@@ -223,8 +225,15 @@ struct SettingsView: View {
             AppDockIconController.apply(showDockIcon: newValue, relaunchIfNeeded: true)
         }
         .sheet(isPresented: $showingEventColorEditor) {
-            SettingsEventColorEditorView(initialColorHex: eventColorEditorHex) { colorHex in
-                addEventColor(colorHex)
+            SettingsEventColorEditorView(
+                initialColorHex: eventColorEditorHex,
+                originalColorHex: eventColorEditorOriginalHex
+            ) { colorHex, originalColorHex in
+                if let originalColorHex {
+                    updateEventColor(from: originalColorHex, to: colorHex)
+                } else {
+                    addEventColor(colorHex)
+                }
             }
         }
         .navigationTitle(PlannerCopy.text(.settings, language: appLanguage))
@@ -374,8 +383,10 @@ struct SettingsView: View {
         }
     }
 
-    private func openEventColorEditor() {
-        eventColorEditorHex = eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
+    private func openEventColorEditor(_ colorHex: String? = nil) {
+        let editorColorHex = colorHex ?? eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
+        eventColorEditorHex = MeowPlannerTheme.normalizedHex(editorColorHex) ?? PlannerPreference.defaultEventColorHexes[0]
+        eventColorEditorOriginalHex = colorHex
         showingEventColorEditor = true
     }
 
@@ -386,6 +397,23 @@ struct SettingsView: View {
         }
 
         eventColorHexes.append(normalized)
+        preference.eventColorHexes = eventColorHexes
+        try? modelContext.save()
+    }
+
+    private func updateEventColor(from originalColorHex: String, to newColorHex: String) {
+        guard let original = MeowPlannerTheme.normalizedHex(originalColorHex),
+              let updated = MeowPlannerTheme.normalizedHex(newColorHex) else {
+            return
+        }
+
+        var colors = eventColorHexes
+        if let index = colors.firstIndex(of: original) {
+            colors[index] = updated
+        } else {
+            colors.append(updated)
+        }
+        eventColorHexes = PlannerPreference.normalizedEventColorHexes(colors)
         preference.eventColorHexes = eventColorHexes
         try? modelContext.save()
     }
@@ -406,6 +434,7 @@ private struct SettingsEventColorSwatch: View {
 
     var colorHex: String
     var canDelete: Bool
+    var onEdit: () -> Void
     var onDelete: () -> Void
 
     var body: some View {
@@ -425,6 +454,12 @@ private struct SettingsEventColorSwatch: View {
             .padding(.horizontal, 6)
             .accessibilityLabel(colorHex)
             .contextMenu {
+                Button {
+                    onEdit()
+                } label: {
+                    Label(PlannerCopy.text(.editColor, language: appLanguage), systemImage: "pencil")
+                }
+
                 Button(role: .destructive) {
                     onDelete()
                 } label: {
@@ -442,12 +477,14 @@ private struct SettingsEventColorEditorView: View {
     @State private var customColor: Color
     @State private var colorHexInput: String
 
-    var onSave: (String) -> Void
+    var originalColorHex: String?
+    var onSave: (String, String?) -> Void
 
-    init(initialColorHex: String, onSave: @escaping (String) -> Void) {
+    init(initialColorHex: String, originalColorHex: String?, onSave: @escaping (String, String?) -> Void) {
         let normalized = MeowPlannerTheme.normalizedHex(initialColorHex) ?? PlannerPreference.defaultEventColorHexes[0]
         _customColor = State(initialValue: MeowPlannerTheme.color(hex: normalized))
         _colorHexInput = State(initialValue: normalized)
+        self.originalColorHex = originalColorHex
         self.onSave = onSave
     }
 
@@ -483,7 +520,7 @@ private struct SettingsEventColorEditorView: View {
             .onChange(of: customColor) { _, _ in
                 syncColorFromPicker()
             }
-            .navigationTitle(PlannerCopy.text(.addColor, language: appLanguage))
+            .navigationTitle(editorTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(PlannerCopy.text(.cancel, language: appLanguage)) {
@@ -491,9 +528,9 @@ private struct SettingsEventColorEditorView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(PlannerCopy.text(.addColor, language: appLanguage)) {
+                    Button(PlannerCopy.text(.save, language: appLanguage)) {
                         if let normalizedColorHex {
-                            onSave(normalizedColorHex)
+                            onSave(normalizedColorHex, originalColorHex)
                             dismiss()
                         }
                     }
@@ -507,6 +544,12 @@ private struct SettingsEventColorEditorView: View {
 
     private var normalizedColorHex: String? {
         MeowPlannerTheme.normalizedHex(colorHexInput)
+    }
+
+    private var editorTitle: String {
+        originalColorHex == nil
+            ? PlannerCopy.text(.addColor, language: appLanguage)
+            : PlannerCopy.text(.editColor, language: appLanguage)
     }
 
     private func syncColorFromPicker() {

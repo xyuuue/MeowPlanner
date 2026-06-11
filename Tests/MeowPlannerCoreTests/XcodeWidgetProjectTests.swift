@@ -85,8 +85,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.9")
-        #expect(plist["CFBundleVersion"] as? String == "10")
+        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.10")
+        #expect(plist["CFBundleVersion"] as? String == "11")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -673,7 +673,8 @@ struct XcodeWidgetProjectTests {
         #expect(calendarHomeSource.contains(".stroke(MeowPlannerTheme.creamRing"))
         #expect(calendarHomeSource.contains(".foregroundStyle(MeowPlannerTheme.accentText)"))
         #expect(!calendarHomeSource.contains(".tint(MeowPlannerTheme.fufuBlue)"))
-        #expect(rootViewSource.contains("SidebarSectionRow(section: section, language: appLanguage, isSelected: selection == section)"))
+        #expect(rootViewSource.contains("SidebarSectionRow("))
+        #expect(rootViewSource.contains("isSelected: selection == section"))
         #expect(rootViewSource.contains("MeowPlannerTheme.softBrownHighlight"))
     }
 
@@ -689,18 +690,23 @@ struct XcodeWidgetProjectTests {
         let macOSSidebarSource = String(rootViewSource[macOSSidebarStart.lowerBound..<macOSSidebarEnd.lowerBound])
         let sidebarRowStart = try #require(rootViewSource.range(of: "private struct SidebarSectionRow: View"))
         let sidebarRowSource = String(rootViewSource[sidebarRowStart.lowerBound...])
+        let selectableRowStart = try #require(rootViewSource.range(of: "private func selectableSidebarSectionRow(for section: AppSection) -> some View"))
+        let selectableRowEnd = try #require(rootViewSource[selectableRowStart.lowerBound...].range(of: "private func draggableSidebarSectionRow"))
+        let selectableRowSource = String(rootViewSource[selectableRowStart.lowerBound..<selectableRowEnd.lowerBound])
 
         #expect(!macOSSidebarSource.contains("List(selection: $selection)"))
         #expect(!macOSSidebarSource.contains(".tag(section)"))
-        #expect(macOSSidebarSource.contains("Button {"))
-        #expect(macOSSidebarSource.contains(".buttonStyle(.plain)"))
-        #expect(macOSSidebarSource.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
+        #expect(macOSSidebarSource.contains("sidebarSectionRow(for: section)"))
+        #expect(selectableRowSource.contains("Button {"))
+        #expect(selectableRowSource.contains(".buttonStyle(.plain)"))
+        #expect(selectableRowSource.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
         #expect(sidebarRowSource.contains(".contentShape(Rectangle())"))
-        #expect(macOSSidebarSource.contains(".listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))"))
-        #expect(macOSSidebarSource.contains(".listRowSeparator(.hidden)"))
+        #expect(selectableRowSource.contains(".listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))"))
+        #expect(selectableRowSource.contains(".listRowSeparator(.hidden)"))
         #expect(macOSSidebarSource.contains(".listStyle(.plain)"))
-        #expect(macOSSidebarSource.contains("selection = section"))
-        #expect(macOSSidebarSource.contains("SidebarSectionRow(section: section, language: appLanguage, isSelected: selection == section)"))
+        #expect(selectableRowSource.contains("selectSidebarSection(section)"))
+        #expect(selectableRowSource.contains("SidebarSectionRow("))
+        #expect(selectableRowSource.contains("isReordering: isEditingSidebarOrder"))
         #expect(sidebarRowSource.contains("Spacer(minLength: 0)"))
         #expect(rootViewSource.contains("MeowPlannerTheme.softBrownHighlight"))
     }
@@ -876,9 +882,67 @@ struct XcodeWidgetProjectTests {
         #expect(navigationSource.contains("sidebarStorageValue"))
         #expect(rootSource.contains("@AppStorage(\"meowplanner.sidebar.sectionOrder\")"))
         #expect(rootSource.contains("ForEach(orderedSections)"))
-        #expect(rootSource.contains(".onMove(perform: moveSidebarSections)"))
-        #expect(rootSource.contains("private func moveSidebarSections(from source: IndexSet, to destination: Int)"))
+        #expect(rootSource.contains(".draggable(section.rawValue)"))
+        #expect(rootSource.contains(".dropDestination(for: String.self)"))
+        #expect(rootSource.contains("sidebarBottomDropTarget"))
+        #expect(rootSource.contains("moveSidebarSection(draggedRawValue: draggedRawValue, before: section)"))
+        #expect(rootSource.contains("moveSidebarSection(draggedRawValue: draggedRawValue, before: nil)"))
+        #expect(rootSource.contains("private func moveSidebarSection(draggedRawValue: String, before targetSection: AppSection?) -> Bool"))
         #expect(rootSource.contains("sidebarSectionOrderRaw = AppSection.sidebarStorageValue(for: reordered)"))
+    }
+
+    @Test("macOS sidebar reorder handles are actual drag sources and drop targets")
+    func macOSSidebarReorderHandlesAreActualDragSourcesAndDropTargets() throws {
+        let root = try packageRoot()
+        let rootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+        let macOSSidebarStart = try #require(rootSource.range(of: "#if os(macOS)\n        NavigationSplitView"))
+        let macOSSidebarEnd = try #require(rootSource[macOSSidebarStart.lowerBound...].range(of: "} detail:"))
+        let macOSSidebarSource = String(rootSource[macOSSidebarStart.lowerBound..<macOSSidebarEnd.lowerBound])
+
+        #expect(macOSSidebarSource.contains("sidebarSectionRow(for: section)"))
+        #expect(rootSource.contains("@State private var sidebarDropTargetSection: AppSection?"))
+        #expect(rootSource.contains("private func sidebarSectionRow(for section: AppSection) -> some View"))
+        #expect(rootSource.contains("private func draggableSidebarSectionRow(for section: AppSection) -> some View"))
+        #expect(rootSource.contains(".draggable(section.rawValue)"))
+        #expect(rootSource.contains("SidebarDragPreviewView("))
+        #expect(rootSource.contains(".dropDestination(for: String.self)"))
+        #expect(rootSource.contains("sidebarDropTargetSection = isTargeted ? section : nil"))
+        #expect(rootSource.contains(".scaleEffect(sidebarDropTargetSection == section ? 1.015 : 1)"))
+        #expect(rootSource.contains("guard !isEditingSidebarOrder else"))
+        #expect(!rootSource.contains(".onMove(perform: moveSidebarSections)"))
+    }
+
+    @Test("macOS sidebar exposes an explicit reorder edit button")
+    func macOSSidebarExposesExplicitReorderEditButton() throws {
+        let root = try packageRoot()
+        let rootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let navigationFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/AppNavigation.swift")
+
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+        let navigationSource = try String(contentsOf: navigationFile, encoding: .utf8)
+        let macOSSidebarStart = try #require(rootSource.range(of: "#if os(macOS)\n        NavigationSplitView"))
+        let macOSSidebarEnd = try #require(rootSource[macOSSidebarStart.lowerBound...].range(of: "} detail:"))
+        let macOSSidebarSource = String(rootSource[macOSSidebarStart.lowerBound..<macOSSidebarEnd.lowerBound])
+        let sidebarRowStart = try #require(rootSource.range(of: "private struct SidebarSectionRow: View"))
+        let sidebarRowSource = String(rootSource[sidebarRowStart.lowerBound...])
+
+        #expect(rootSource.contains("@State private var isEditingSidebarOrder = false"))
+        #expect(macOSSidebarSource.contains("sidebarHeader"))
+        #expect(rootSource.contains("private func draggableSidebarSectionRow(for section: AppSection) -> some View"))
+        #expect(rootSource.contains("guard isEditingSidebarOrder,"))
+        #expect(rootSource.contains("private var sidebarOrderEditButton: some View"))
+        #expect(rootSource.contains("toggleSidebarOrderEditing()"))
+        #expect(rootSource.contains("isEditingSidebarOrder.toggle()"))
+        #expect(rootSource.contains("private var sidebarOrderEditTitle: String"))
+        #expect(rootSource.contains("appLanguage == .chinese ? \"自定义顺序\" : \"Customize order\""))
+        #expect(rootSource.contains("appLanguage == .chinese ? \"完成\" : \"Done\""))
+        #expect(rootSource.contains("SidebarSectionRow("))
+        #expect(rootSource.contains("isReordering: isEditingSidebarOrder"))
+        #expect(sidebarRowSource.contains("var isReordering: Bool"))
+        #expect(sidebarRowSource.contains("Image(systemName: \"line.3.horizontal\")"))
+        #expect(navigationSource.contains("case .schedule: PlannerCopy.text(.timeline"))
     }
 
     @Test("global toolbar add button is removed")
@@ -1451,10 +1515,13 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerCore/Models/PlannerPreference.swift")
         let homeFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+        let languageFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
 
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
         let preferenceSource = try String(contentsOf: preferenceFile, encoding: .utf8)
         let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+        let languageSource = try String(contentsOf: languageFile, encoding: .utf8)
 
         #expect(preferenceSource.contains("defaultEventColorHexes"))
         #expect(preferenceSource.contains("#F57C6E"))
@@ -1467,10 +1534,16 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("ScrollView(.horizontal"))
         #expect(settingsSource.contains("SettingsEventColorSwatch"))
         #expect(settingsSource.contains("contextMenu"))
+        #expect(settingsSource.contains("onEdit: { openEventColorEditor(colorHex) }"))
+        #expect(settingsSource.contains("Label(PlannerCopy.text(.editColor"))
+        #expect(settingsSource.contains("updateEventColor(from: originalColorHex, to: colorHex)"))
         #expect(settingsSource.contains("Button(role: .destructive)"))
         #expect(settingsSource.contains("Image(systemName: \"plus.circle.fill\")"))
         #expect(!settingsSource.contains("Text(colorHex)"))
         #expect(!settingsSource.contains("TextField(\"#F57C6E\", text: $newEventColorHexInput)"))
+        #expect(languageSource.contains("case editColor"))
+        #expect(languageSource.contains(".editColor: \"Edit color\""))
+        #expect(languageSource.contains(".editColor: \"编辑颜色\""))
         #expect(homeSource.contains("@Query private var preferences: [PlannerPreference]"))
         #expect(homeSource.contains("preferences.first?.eventColorHexes"))
         #expect(homeSource.contains("syncInitialColorWithPalette"))
@@ -1523,7 +1596,8 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains("calendarWatermark"))
         #expect(monthGridSource.contains("HorizontalSwipeScrollDetector"))
         #expect(monthGridSource.contains("MeowPlannerTheme.color(hex: item.colorHex)"))
-        #expect(monthGridSource.contains("item.tagName"))
+        #expect(!monthGridSource.contains("Text(item.tagName)"))
+        #expect(!monthGridSource.contains("if !item.tagName.isEmpty"))
         #expect(dayAgendaSource.contains("DayAgendaView"))
         #expect(!dayAgendaSource.contains(".background(.regularMaterial"))
     }
@@ -1614,6 +1688,27 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains("adaptiveDayCellMinHeight"))
         #expect(monthGridSource.contains("max(44"))
         #expect(monthGridSource.contains("GeometryReader"))
+    }
+
+    @Test("hidden Dock launch temporarily promotes activation policy before showing the main window")
+    func hiddenDockLaunchTemporarilyPromotesActivationPolicyBeforeShowingMainWindow() throws {
+        let root = try packageRoot()
+        let appFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let dockControllerFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/AppDockIconController.swift")
+
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let dockControllerSource = try String(contentsOf: dockControllerFile, encoding: .utf8)
+
+        #expect(dockControllerSource.contains("static var currentShowDockIconPreference: Bool"))
+        #expect(dockControllerSource.contains("prepareForMainWindowPresentation(showDockIcon:"))
+        #expect(dockControllerSource.contains("restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon:"))
+        #expect(dockControllerSource.contains("application.setActivationPolicy(.regular)"))
+        #expect(dockControllerSource.contains("application.setActivationPolicy(.accessory)"))
+        #expect(appSource.contains("AppDockIconController.currentShowDockIconPreference"))
+        #expect(appSource.contains("AppDockIconController.prepareForMainWindowPresentation(showDockIcon: showDockIcon)"))
+        #expect(appSource.contains("AppDockIconController.restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: showDockIcon)"))
     }
 
     @Test("Dock icon visibility can be hidden and customized from settings")
@@ -1763,6 +1858,48 @@ struct XcodeWidgetProjectTests {
         #expect(!monthGridSource.contains("Color.primary.opacity(0.025)"))
     }
 
+    @Test("month calendar opens on today and only click selection changes the highlighted day")
+    func monthCalendarOpensOnTodayAndOnlyClickSelectionChangesTheHighlightedDay() throws {
+        let root = try packageRoot()
+        let rootFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let monthGridFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
+
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+        let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
+        let monthGridBodySource = try #require(sourceBlock(
+            in: monthGridSource,
+            from: "struct MonthGridView: View {",
+            to: "    private func adaptiveDayCellMinHeight"
+        ))
+        let moveMonthSource = try #require(sourceBlock(
+            in: monthGridSource,
+            from: "    private func moveMonth(by value: Int) {",
+            to: "\n    }\n\n}"
+        ))
+
+        #expect(rootSource.contains("selectSidebarSection(section)"))
+        #expect(rootSource.contains("private func selectSidebarSection(_ section: AppSection)"))
+        #expect(rootSource.contains("case .calendar:\n            refreshCalendarAfterExternalOpen()"))
+        #expect(rootSource.contains("CalendarHomeView()"))
+        #expect(rootSource.contains(".id(calendarRenderToken)"))
+        #expect(monthGridSource.contains("@State private var displayedMonth = Date()"))
+        #expect(monthGridBodySource.contains("Button {\n                            resetToToday()"))
+        #expect(monthGridBodySource.contains("Label(PlannerCopy.text(.today"))
+        #expect(monthGridSource.contains("MonthPlannerGridBuilder.days(\n            for: displayedMonth"))
+        #expect(monthGridSource.contains("calendar.isDate(day.date, inSameDayAs: selectedDate)"))
+        #expect(monthGridSource.contains("private func selectDate(_ date: Date)"))
+        #expect(monthGridSource.contains("selectedDate = date"))
+        #expect(monthGridSource.contains("displayedMonth = monthStart(for: date)"))
+        #expect(monthGridSource.contains("private func resetToToday()"))
+        #expect(monthGridSource.contains("let today = Date()"))
+        #expect(monthGridSource.contains("selectedDate = today"))
+        #expect(monthGridSource.contains("displayedMonth = monthStart(for: today)"))
+        #expect(moveMonthSource.contains("displayedMonth ="))
+        #expect(!moveMonthSource.contains("selectedDate = calendar.date(byAdding: .month"))
+    }
+
     @Test("event editor manages palette colors from a popup editor")
     func eventEditorSupportsCustomColorPickerAndHexInput() throws {
         let root = try packageRoot()
@@ -1792,6 +1929,57 @@ struct XcodeWidgetProjectTests {
         #expect(!homeSource.contains(".pickerStyle(.segmented)"))
     }
 
+    @Test("calendar event editor folds optional end time into the start time picker")
+    func calendarEventEditorFoldsOptionalEndTimeIntoStartTimePicker() throws {
+        let root = try packageRoot()
+        let homeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+        let dateRowsSource = try #require(sourceBlock(
+            in: homeSource,
+            from: "    private var datePickerRows: some View {",
+            to: "    private var paletteColorControls: some View {"
+        ))
+        let inlinePanelSource = try #require(sourceBlock(
+            in: homeSource,
+            from: "private struct FuFuInlineDatePickerPanel",
+            to: "private enum RepeatRuleSelection"
+        ))
+
+        #expect(dateRowsSource.contains("endSelection: $endDate"))
+        #expect(dateRowsSource.contains("hasEndTime: $hasEndDate"))
+        #expect(dateRowsSource.contains("allowsEndTime: !isAllDay && !isMultiDay"))
+        #expect(!dateRowsSource.contains("} else if !isAllDay && hasEndDate {"))
+        #expect(!homeSource.contains("Toggle(PlannerCopy.text(.hasEndTime, language: appLanguage), isOn: $hasEndDate)"))
+        #expect(inlinePanelSource.contains("private var timeControls: some View"))
+        #expect(inlinePanelSource.contains("Toggle(PlannerCopy.text(.hasEndTime"))
+        #expect(inlinePanelSource.contains("DatePicker(\"\", selection: endTimeSelectionBinding(endSelection)"))
+        #expect(inlinePanelSource.contains("syncEndTimeAfterStartChange()"))
+    }
+
+    @Test("calendar time picker commits edits when clicking outside focused time fields")
+    func calendarTimePickerCommitsEditsWhenClickingOutsideFocusedTimeFields() throws {
+        let root = try packageRoot()
+        let homeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+        let inlinePanelSource = try #require(sourceBlock(
+            in: homeSource,
+            from: "private struct FuFuInlineDatePickerPanel",
+            to: "private enum RepeatRuleSelection"
+        ))
+
+        #expect(inlinePanelSource.contains("timeEditingCommitGesture"))
+        #expect(inlinePanelSource.contains("commitTimeEditingAndNormalize()"))
+        #expect(inlinePanelSource.contains("resignTimeFieldFocus()"))
+        #expect(inlinePanelSource.contains("makeFirstResponder(nil)"))
+        #expect(inlinePanelSource.contains(".simultaneousGesture(timeEditingCommitGesture)"))
+        #expect(inlinePanelSource.contains("binding.wrappedValue = normalizedEndTime(for: newValue)"))
+        #expect(inlinePanelSource.contains("calendar.date(byAdding: .hour, value: 1, to: selection)"))
+    }
+
     private func packageRoot() throws -> URL {
         var url = URL(fileURLWithPath: #filePath)
         while url.path != "/" {
@@ -1803,5 +1991,14 @@ struct XcodeWidgetProjectTests {
         }
 
         throw CocoaError(.fileNoSuchFile)
+    }
+
+    private func sourceBlock(in source: String, from startMarker: String, to endMarker: String) -> String? {
+        guard let startRange = source.range(of: startMarker),
+              let endRange = source[startRange.upperBound...].range(of: endMarker) else {
+            return nil
+        }
+
+        return String(source[startRange.lowerBound..<endRange.lowerBound])
     }
 }

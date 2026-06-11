@@ -1,4 +1,7 @@
 import MeowPlannerCore
+#if os(macOS)
+import AppKit
+#endif
 import SwiftData
 import SwiftUI
 struct CalendarHomeView: View {
@@ -428,9 +431,6 @@ private struct EventEditorView: View {
                     .disabled(isMultiDay)
                 Toggle(PlannerCopy.text(.multiDayTask, language: appLanguage), isOn: $isMultiDay)
                 datePickerRows
-                if !isAllDay && !isMultiDay {
-                    Toggle(PlannerCopy.text(.hasEndTime, language: appLanguage), isOn: $hasEndDate)
-                }
                 Toggle(PlannerCopy.text(.reminder, language: appLanguage), isOn: $hasReminder)
                     .disabled(!localRemindersEnabled)
                 if localRemindersEnabled && hasReminder {
@@ -538,7 +538,10 @@ private struct EventEditorView: View {
             FuFuDatePickerRow(
                 title: isMultiDay ? PlannerCopy.text(.startDate, language: appLanguage) : (isAllDay ? PlannerCopy.text(.date, language: appLanguage) : PlannerCopy.text(.startDate, language: appLanguage)),
                 selection: $startDate,
+                endSelection: $endDate,
+                hasEndTime: $hasEndDate,
                 includesTime: !isAllDay && !isMultiDay,
+                allowsEndTime: !isAllDay && !isMultiDay,
                 showChineseCalendar: showChineseCalendar
             )
 
@@ -547,13 +550,6 @@ private struct EventEditorView: View {
                     title: PlannerCopy.text(.deadlineDate, language: appLanguage),
                     selection: $endDate,
                     includesTime: false,
-                    showChineseCalendar: showChineseCalendar
-                )
-            } else if !isAllDay && hasEndDate {
-                FuFuDatePickerRow(
-                    title: PlannerCopy.text(.end, language: appLanguage),
-                    selection: $endDate,
-                    includesTime: true,
                     showChineseCalendar: showChineseCalendar
                 )
             }
@@ -807,7 +803,10 @@ private struct FuFuDatePickerRow: View {
 
     var title: String
     @Binding var selection: Date
+    var endSelection: Binding<Date>? = nil
+    var hasEndTime: Binding<Bool>? = nil
     var includesTime: Bool
+    var allowsEndTime: Bool = false
     var showChineseCalendar: Bool
 
     @State private var isExpanded = false
@@ -869,7 +868,10 @@ private struct FuFuDatePickerRow: View {
                     title: title,
                     selection: $selection,
                     displayedMonth: $displayedMonth,
+                    endSelection: endSelection,
+                    hasEndTime: hasEndTime,
                     includesTime: includesTime,
+                    allowsEndTime: allowsEndTime,
                     showChineseCalendar: showChineseCalendar
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -887,7 +889,15 @@ private struct FuFuDatePickerRow: View {
     private var secondaryDateText: String {
         var parts: [String] = []
         if includesTime {
-            parts.append(selection.formatted(date: .omitted, time: .shortened))
+            let startText = selection.formatted(date: .omitted, time: .shortened)
+            if allowsEndTime,
+               hasEndTime?.wrappedValue == true,
+               let endSelection {
+                let endText = endSelection.wrappedValue.formatted(date: .omitted, time: .shortened)
+                parts.append("\(startText)-\(endText)")
+            } else {
+                parts.append(startText)
+            }
         } else {
             parts.append(PlannerCopy.text(.allDay, language: appLanguage))
         }
@@ -911,7 +921,10 @@ private struct FuFuInlineDatePickerPanel: View {
     var title: String
     @Binding var selection: Date
     @Binding var displayedMonth: Date
+    var endSelection: Binding<Date>? = nil
+    var hasEndTime: Binding<Bool>? = nil
     var includesTime: Bool
+    var allowsEndTime: Bool = false
     var showChineseCalendar: Bool
 
     private let calendar = Calendar.current
@@ -944,25 +957,10 @@ private struct FuFuInlineDatePickerPanel: View {
                     dayButton(for: date)
                 }
             }
+            .simultaneousGesture(timeEditingCommitGesture)
 
             if includesTime {
-                HStack {
-                    Label(PlannerCopy.text(.time, language: appLanguage), systemImage: "clock")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MeowPlannerTheme.cocoa)
-                    Spacer()
-                    DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .datePickerStyle(.compact)
-                        .tint(MeowPlannerTheme.caramel)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(MeowPlannerTheme.cream.opacity(0.46), in: RoundedRectangle(cornerRadius: 16))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(MeowPlannerTheme.caramel.opacity(0.12), lineWidth: 1)
-                }
+                timeControls
             }
         }
         .padding(20)
@@ -972,6 +970,73 @@ private struct FuFuInlineDatePickerPanel: View {
                 .stroke(MeowPlannerTheme.caramel.opacity(0.18), lineWidth: 1)
         }
         .shadow(color: MeowPlannerTheme.coffee.opacity(0.08), radius: 12, y: 5)
+        .background(timeEditingCommitMonitor)
+        .onChange(of: selection) { _, _ in
+            syncEndTimeAfterStartChange()
+        }
+    }
+
+    private var timeEditingCommitGesture: some Gesture {
+        TapGesture().onEnded {
+            commitTimeEditingAndNormalize()
+        }
+    }
+
+    @ViewBuilder
+    private var timeEditingCommitMonitor: some View {
+        #if os(macOS)
+        TimeEditingCommitMonitor(onMouseDown: commitTimeEditingAndNormalize)
+        #else
+        EmptyView()
+        #endif
+    }
+
+    private var timeControls: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Label(PlannerCopy.text(.time, language: appLanguage), systemImage: "clock")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                Spacer()
+                DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .tint(MeowPlannerTheme.caramel)
+            }
+
+            if allowsEndTime,
+               let endSelection,
+               let hasEndTime {
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.14))
+                    .simultaneousGesture(timeEditingCommitGesture)
+
+                Toggle(PlannerCopy.text(.hasEndTime, language: appLanguage), isOn: endTimeToggleBinding(hasEndTime))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .tint(MeowPlannerTheme.caramel)
+
+                if hasEndTime.wrappedValue {
+                    HStack {
+                        Label(PlannerCopy.text(.end, language: appLanguage), systemImage: "clock.badge.checkmark")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MeowPlannerTheme.cocoa)
+                        Spacer()
+                        DatePicker("", selection: endTimeSelectionBinding(endSelection), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .datePickerStyle(.compact)
+                            .tint(MeowPlannerTheme.caramel)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(MeowPlannerTheme.cream.opacity(0.46), in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(MeowPlannerTheme.caramel.opacity(0.12), lineWidth: 1)
+        }
     }
 
     private var weekdaySymbols: [String] {
@@ -1040,7 +1105,127 @@ private struct FuFuInlineDatePickerPanel: View {
         selection = calendar.date(from: merged) ?? date
         displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? displayedMonth
     }
+
+    private func endTimeToggleBinding(_ binding: Binding<Bool>) -> Binding<Bool> {
+        Binding(
+            get: { binding.wrappedValue },
+            set: { newValue in
+                binding.wrappedValue = newValue
+                if newValue {
+                    syncEndTimeAfterStartChange()
+                }
+            }
+        )
+    }
+
+    private func endTimeSelectionBinding(_ binding: Binding<Date>) -> Binding<Date> {
+        Binding(
+            get: { binding.wrappedValue },
+            set: { newValue in
+                binding.wrappedValue = normalizedEndTime(for: newValue)
+            }
+        )
+    }
+
+    private func commitTimeEditingAndNormalize() {
+        resignTimeFieldFocus()
+        syncEndTimeAfterStartChange()
+
+        DispatchQueue.main.async {
+            syncEndTimeAfterStartChange()
+        }
+    }
+
+    private func resignTimeFieldFocus() {
+        #if os(macOS)
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        #endif
+    }
+
+    private func syncEndTimeAfterStartChange() {
+        guard includesTime,
+              allowsEndTime,
+              let endSelection else {
+            return
+        }
+
+        endSelection.wrappedValue = normalizedEndTime(for: endSelection.wrappedValue)
+    }
+
+    private func normalizedEndTime(for proposedEndDate: Date) -> Date {
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: selection)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: proposedEndDate)
+        var merged = DateComponents()
+        merged.year = dayComponents.year
+        merged.month = dayComponents.month
+        merged.day = dayComponents.day
+        merged.hour = timeComponents.hour
+        merged.minute = timeComponents.minute
+        merged.second = timeComponents.second
+
+        let proposed = calendar.date(from: merged) ?? proposedEndDate
+        guard proposed <= selection else {
+            return proposed
+        }
+
+        return calendar.date(byAdding: .hour, value: 1, to: selection) ?? selection.addingTimeInterval(3_600)
+    }
 }
+
+#if os(macOS)
+private struct TimeEditingCommitMonitor: NSViewRepresentable {
+    var onMouseDown: () -> Void
+
+    func makeNSView(context: Context) -> MonitoringView {
+        let view = MonitoringView()
+        view.onMouseDown = onMouseDown
+        return view
+    }
+
+    func updateNSView(_ nsView: MonitoringView, context: Context) {
+        nsView.onMouseDown = onMouseDown
+    }
+
+    static func dismantleNSView(_ nsView: MonitoringView, coordinator: ()) {
+        nsView.removeMonitor()
+    }
+
+    final class MonitoringView: NSView {
+        var onMouseDown: () -> Void = {}
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateMonitor()
+        }
+
+        private func updateMonitor() {
+            removeMonitor()
+
+            guard window != nil else {
+                return
+            }
+
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+                guard let self,
+                      event.window === window else {
+                    return event
+                }
+
+                onMouseDown()
+                return event
+            }
+        }
+
+        func removeMonitor() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
+    }
+}
+#endif
 
 private enum RepeatRuleSelection: String, CaseIterable, Identifiable {
     case none

@@ -53,7 +53,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .calendar: PlannerCopy.text(.calendar, language: language)
         case .todo: PlannerCopy.text(.todo, language: language)
-        case .schedule: PlannerCopy.text(.schedule, language: language)
+        case .schedule: PlannerCopy.text(.timeline, language: language)
         case .timetable: PlannerCopy.text(.timetable, language: language)
         case .focus: PlannerCopy.text(.focus, language: language)
         case .settings: PlannerCopy.text(.settings, language: language)

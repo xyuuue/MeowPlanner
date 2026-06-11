@@ -26,6 +26,7 @@ public enum PlannerTextKey: String, Sendable {
     case habits
     case settings
     case scheduleView
+    case timeline
     case newSchedule
     case schedule
     case scheduleDisplay
@@ -150,6 +151,7 @@ public enum PlannerTextKey: String, Sendable {
     case eventColors
     case newColor
     case addColor
+    case editColor
     case deleteColor
     case sync
     case icloudSync
@@ -157,6 +159,7 @@ public enum PlannerTextKey: String, Sendable {
     case scope
     case scopeDescription
     case openMeowPlanner
+    case today
     case todaySchedule
     case noSchedules
     case noSchedulesMessage
@@ -188,7 +191,8 @@ public enum PlannerCopy {
         .focus: "Focus",
         .habits: "Habits",
         .settings: "Settings",
-        .scheduleView: "Schedule view",
+        .scheduleView: "Timeline view",
+        .timeline: "Timeline",
         .newSchedule: "New Schedule",
         .schedule: "Agenda",
         .scheduleDisplay: "Schedule display",
@@ -313,6 +317,7 @@ public enum PlannerCopy {
         .eventColors: "Colors",
         .newColor: "New color",
         .addColor: "Add color",
+        .editColor: "Edit color",
         .deleteColor: "Delete color",
         .sync: "Sync",
         .icloudSync: "iCloud sync",
@@ -320,6 +325,7 @@ public enum PlannerCopy {
         .scope: "Scope",
         .scopeDescription: "System calendar sync, Google/Outlook sync, diary, countdown days, AI parsing, and a full widget suite are intentionally out of scope for this first version.",
         .openMeowPlanner: "Open MeowPlanner",
+        .today: "Today",
         .todaySchedule: "Today Schedule",
         .noSchedules: "No schedules",
         .noSchedulesMessage: "FuFu has no plans for this date yet.",
@@ -346,11 +352,12 @@ public enum PlannerCopy {
     ]
 
     private static let chineseText: [PlannerTextKey: String] = [
-        .calendar: "日历",
+        .calendar: "月历",
         .focus: "专注",
         .habits: "习惯",
         .settings: "设置",
-        .scheduleView: "日程视图",
+        .scheduleView: "时间轴视图",
+        .timeline: "时间轴",
         .newSchedule: "新建日程",
         .schedule: "日程",
         .scheduleDisplay: "日程显示",
@@ -475,6 +482,7 @@ public enum PlannerCopy {
         .eventColors: "颜色",
         .newColor: "新颜色",
         .addColor: "添加颜色",
+        .editColor: "编辑颜色",
         .deleteColor: "删除颜色",
         .sync: "同步",
         .icloudSync: "iCloud 同步",
@@ -482,6 +490,7 @@ public enum PlannerCopy {
         .scope: "范围",
         .scopeDescription: "系统日历同步、Google/Outlook 同步、日记、倒数日、AI 解析和完整小组件套件不包含在第一版范围内。",
         .openMeowPlanner: "打开 MeowPlanner",
+        .today: "今日",
         .todaySchedule: "今日日程",
         .noSchedules: "没有日程",
         .noSchedulesMessage: "FuFu 这一天还没有安排。",

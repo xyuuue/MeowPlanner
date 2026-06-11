@@ -227,27 +227,22 @@ struct RootView: View {
     @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var calendarRenderToken = UUID()
     @State private var pendingWidgetRefreshTask: Task<Void, Never>?
+    @State private var isEditingSidebarOrder = false
+    @State private var sidebarDropTargetSection: AppSection?
 
     var body: some View {
         #if os(macOS)
         NavigationSplitView(columnVisibility: $sidebarVisibility) {
             List {
+                sidebarHeader
+
                 ForEach(orderedSections) { section in
-                    Button {
-                        selection = section
-                    } label: {
-                        SidebarSectionRow(section: section, language: appLanguage, isSelected: selection == section)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .accessibilityLabel(section.title(language: appLanguage))
-                    .listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                    sidebarSectionRow(for: section)
                 }
-                .onMove(perform: moveSidebarSections)
+
+                if isEditingSidebarOrder {
+                    sidebarBottomDropTarget
+                }
             }
             .tint(MeowPlannerTheme.softBrownHighlight)
             .listStyle(.plain)
@@ -284,11 +279,7 @@ struct RootView: View {
                 return
             }
 
-            if section == .calendar {
-                refreshCalendarAfterExternalOpen()
-            } else {
-                selection = section
-            }
+            selectSidebarSection(section)
         }
         .onReceive(NotificationCenter.default.publisher(for: .meowPlannerExternalOpenURL)) { _ in
             refreshCalendarAfterExternalOpen()
@@ -324,6 +315,135 @@ struct RootView: View {
         AppSection.orderedSections(from: sidebarSectionOrderRaw)
     }
 
+    #if os(macOS)
+    private var sidebarHeader: some View {
+        HStack(spacing: 8) {
+            Text("MeowPlanner")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            sidebarOrderEditButton
+        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 6)
+        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 8, trailing: 0))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private var sidebarOrderEditButton: some View {
+        Button {
+            toggleSidebarOrderEditing()
+        } label: {
+            Image(systemName: isEditingSidebarOrder ? "checkmark.circle.fill" : "arrow.up.arrow.down.circle")
+                .font(.system(size: 15, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 28, height: 28)
+                .background(MeowPlannerTheme.cream.opacity(0.68), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .help(sidebarOrderEditTitle)
+        .accessibilityLabel(sidebarOrderEditTitle)
+    }
+
+    private var sidebarOrderEditTitle: String {
+        if isEditingSidebarOrder {
+            return appLanguage == .chinese ? "完成" : "Done"
+        }
+
+        return appLanguage == .chinese ? "自定义顺序" : "Customize order"
+    }
+
+    @ViewBuilder
+    private func sidebarSectionRow(for section: AppSection) -> some View {
+        if isEditingSidebarOrder {
+            draggableSidebarSectionRow(for: section)
+        } else {
+            selectableSidebarSectionRow(for: section)
+        }
+    }
+
+    private func selectableSidebarSectionRow(for section: AppSection) -> some View {
+        Button {
+            guard !isEditingSidebarOrder else {
+                return
+            }
+
+            selectSidebarSection(section)
+        } label: {
+            SidebarSectionRow(
+                section: section,
+                language: appLanguage,
+                isSelected: selection == section,
+                isReordering: isEditingSidebarOrder
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityLabel(section.title(language: appLanguage))
+        .listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private func draggableSidebarSectionRow(for section: AppSection) -> some View {
+        SidebarSectionRow(
+            section: section,
+            language: appLanguage,
+            isSelected: selection == section,
+            isReordering: isEditingSidebarOrder
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .scaleEffect(sidebarDropTargetSection == section ? 1.015 : 1)
+        .animation(.easeInOut(duration: 0.12), value: sidebarDropTargetSection)
+        .draggable(section.rawValue) {
+            SidebarDragPreviewView(
+                title: section.title(language: appLanguage),
+                systemImage: section.systemImage
+            )
+        }
+        .dropDestination(for: String.self) { itemIdentifiers, _ in
+            guard let draggedRawValue = itemIdentifiers.first else {
+                return false
+            }
+
+            return moveSidebarSection(draggedRawValue: draggedRawValue, before: section)
+        } isTargeted: { isTargeted in
+            sidebarDropTargetSection = isTargeted ? section : nil
+        }
+        .accessibilityLabel(section.title(language: appLanguage))
+        .listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private var sidebarBottomDropTarget: some View {
+        Color.clear
+            .frame(height: 18)
+            .dropDestination(for: String.self) { itemIdentifiers, _ in
+                guard let draggedRawValue = itemIdentifiers.first else {
+                    return false
+                }
+
+                return moveSidebarSection(draggedRawValue: draggedRawValue, before: nil)
+            } isTargeted: { isTargeted in
+                if !isTargeted {
+                    sidebarDropTargetSection = nil
+                }
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: -8, bottom: 0, trailing: -8))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+    #endif
+
     private var widgetPreference: PlannerPreference {
         widgetPreferences.first ?? PlannerPreference.defaults
     }
@@ -344,11 +464,65 @@ struct RootView: View {
         ].joined(separator: "||")
     }
 
-    private func moveSidebarSections(from source: IndexSet, to destination: Int) {
-        var reordered = orderedSections
-        reordered.move(fromOffsets: source, toOffset: destination)
-        sidebarSectionOrderRaw = AppSection.sidebarStorageValue(for: reordered)
+    private func selectSidebarSection(_ section: AppSection) {
+        switch section {
+        case .calendar:
+            refreshCalendarAfterExternalOpen()
+        default:
+            selection = section
+        }
     }
+
+    #if os(macOS)
+    private func toggleSidebarOrderEditing() {
+        withAnimation(.snappy(duration: 0.18)) {
+            isEditingSidebarOrder.toggle()
+        }
+
+        if !isEditingSidebarOrder {
+            sidebarDropTargetSection = nil
+        }
+    }
+
+    @discardableResult
+    private func moveSidebarSection(draggedRawValue: String, before targetSection: AppSection?) -> Bool {
+        guard isEditingSidebarOrder,
+              let draggedSection = AppSection(rawValue: draggedRawValue)
+        else {
+            sidebarDropTargetSection = nil
+            return false
+        }
+
+        guard draggedSection != targetSection else {
+            sidebarDropTargetSection = nil
+            return false
+        }
+
+        var reordered = orderedSections
+        guard let sourceIndex = reordered.firstIndex(of: draggedSection) else {
+            sidebarDropTargetSection = nil
+            return false
+        }
+
+        reordered.remove(at: sourceIndex)
+
+        let destinationIndex: Int
+        if let targetSection {
+            guard let targetIndex = reordered.firstIndex(of: targetSection) else {
+                sidebarDropTargetSection = nil
+                return false
+            }
+            destinationIndex = targetIndex
+        } else {
+            destinationIndex = reordered.count
+        }
+
+        reordered.insert(draggedSection, at: destinationIndex)
+        sidebarSectionOrderRaw = AppSection.sidebarStorageValue(for: reordered)
+        sidebarDropTargetSection = nil
+        return true
+    }
+    #endif
 
     private func publishWidgetSnapshot(reload: Bool = false) {
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext, shouldReload: reload)
@@ -1167,6 +1341,7 @@ private struct SidebarSectionRow: View {
     var section: AppSection
     var language: AppLanguage
     var isSelected: Bool
+    var isReordering: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1180,6 +1355,14 @@ private struct SidebarSectionRow: View {
                 .lineLimit(1)
 
             Spacer(minLength: 0)
+
+            if isReordering {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.82) : MeowPlannerTheme.caramel)
+                    .frame(width: 18, height: 18)
+                    .accessibilityHidden(true)
+            }
         }
         .foregroundStyle(isSelected ? Color.white : MeowPlannerTheme.cocoa)
         .padding(.horizontal, 10)
@@ -1188,6 +1371,21 @@ private struct SidebarSectionRow: View {
         .contentShape(Rectangle())
         .background(isSelected ? MeowPlannerTheme.softBrownHighlight : Color.clear, in: RoundedRectangle(cornerRadius: 8))
         .accessibilityLabel(section.title(language: language))
+    }
+}
+
+private struct SidebarDragPreviewView: View {
+    var title: String
+    var systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(MeowPlannerTheme.cocoa)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(MeowPlannerTheme.cream.opacity(0.92), in: RoundedRectangle(cornerRadius: 8))
+            .shadow(color: MeowPlannerTheme.caramel.opacity(0.16), radius: 8, y: 4)
     }
 }
 #endif

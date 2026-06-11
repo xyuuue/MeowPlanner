@@ -3,6 +3,8 @@ import SwiftData
 import SwiftUI
 
 struct MonthGridView: View {
+    @Environment(\.appLanguage) private var appLanguage
+
     @Binding var selectedDate: Date
     var events: [PlannerEvent]
     var todos: [TodoItem]
@@ -12,6 +14,7 @@ struct MonthGridView: View {
     var onEventDoubleClick: (PlannerEvent) -> Void = { _ in }
 
     @State private var suppressNextDayDoubleClick = false
+    @State private var displayedMonth = Date()
 
     @Query private var preferences: [PlannerPreference]
 
@@ -78,6 +81,15 @@ struct MonthGridView: View {
                         .buttonStyle(.borderless)
 
                         Spacer(minLength: 0)
+
+                        Button {
+                            resetToToday()
+                        } label: {
+                            Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "calendar.badge.clock")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(MeowPlannerTheme.caramel)
                     }
 
                     LazyVGrid(columns: columns, spacing: 0) {
@@ -120,6 +132,9 @@ struct MonthGridView: View {
                 moveMonth(by: horizontal < 0 ? 1 : -1)
             }
         }
+        .onAppear {
+            displayedMonth = monthStart(for: selectedDate)
+        }
     }
 
     private func adaptiveDayCellMinHeight(for availableSize: CGSize) -> CGFloat {
@@ -129,7 +144,7 @@ struct MonthGridView: View {
     }
 
     private var monthTitle: String {
-        selectedDate.formatted(.dateTime.month(.wide).year())
+        displayedMonth.formatted(.dateTime.month(.wide).year())
     }
 
     private var weekStartPreference: WeekStartPreference {
@@ -146,7 +161,7 @@ struct MonthGridView: View {
 
     private var plannerDays: [MonthPlannerDay] {
         MonthPlannerGridBuilder.days(
-            for: selectedDate,
+            for: displayedMonth,
             events: events,
             todos: todos,
             maxVisibleItems: 3,
@@ -205,7 +220,7 @@ struct MonthGridView: View {
         let isSelected = calendar.isDate(day.date, inSameDayAs: selectedDate)
 
         return Button {
-            selectedDate = day.date
+            selectDate(day.date)
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -272,7 +287,7 @@ struct MonthGridView: View {
                         return
                     }
 
-                    selectedDate = day.date
+                    selectDate(day.date)
                     onDayDoubleClick(day.date)
                 }
         )
@@ -299,14 +314,6 @@ struct MonthGridView: View {
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
-
-                if !item.tagName.isEmpty {
-                    Text(item.tagName)
-                        .font(.caption2.weight(.bold))
-                        .lineLimit(1)
-                        .padding(.horizontal, 4)
-                        .background(Color.white.opacity(0.20), in: Capsule())
-                }
             } else {
                 segmentPlaceholder
             }
@@ -360,14 +367,6 @@ struct MonthGridView: View {
                 .font(.caption2.weight(.semibold))
                 .lineLimit(1)
                 .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
-
-            if !item.tagName.isEmpty {
-                Text(item.tagName)
-                    .font(.caption2.weight(.bold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 4)
-                    .background(Color.white.opacity(0.20), in: Capsule())
-            }
         }
         .foregroundStyle(Color.white)
         .padding(.horizontal, 6)
@@ -557,7 +556,23 @@ struct MonthGridView: View {
     }
 
     private func moveMonth(by value: Int) {
-        selectedDate = calendar.date(byAdding: .month, value: value, to: selectedDate) ?? selectedDate
+        let targetMonth = calendar.date(byAdding: .month, value: value, to: displayedMonth) ?? displayedMonth
+        displayedMonth = monthStart(for: targetMonth)
+    }
+
+    private func selectDate(_ date: Date) {
+        selectedDate = date
+        displayedMonth = monthStart(for: date)
+    }
+
+    private func resetToToday() {
+        let today = Date()
+        selectedDate = today
+        displayedMonth = monthStart(for: today)
+    }
+
+    private func monthStart(for date: Date) -> Date {
+        calendar.dateInterval(of: .month, for: date)?.start ?? date
     }
 
 }

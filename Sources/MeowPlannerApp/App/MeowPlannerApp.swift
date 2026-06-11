@@ -229,6 +229,9 @@ private final class AppMainWindowPresenter {
     }
 
     private func show(_ window: NSWindow) {
+        let showDockIcon = AppDockIconController.currentShowDockIconPreference
+        AppDockIconController.prepareForMainWindowPresentation(showDockIcon: showDockIcon)
+
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
@@ -236,6 +239,7 @@ private final class AppMainWindowPresenter {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApplication.shared.activate(ignoringOtherApps: true)
+        AppDockIconController.restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: showDockIcon)
     }
 
     private func existingMainWindow() -> NSWindow? {
