@@ -485,9 +485,61 @@ extension View {
         self
         #endif
     }
+
+    func hiddenVerticalScrollIndicatorsOnMac() -> some View {
+        #if os(macOS)
+        background(HiddenVerticalScrollIndicatorConfigurator())
+        #else
+        self
+        #endif
+    }
 }
 
 #if os(macOS)
+struct HiddenVerticalScrollIndicatorConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> ConfiguratorView {
+        ConfiguratorView()
+    }
+
+    func updateNSView(_ nsView: ConfiguratorView, context: Context) {
+        nsView.configureEnclosingScrollView()
+    }
+
+    final class ConfiguratorView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            configureEnclosingScrollView()
+        }
+
+        override func layout() {
+            super.layout()
+            configureEnclosingScrollView()
+        }
+
+        func configureEnclosingScrollView() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+
+                var view: NSView? = self
+                while let currentView = view {
+                    if let scrollView = currentView as? NSScrollView {
+                        configure(scrollView)
+                        return
+                    }
+                    view = currentView.superview
+                }
+            }
+        }
+
+        private func configure(_ scrollView: NSScrollView) {
+            scrollView.hasVerticalScroller = false
+            scrollView.autohidesScrollers = true
+            scrollView.scrollerStyle = .overlay
+            scrollView.usesPredominantAxisScrolling = true
+        }
+    }
+}
+
 struct VerticalOnlyScrollConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> ConfiguratorView {
         ConfiguratorView()

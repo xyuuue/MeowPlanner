@@ -1,3 +1,4 @@
+import FirebaseCore
 import MeowPlannerCore
 import SwiftData
 import SwiftUI
@@ -81,6 +82,10 @@ struct MeowPlannerApp: App {
     #endif
 
     init() {
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+
         let focusTimerStore = FocusTimerStore()
         _focusTimerStore = StateObject(wrappedValue: focusTimerStore)
 

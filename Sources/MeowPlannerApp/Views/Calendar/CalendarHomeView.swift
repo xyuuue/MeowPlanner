@@ -18,8 +18,8 @@ struct CalendarHomeView: View {
     @State private var editingEvent: PlannerEvent?
     @State private var floatingButtonDragOffset = CGSize.zero
 
-    private let compactMonthGridMinHeight: CGFloat = 380
-    private let regularMonthGridHeight: CGFloat = 620
+    private let compactMonthGridMinHeight: CGFloat = 520
+    private let regularMonthGridHeight: CGFloat = 760
 
     private var displayedEvents: [PlannerEvent] {
         events.filter { event in
@@ -94,8 +94,8 @@ struct CalendarHomeView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             GeometryReader { proxy in
-                let buttonSize: CGFloat = 62
-                let inset: CGFloat = 28
+                let buttonSize = floatingAddButtonSize(for: proxy.size)
+                let inset = calendarFloatingAddButtonEdgeInset(for: buttonSize)
                 let minX = inset + buttonSize / 2
                 let maxX = max(minX, proxy.size.width - inset - buttonSize / 2)
                 let minY = inset + buttonSize / 2
@@ -115,7 +115,7 @@ struct CalendarHomeView: View {
                 let x = clampX(baseX + floatingButtonDragOffset.width)
                 let y = clampY(baseY + floatingButtonDragOffset.height)
 
-                floatingAddScheduleButton
+                floatingAddScheduleButton(size: buttonSize)
                     .position(x: x, y: y)
                     .transaction { transaction in
                         transaction.disablesAnimations = true
@@ -175,6 +175,23 @@ struct CalendarHomeView: View {
             regularMonthGridHeight,
             max(compactMonthGridMinHeight, availableHeight - 140)
         )
+    }
+
+    private func floatingAddButtonSize(for availableSize: CGSize) -> CGFloat {
+        guard availableSize.width.isFinite,
+              availableSize.height.isFinite,
+              availableSize.width > 0,
+              availableSize.height > 0 else {
+            return 62
+        }
+
+        let shortSide = min(availableSize.width, availableSize.height)
+        let scaledSize = shortSide / 930 * 62
+        return min(84, max(50, scaledSize))
+    }
+
+    private func calendarFloatingAddButtonEdgeInset(for buttonSize: CGFloat) -> CGFloat {
+        min(20, max(16, buttonSize * 0.28))
     }
 
     private var localRemindersEnabled: Bool {
@@ -275,23 +292,28 @@ struct CalendarHomeView: View {
             .position(x: proxy.size.width * x, y: proxy.size.height * y)
     }
 
-    private var floatingAddScheduleButton: some View {
-        Image(systemName: "pawprint.fill")
-            .font(.system(size: 24, weight: .bold))
-            .frame(width: 62, height: 62)
+    private func floatingAddScheduleButton(size: CGFloat) -> some View {
+        let iconSize = size * 24 / 62
+        let ringWidth = size * 3 / 62
+        let shadowRadius = size * 14 / 62
+        let shadowY = size * 7 / 62
+
+        return Image(systemName: "pawprint.fill")
+            .font(.system(size: iconSize, weight: .bold))
+            .frame(width: size, height: size)
             .foregroundStyle(.white)
             .background(MeowPlannerTheme.pawButtonBrown, in: Circle())
             .overlay {
                 Circle()
-                    .stroke(MeowPlannerTheme.creamRing, lineWidth: 3)
+                    .stroke(MeowPlannerTheme.creamRing, lineWidth: ringWidth)
             }
-            .shadow(color: MeowPlannerTheme.coffee.opacity(0.24), radius: 14, y: 7)
+            .shadow(color: MeowPlannerTheme.coffee.opacity(0.24), radius: shadowRadius, y: shadowY)
             .contentShape(Circle())
-        .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction {
-            showingEventEditor = true
-        }
+            .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                showingEventEditor = true
+            }
     }
 
     private var header: some View {

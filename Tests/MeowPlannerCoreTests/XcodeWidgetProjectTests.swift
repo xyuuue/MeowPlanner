@@ -74,6 +74,143 @@ struct XcodeWidgetProjectTests {
         #expect(script.contains("Verified $APP_NAME is running from $INSTALL_BUNDLE"))
         #expect(script.contains("com.apple.security.temporary-exception.files.home-relative-path.read-write"))
         #expect(script.contains("/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data/Library/Group Containers/group.com.yuelingqiu.MeowPlanner/"))
+        #expect(script.contains("framework_search_roots"))
+        #expect(script.contains("-name \"*.framework\""))
+        #expect(script.contains("embedded_framework"))
+    }
+
+    @Test("project links Firebase Auth and Firestore and bundles the Firebase config")
+    func projectLinksFirebaseAuthFirestoreAndBundlesConfig() throws {
+        let root = try packageRoot()
+        let packageFile = root.appendingPathComponent("Package.swift")
+        let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
+        let appFile = root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let configFile = root.appendingPathComponent("Config/GoogleService-Info.plist")
+        let entitlementsFile = root.appendingPathComponent("Config/MeowPlanner.entitlements")
+        let projectFile = root
+            .appendingPathComponent("MeowPlanner.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+
+        let packageSource = try String(contentsOf: packageFile, encoding: .utf8)
+        let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let entitlements = try String(contentsOf: entitlementsFile, encoding: .utf8)
+        let project = try String(contentsOf: projectFile, encoding: .utf8)
+
+        #expect(FileManager.default.fileExists(atPath: configFile.path))
+        #expect(packageSource.contains("https://github.com/firebase/firebase-ios-sdk.git"))
+        #expect(packageSource.contains(".product(name: \"FirebaseAuth\""))
+        #expect(packageSource.contains(".product(name: \"FirebaseCore\""))
+        #expect(packageSource.contains(".product(name: \"FirebaseFirestore\""))
+        #expect(generatorSource.contains("Config/GoogleService-Info.plist"))
+        #expect(generatorSource.contains("FirebaseAuth"))
+        #expect(generatorSource.contains("FirebaseCore"))
+        #expect(generatorSource.contains("FirebaseFirestore"))
+        #expect(project.contains("Config/GoogleService-Info.plist"))
+        #expect(project.contains("XCRemoteSwiftPackageReference"))
+        #expect(project.contains("FirebaseAuth"))
+        #expect(project.contains("FirebaseCore"))
+        #expect(project.contains("FirebaseFirestore"))
+        #expect(appSource.contains("import FirebaseCore"))
+        #expect(appSource.contains("FirebaseApp.configure()"))
+        #expect(entitlements.contains("keychain-access-groups"))
+        #expect(entitlements.contains("com.apple.security.network.client"))
+        #expect(!entitlements.contains("aps-environment"))
+        #expect(!entitlements.contains("com.apple.developer.icloud-container-identifiers"))
+        #expect(!entitlements.contains("com.apple.developer.icloud-services"))
+    }
+
+    @Test("Firestore sync covers every local planner data model")
+    func firestoreSyncCoversEveryLocalPlannerDataModel() throws {
+        let root = try packageRoot()
+        let rootViewFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let syncServiceFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift")
+        let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
+        let projectFile = root
+            .appendingPathComponent("MeowPlanner.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+
+        let rootView = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let syncService = try String(contentsOf: syncServiceFile, encoding: .utf8)
+        let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
+        let project = try String(contentsOf: projectFile, encoding: .utf8)
+
+        for modelName in [
+            "PlannerEvent",
+            "TodoGroup",
+            "TodoItem",
+            "Habit",
+            "HabitCheckIn",
+            "FocusTag",
+            "FocusSession",
+            "PlannerPreference",
+            "CourseTimetable",
+            "CoursePeriod",
+            "Course",
+            "CourseSession"
+        ] {
+            #expect(rootView.contains("\\\(modelName)"))
+            #expect(syncService.contains("fetch(\(modelName).self"))
+        }
+
+        for collectionName in [
+            "events",
+            "todoGroups",
+            "todos",
+            "habits",
+            "habitCheckIns",
+            "focusTags",
+            "focusSessions",
+            "preferences",
+            "courseTimetables",
+            "coursePeriods",
+            "courses",
+            "courseSessions"
+        ] {
+            #expect(syncService.contains(".\(collectionName)"))
+        }
+
+        #expect(rootView.contains("appDataCloudSyncSignature"))
+        #expect(rootView.contains("scheduleCloudAppDataSync()"))
+        #expect(syncService.contains("CloudDeletionTracker.missingUploadedDocumentIDs"))
+        #expect(generatorSource.contains("FirestoreAppDataSyncService.swift"))
+        #expect(project.contains("FirestoreAppDataSyncService.swift"))
+    }
+
+    @Test("account settings use Firebase email authentication and no Apple sign in")
+    func accountSettingsUseFirebaseEmailAuthentication() throws {
+        let root = try packageRoot()
+        let accountSectionFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift")
+        let accountStoreFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/AccountSessionStore.swift")
+        let scriptFile = root
+            .appendingPathComponent("script/build_and_run.sh")
+        let entitlementsFile = root
+            .appendingPathComponent("Config/MeowPlanner.entitlements")
+
+        let accountSectionSource = try String(contentsOf: accountSectionFile, encoding: .utf8)
+        let accountStoreSource = try String(contentsOf: accountStoreFile, encoding: .utf8)
+        let script = try String(contentsOf: scriptFile, encoding: .utf8)
+        let entitlements = try String(contentsOf: entitlementsFile, encoding: .utf8)
+
+        #expect(!accountSectionSource.contains("SignInWithAppleButton"))
+        #expect(!accountSectionSource.contains("AuthenticationServices"))
+        #expect(!accountSectionSource.contains("ASAuthorization"))
+        #expect(accountSectionSource.contains("accountStore.signInEmail(email: emailAddress, password: password)"))
+        #expect(accountSectionSource.contains("accountStore.registerEmail(email: emailAddress, password: password)"))
+        #expect(accountSectionSource.contains("isFirebaseNetworkError"))
+        #expect(accountSectionSource.contains("Cannot connect to Firebase"))
+        #expect(accountStoreSource.contains("FirebaseAccountAuthenticationClient"))
+        #expect(accountStoreSource.contains("Task {"))
+        #expect(accountStoreSource.contains("await self.authenticationClient.registerEmail"))
+        #expect(accountStoreSource.contains("await self.authenticationClient.signInEmail"))
+        #expect(!accountStoreSource.contains("signInWithApple"))
+        #expect(!accountStoreSource.contains("appleAuthorizationFailed"))
+        #expect(!script.contains("verify_apple_signin_entitlement"))
+        #expect(!script.contains("com.apple.developer.applesignin"))
+        #expect(script.contains("com.apple.security.network.client"))
+        #expect(!entitlements.contains("com.apple.developer.applesignin"))
     }
 
     @Test("widget bundle version is bumped for WidgetKit metadata refresh")
@@ -85,8 +222,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.10")
-        #expect(plist["CFBundleVersion"] as? String == "11")
+        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.11")
+        #expect(plist["CFBundleVersion"] as? String == "12")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -711,19 +848,59 @@ struct XcodeWidgetProjectTests {
         #expect(rootViewSource.contains("MeowPlannerTheme.softBrownHighlight"))
     }
 
-    @Test("macOS sidebar supports native toolbar collapse toggle")
-    func macOSSidebarSupportsNativeToolbarCollapseToggle() throws {
+    @Test("macOS sidebar uses custom collapse and expand controls without overflow")
+    func macOSSidebarUsesCustomCollapseAndExpandControlsWithoutOverflow() throws {
         let root = try packageRoot()
         let rootViewFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let calendarHomeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
 
         let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
         let macOSSidebarStart = try #require(rootViewSource.range(of: "#if os(macOS)\n        NavigationSplitView"))
         let macOSSidebarEnd = try #require(rootViewSource[macOSSidebarStart.lowerBound...].range(of: "} detail:"))
         let macOSSidebarSource = String(rootViewSource[macOSSidebarStart.lowerBound..<macOSSidebarEnd.lowerBound])
+        let detailStart = try #require(rootViewSource.range(of: "} detail: {"))
+        let detailEnd = try #require(rootViewSource[detailStart.lowerBound...].range(of: "\n        .toolbar(removing: .sidebarToggle)"))
+        let detailSource = String(rootViewSource[detailStart.lowerBound..<detailEnd.lowerBound])
 
         #expect(rootViewSource.contains("@State private var sidebarVisibility: NavigationSplitViewVisibility = .all"))
         #expect(macOSSidebarSource.contains("NavigationSplitView(columnVisibility: $sidebarVisibility)"))
+        #expect(rootViewSource.contains(".toolbar(removing: .sidebarToggle)"))
+        #expect(rootViewSource.contains("SidebarToolbarOverflowCleaner(trigger: sidebarVisibility)"))
+        #expect(rootViewSource.contains("var trigger: NavigationSplitViewVisibility"))
+        #expect(rootViewSource.contains("_ = trigger"))
+        #expect(rootViewSource.contains("window.toolbar = nil"))
+        #expect(rootViewSource.contains("sidebarCollapseButton"))
+        #expect(rootViewSource.contains("collapsedSidebarControlBar"))
+        #expect(rootViewSource.contains("private var collapsedSidebarExpandButton: some View"))
+        #expect(rootViewSource.contains("private var sidebarExpandTitle: String"))
+        #expect(rootViewSource.contains("expandSidebar()"))
+        #expect(detailSource.contains("VStack(spacing: 0)"))
+        #expect(detailSource.contains("if sidebarVisibility == .detailOnly"))
+        #expect(detailSource.contains("collapsedSidebarControlBar"))
+        #expect(detailSource.contains("sectionView"))
+        #expect(rootViewSource.contains(".padding(.top, 16)"))
+        #expect(rootViewSource.contains(".padding(.trailing, 34)"))
+        #expect(detailSource.contains("sectionView"))
+        #expect(!detailSource.contains(".overlay(alignment: .topTrailing)"))
+        #expect(!detailSource.contains("sidebarRevealRail"))
+        #expect(!rootViewSource.contains("CalendarHomeView(sidebarExpandAction:"))
+        #expect(!rootViewSource.contains("private var collapsedSidebarExpandAction: (() -> Void)?"))
+        #expect(calendarHomeSource.contains("scheduleDisplayFilterButton"))
+        #expect(!calendarHomeSource.contains("sidebarExpandAction"))
+        #expect(!calendarHomeSource.contains("headerTrailingControls"))
+        #expect(!calendarHomeSource.contains("sidebarExpandTitle"))
+        #expect(!calendarHomeSource.contains(".offset(y: 34)"))
+        #expect(!rootViewSource.contains("private var sidebarRevealRail: some View"))
+        #expect(!rootViewSource.contains(".frame(width: 64)"))
+        #expect(!detailSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"))
+        #expect(!detailSource.contains(".zIndex(2)"))
+        #expect(rootViewSource.contains("private func collapseSidebar()"))
+        #expect(rootViewSource.contains("sidebarVisibility = .detailOnly"))
+        #expect(rootViewSource.contains("private func expandSidebar()"))
+        #expect(rootViewSource.contains("sidebarVisibility = .all"))
         #expect(!rootViewSource.contains("ToolbarItem(placement: .navigation)"))
         #expect(!rootViewSource.contains("Button(action: toggleSidebarVisibility)"))
         #expect(!rootViewSource.contains("Label(sidebarToggleTitle, systemImage: sidebarToggleSystemImage)"))
@@ -1602,6 +1779,27 @@ struct XcodeWidgetProjectTests {
         #expect(!dayAgendaSource.contains(".background(.regularMaterial"))
     }
 
+    @Test("calendar floating add button scales with window and keeps equal edge limits")
+    func calendarFloatingAddButtonScalesWithWindowAndKeepsEqualEdgeLimits() throws {
+        let root = try packageRoot()
+        let homeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+
+        #expect(homeSource.contains("let buttonSize = floatingAddButtonSize(for: proxy.size)"))
+        #expect(homeSource.contains("let inset = calendarFloatingAddButtonEdgeInset(for: buttonSize)"))
+        #expect(homeSource.contains("floatingAddScheduleButton(size: buttonSize)"))
+        #expect(homeSource.contains("private func floatingAddButtonSize(for availableSize: CGSize) -> CGFloat"))
+        #expect(homeSource.contains("private func calendarFloatingAddButtonEdgeInset(for buttonSize: CGFloat) -> CGFloat"))
+        #expect(homeSource.contains("private func floatingAddScheduleButton(size: CGFloat) -> some View"))
+        #expect(homeSource.contains("let shortSide = min(availableSize.width, availableSize.height)"))
+        #expect(homeSource.contains("let iconSize = size * 24 / 62"))
+        #expect(!homeSource.contains("let buttonSize: CGFloat = 62"))
+        #expect(!homeSource.contains("let inset: CGFloat = 28"))
+        #expect(!homeSource.contains(".frame(width: 62, height: 62)"))
+    }
+
     @Test("event editor uses a FuFu themed date picker row")
     func eventEditorUsesFuFuThemedDatePickerRow() throws {
         let root = try packageRoot()
@@ -1685,9 +1883,58 @@ struct XcodeWidgetProjectTests {
         #expect(!appSource.contains("NSSize(width: 720, height: 540)"))
         #expect(!rootSource.contains(".frame(minWidth: 720, minHeight: 540)"))
         #expect(homeSource.contains("compactMonthGridMinHeight"))
-        #expect(monthGridSource.contains("adaptiveDayCellMinHeight"))
-        #expect(monthGridSource.contains("max(44"))
+        #expect(monthGridSource.contains("monthGridLayoutMetrics"))
+        #expect(monthGridSource.contains("minimumVisiblePlannerItemRows"))
         #expect(monthGridSource.contains("GeometryReader"))
+    }
+
+    @Test("month calendar card bounds grid rows inside the compact background")
+    func monthCalendarCardBoundsGridRowsInsideCompactBackground() throws {
+        let root = try packageRoot()
+        let monthGridFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
+
+        let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
+
+        #expect(monthGridSource.contains("MonthGridLayoutMetrics"))
+        #expect(monthGridSource.contains("monthGridLayoutMetrics(for: proxy.size, dayCount: visiblePlannerDays.count)"))
+        #expect(monthGridSource.contains("height: layoutMetrics.dayCellHeight"))
+        #expect(monthGridSource.contains(".frame(height: layoutMetrics.gridHeight, alignment: .top)"))
+        #expect(monthGridSource.contains(".frame(height: height, alignment: .top)"))
+        #expect(!monthGridSource.contains(".frame(minHeight: minHeight, alignment: .top)"))
+    }
+
+    @Test("compact month calendar keeps one schedule title visible and hides daily overflow scrollers")
+    func compactMonthCalendarKeepsOneScheduleTitleVisibleAndHidesDailyOverflowScrollers() throws {
+        let root = try packageRoot()
+        let calendarHomeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+        let themeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift")
+        let monthGridFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
+
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
+        let themeSource = try String(contentsOf: themeFile, encoding: .utf8)
+        let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
+
+        #expect(calendarHomeSource.contains("compactMonthGridMinHeight: CGFloat = 520"))
+        #expect(monthGridSource.contains("minimumVisiblePlannerItemRows: CGFloat = 1"))
+        #expect(monthGridSource.contains("dayContentSpacing: CGFloat = 2"))
+        #expect(monthGridSource.contains("plannerItemListHeight(for: minimumVisiblePlannerItemRows)"))
+        #expect(monthGridSource.contains("let visiblePlannerDays = plannerDays(maxVisibleItems: Int.max)"))
+        #expect(monthGridSource.contains("VStack(alignment: .leading, spacing: dayContentSpacing)"))
+        #expect(monthGridSource.contains("plannerItemList(day, height: plannerItemListHeight, visibleDays: visibleDays)"))
+        #expect(monthGridSource.contains("ScrollView(.vertical)"))
+        #expect(monthGridSource.contains(".hiddenVerticalScrollIndicatorsOnMac()"))
+        #expect(monthGridSource.contains(".frame(height: height, alignment: .top)"))
+        #expect(themeSource.contains("func hiddenVerticalScrollIndicatorsOnMac()"))
+        #expect(themeSource.contains("struct HiddenVerticalScrollIndicatorConfigurator"))
+        #expect(themeSource.contains("scrollView.hasVerticalScroller = false"))
+        #expect(themeSource.contains("scrollView.scrollerStyle = .overlay"))
+        #expect(!monthGridSource.contains("maxVisibleItems(for:"))
+        #expect(!monthGridSource.contains("showsOverflowCount"))
+        #expect(!monthGridSource.contains("Text(\"+\\(day.overflowCount)\")"))
     }
 
     @Test("hidden Dock launch temporarily promotes activation policy before showing the main window")
@@ -1871,7 +2118,7 @@ struct XcodeWidgetProjectTests {
         let monthGridBodySource = try #require(sourceBlock(
             in: monthGridSource,
             from: "struct MonthGridView: View {",
-            to: "    private func adaptiveDayCellMinHeight"
+            to: "    private func monthGridLayoutMetrics"
         ))
         let moveMonthSource = try #require(sourceBlock(
             in: monthGridSource,

@@ -33,6 +33,16 @@ struct AppLanguageTests {
         #expect(PlannerCopy.text(.settings, language: .chinese) == "设置")
     }
 
+    @Test("planner copy resolves account labels")
+    func plannerCopyResolvesAccountLabels() {
+        #expect(PlannerCopy.text(.account, language: .english) == "Account")
+        #expect(PlannerCopy.text(.account, language: .chinese) == "账号")
+        #expect(PlannerCopy.text(.email, language: .english) == "Email")
+        #expect(PlannerCopy.text(.email, language: .chinese) == "邮箱")
+        #expect(PlannerCopy.text(.phoneComingSoon, language: .english) == "Coming soon")
+        #expect(PlannerCopy.text(.wechatNeedsSetup, language: .chinese) == "需要开放平台配置")
+    }
+
     @Test("English product copy contains no Chinese text")
     func englishProductCopyContainsNoChineseText() {
         #expect(PlannerCopy.text(.fufuTimePlanner, language: .english) == "FuFu's time planner")

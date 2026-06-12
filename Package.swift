@@ -13,6 +13,9 @@ let package = Package(
         .library(name: "MeowPlannerCore", targets: ["MeowPlannerCore"]),
         .executable(name: "MeowPlanner", targets: ["MeowPlannerApp"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "12.14.0")
+    ],
     targets: [
         .target(
             name: "MeowPlannerCore",
@@ -20,9 +23,15 @@ let package = Package(
         ),
         .executableTarget(
             name: "MeowPlannerApp",
-            dependencies: ["MeowPlannerCore"],
+            dependencies: [
+                "MeowPlannerCore",
+                .product(name: "FirebaseAuth", package: "firebase-ios-sdk"),
+                .product(name: "FirebaseCore", package: "firebase-ios-sdk"),
+                .product(name: "FirebaseFirestore", package: "firebase-ios-sdk")
+            ],
             path: "Sources/MeowPlannerApp",
             resources: [
+                .copy("../../Config/GoogleService-Info.plist"),
                 .copy("../../Resources/FuFu"),
                 .copy("../../Resources/AppIcon")
             ]

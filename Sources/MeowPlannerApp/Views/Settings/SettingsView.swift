@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
+    @StateObject private var accountStore = AccountSessionStore.shared
 
     @State private var focusMinutes = PlannerPreference.defaults.defaultFocusMinutes
     @State private var weekStartPreference = PlannerPreference.defaults.weekStartPreference
@@ -45,6 +46,8 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            AccountSettingsSection(accountStore: accountStore)
 
             Section(PlannerCopy.text(.language, language: appLanguage)) {
                 Picker(PlannerCopy.text(.language, language: appLanguage), selection: $appLanguageID) {
@@ -147,7 +150,7 @@ struct SettingsView: View {
 
             Section(PlannerCopy.text(.sync, language: appLanguage)) {
                 LabeledContent(PlannerCopy.text(.icloudSync, language: appLanguage)) {
-                    Text(ModelContainerFactory.cloudKitContainerIdentifier)
+                    Text(accountStore.currentProfile?.emailAddress ?? PlannerCopy.text(.notSignedIn, language: appLanguage))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

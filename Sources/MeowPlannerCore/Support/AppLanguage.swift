@@ -130,6 +130,17 @@ public enum PlannerTextKey: String, Sendable {
     case noTodosInGroupMessage
     case todoListSubtitle
     case language
+    case account
+    case signedIn
+    case notSignedIn
+    case signIn
+    case createAccount
+    case signOut
+    case email
+    case password
+    case provider
+    case phoneComingSoon
+    case wechatNeedsSetup
     case planning
     case focusSettings
     case personalizationSettings
@@ -296,6 +307,17 @@ public enum PlannerCopy {
         .noTodosInGroupMessage: "Add a task to this group when you are ready.",
         .todoListSubtitle: "Grouped tasks and gentle deadlines",
         .language: "Language",
+        .account: "Account",
+        .signedIn: "Signed in",
+        .notSignedIn: "Not signed in",
+        .signIn: "Sign In",
+        .createAccount: "Create Account",
+        .signOut: "Sign Out",
+        .email: "Email",
+        .password: "Password",
+        .provider: "Provider",
+        .phoneComingSoon: "Coming soon",
+        .wechatNeedsSetup: "Needs platform setup",
         .planning: "Planning",
         .focusSettings: "Focus",
         .personalizationSettings: "Personalization",
@@ -320,8 +342,8 @@ public enum PlannerCopy {
         .editColor: "Edit color",
         .deleteColor: "Delete color",
         .sync: "Sync",
-        .icloudSync: "iCloud sync",
-        .icloudDescription: "MeowPlanner uses the Apple ID signed into iCloud. No custom account system is included in v1.",
+        .icloudSync: "Cloud account sync",
+        .icloudDescription: "Signed-in account todo items sync through Firebase Firestore. Calendar, habit, focus, and timetable sync will be added separately.",
         .scope: "Scope",
         .scopeDescription: "System calendar sync, Google/Outlook sync, diary, countdown days, AI parsing, and a full widget suite are intentionally out of scope for this first version.",
         .openMeowPlanner: "Open MeowPlanner",
@@ -461,6 +483,17 @@ public enum PlannerCopy {
         .noTodosInGroupMessage: "准备好后在这个组里添加待办。",
         .todoListSubtitle: "分组待办和温柔截止日期",
         .language: "语言",
+        .account: "账号",
+        .signedIn: "已登录",
+        .notSignedIn: "未登录",
+        .signIn: "登录",
+        .createAccount: "注册账号",
+        .signOut: "退出登录",
+        .email: "邮箱",
+        .password: "密码",
+        .provider: "登录方式",
+        .phoneComingSoon: "即将支持",
+        .wechatNeedsSetup: "需要开放平台配置",
         .planning: "规划",
         .focusSettings: "专注",
         .personalizationSettings: "个性化设置",
@@ -485,8 +518,8 @@ public enum PlannerCopy {
         .editColor: "编辑颜色",
         .deleteColor: "删除颜色",
         .sync: "同步",
-        .icloudSync: "iCloud 同步",
-        .icloudDescription: "MeowPlanner 使用当前登录 iCloud 的 Apple ID。v1 不包含自定义账号系统。",
+        .icloudSync: "云端账号同步",
+        .icloudDescription: "已登录账号的待办事项会通过 Firebase Firestore 同步。日历、习惯、专注和课程表同步会后续单独接入。",
         .scope: "范围",
         .scopeDescription: "系统日历同步、Google/Outlook 同步、日记、倒数日、AI 解析和完整小组件套件不包含在第一版范围内。",
         .openMeowPlanner: "打开 MeowPlanner",

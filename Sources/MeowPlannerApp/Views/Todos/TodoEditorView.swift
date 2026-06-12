@@ -110,6 +110,7 @@ struct TodoEditorView: View {
 
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+        FirestoreAppDataSyncService.shared.scheduleSync(using: modelContext)
         dismiss()
     }
 }

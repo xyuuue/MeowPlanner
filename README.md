@@ -43,6 +43,12 @@ Verify the app bundle launches:
 ./script/build_and_run.sh --verify
 ```
 
+Firebase email authentication requires `Config/GoogleService-Info.plist` and the Email/Password sign-in provider enabled in the Firebase console. For a developer-signed build with Firebase Auth keychain persistence, pass your Team ID:
+
+```bash
+DEVELOPMENT_TEAM=YOURTEAMID ./script/build_and_run.sh --signed --verify
+```
+
 ## macOS Widget
 
 The project now includes a native macOS Xcode project with:
@@ -62,6 +68,7 @@ Included in v1:
 - Focus timer and local focus session history
 - Habit creation and daily check-ins with streak display
 - SwiftData models with CloudKit-ready private database configuration
+- Account settings with Firebase-backed email account registration and login
 - Local notification scheduling wrapper
 - WidgetKit Today widget extension source and macOS app embedding
 - FuFu visual theme using SlackerBuddy/PastePaw assets
@@ -69,7 +76,7 @@ Included in v1:
 Out of scope for v1:
 
 - System Calendar, Google Calendar, or Outlook sync
-- Custom login/accounts
+- Cloud data sync, phone login, and WeChat login
 - Diary, countdown days, analytics dashboards, and AI schedule parsing
 - A full widget suite or active FuFu pet coach behavior
 

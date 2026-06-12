@@ -217,12 +217,24 @@ enum MainWindowLaunchCoordinator {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appLanguage) private var appLanguage
+    @AppStorage(AppLanguage.storageKey) private var cloudAppLanguageID = AppLanguage.english.rawValue
+    @AppStorage(AppAppearancePreference.storageKey) private var cloudAppearanceID = AppAppearancePreference.system.rawValue
+    @AppStorage(AppDockIconController.storageKey) private var cloudShowDockIcon = AppDockIconController.defaultShowDockIcon
     @AppStorage("meowplanner.sidebar.sectionOrder") private var sidebarSectionOrderRaw = AppSection.defaultSidebarOrderStorageValue
     @Query(sort: \PlannerEvent.startDate) private var widgetEvents: [PlannerEvent]
+    @Query(sort: \TodoGroup.createdAt) private var cloudTodoGroups: [TodoGroup]
     @Query(sort: \TodoItem.createdAt) private var widgetTodos: [TodoItem]
     @Query(sort: \Habit.createdAt) private var widgetHabits: [Habit]
-    @Query private var widgetPreferences: [PlannerPreference]
+    @Query(sort: \HabitCheckIn.date) private var cloudHabitCheckIns: [HabitCheckIn]
+    @Query(sort: \FocusTag.sortOrder) private var cloudFocusTags: [FocusTag]
+    @Query(sort: \FocusSession.startedAt) private var cloudFocusSessions: [FocusSession]
+    @Query(sort: \PlannerPreference.id) private var widgetPreferences: [PlannerPreference]
+    @Query(sort: \CourseTimetable.createdAt) private var cloudCourseTimetables: [CourseTimetable]
+    @Query(sort: \CoursePeriod.index) private var cloudCoursePeriods: [CoursePeriod]
+    @Query(sort: \Course.createdAt) private var cloudCourses: [Course]
+    @Query(sort: \CourseSession.weekday) private var cloudCourseSessions: [CourseSession]
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var accountStore = AccountSessionStore.shared
     @State private var selection: AppSection = .calendar
     @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var calendarRenderToken = UUID()
@@ -255,21 +267,37 @@ struct RootView: View {
                 MeowPlannerTheme.plannerGradient
                     .ignoresSafeArea()
 
-                sectionView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 0) {
+                    if sidebarVisibility == .detailOnly {
+                        collapsedSidebarControlBar
+                    }
+
+                    sectionView
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .toolbar(removing: .sidebarToggle)
+        .background(SidebarToolbarOverflowCleaner(trigger: sidebarVisibility).frame(width: 0, height: 0))
         .onAppear {
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
+            scheduleCloudAppDataSync()
         }
         .onChange(of: widgetSnapshotSignature) { _, _ in
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 180_000_000)
         }
+        .onChange(of: appDataCloudSyncSignature) { _, _ in
+            scheduleCloudAppDataSync()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 260_000_000)
+                scheduleCloudAppDataSync()
             }
+        }
+        .onChange(of: accountStore.currentProfile?.remoteUserID) { _, _ in
+            scheduleCloudAppDataSync()
         }
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .meowPlannerOpenSection)) { notification in
@@ -299,16 +327,28 @@ struct RootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
+            scheduleCloudAppDataSync()
         }
         .onChange(of: widgetSnapshotSignature) { _, _ in
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 180_000_000)
         }
+        .onChange(of: appDataCloudSyncSignature) { _, _ in
+            scheduleCloudAppDataSync()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 260_000_000)
+                scheduleCloudAppDataSync()
             }
         }
+        .onChange(of: accountStore.currentProfile?.remoteUserID) { _, _ in
+            scheduleCloudAppDataSync()
+        }
         #endif
+    }
+
+    private func scheduleCloudAppDataSync() {
+        FirestoreAppDataSyncService.shared.scheduleSync(using: modelContext)
     }
 
     private var orderedSections: [AppSection] {
@@ -316,6 +356,16 @@ struct RootView: View {
     }
 
     #if os(macOS)
+    private var collapsedSidebarControlBar: some View {
+        HStack {
+            Spacer(minLength: 0)
+
+            collapsedSidebarExpandButton
+        }
+        .padding(.top, 16)
+        .padding(.trailing, 34)
+    }
+
     private var sidebarHeader: some View {
         HStack(spacing: 8) {
             Text("MeowPlanner")
@@ -325,6 +375,7 @@ struct RootView: View {
 
             Spacer(minLength: 0)
 
+            sidebarCollapseButton
             sidebarOrderEditButton
         }
         .padding(.horizontal, 2)
@@ -356,6 +407,46 @@ struct RootView: View {
         }
 
         return appLanguage == .chinese ? "自定义顺序" : "Customize order"
+    }
+
+    private var sidebarCollapseButton: some View {
+        Button {
+            collapseSidebar()
+        } label: {
+            Image(systemName: "sidebar.left")
+                .font(.system(size: 15, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 28, height: 28)
+                .background(MeowPlannerTheme.cream.opacity(0.68), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .help(sidebarCollapseTitle)
+        .accessibilityLabel(sidebarCollapseTitle)
+    }
+
+    private var collapsedSidebarExpandButton: some View {
+        Button {
+            expandSidebar()
+        } label: {
+            Image(systemName: "sidebar.left")
+                .font(.system(size: 16, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 34, height: 34)
+                .background(MeowPlannerTheme.cream.opacity(0.82), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .help(sidebarExpandTitle)
+        .accessibilityLabel(sidebarExpandTitle)
+    }
+
+    private var sidebarCollapseTitle: String {
+        appLanguage == .chinese ? "收起侧边栏" : "Hide sidebar"
+    }
+
+    private var sidebarExpandTitle: String {
+        appLanguage == .chinese ? "展开侧边栏" : "Show sidebar"
     }
 
     @ViewBuilder
@@ -464,6 +555,43 @@ struct RootView: View {
         ].joined(separator: "||")
     }
 
+    private var appDataCloudSyncSignature: String {
+        let eventPart = widgetEvents.map(eventSignature).joined(separator: ";")
+        let todoGroupPart = cloudTodoGroups.map(todoGroupSignature).joined(separator: ";")
+        let todoPart = widgetTodos.map(todoSignature).joined(separator: ";")
+        let habitPart = widgetHabits.map(habitSignature).joined(separator: ";")
+        let habitCheckInPart = cloudHabitCheckIns.map(habitCheckInSignature).joined(separator: ";")
+        let focusTagPart = cloudFocusTags.map(focusTagSignature).joined(separator: ";")
+        let focusSessionPart = cloudFocusSessions.map(focusSessionSignature).joined(separator: ";")
+        let preferencePart = widgetPreferences.map(preferenceSignature).joined(separator: ";")
+        let timetablePart = cloudCourseTimetables.map(courseTimetableSignature).joined(separator: ";")
+        let periodPart = cloudCoursePeriods.map(coursePeriodSignature).joined(separator: ";")
+        let coursePart = cloudCourses.map(courseSignature).joined(separator: ";")
+        let courseSessionPart = cloudCourseSessions.map(courseSessionSignature).joined(separator: ";")
+        let settingsPart = [
+            cloudAppLanguageID,
+            cloudAppearanceID,
+            String(cloudShowDockIcon),
+            sidebarSectionOrderRaw
+        ].joined(separator: ";")
+
+        return [
+            eventPart,
+            todoGroupPart,
+            todoPart,
+            habitPart,
+            habitCheckInPart,
+            focusTagPart,
+            focusSessionPart,
+            preferencePart,
+            timetablePart,
+            periodPart,
+            coursePart,
+            courseSessionPart,
+            settingsPart
+        ].joined(separator: "||")
+    }
+
     private func selectSidebarSection(_ section: AppSection) {
         switch section {
         case .calendar:
@@ -481,6 +609,21 @@ struct RootView: View {
 
         if !isEditingSidebarOrder {
             sidebarDropTargetSection = nil
+        }
+    }
+
+    private func collapseSidebar() {
+        withAnimation(.snappy(duration: 0.18)) {
+            sidebarVisibility = .detailOnly
+            isEditingSidebarOrder = false
+        }
+
+        sidebarDropTargetSection = nil
+    }
+
+    private func expandSidebar() {
+        withAnimation(.snappy(duration: 0.18)) {
+            sidebarVisibility = .all
         }
     }
 
@@ -576,6 +719,136 @@ struct RootView: View {
             todo.completedAt.map(dateToken) ?? "",
             todo.reminderDate.map(dateToken) ?? "",
             dateToken(todo.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func todoGroupSignature(_ group: TodoGroup) -> String {
+        [
+            group.id.uuidString,
+            group.name,
+            group.colorHex,
+            dateToken(group.createdAt),
+            dateToken(group.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func habitSignature(_ habit: Habit) -> String {
+        [
+            habit.id.uuidString,
+            habit.title,
+            habit.symbolName,
+            habit.colorHex,
+            habit.reminderDate.map(dateToken) ?? "",
+            dateToken(habit.createdAt),
+            habit.archivedAt.map(dateToken) ?? ""
+        ].joined(separator: "|")
+    }
+
+    private func habitCheckInSignature(_ checkIn: HabitCheckIn) -> String {
+        [
+            checkIn.id.uuidString,
+            checkIn.habitID.uuidString,
+            dateToken(checkIn.date),
+            checkIn.note,
+            dateToken(checkIn.createdAt)
+        ].joined(separator: "|")
+    }
+
+    private func focusTagSignature(_ tag: FocusTag) -> String {
+        [
+            tag.id.uuidString,
+            tag.name,
+            tag.colorHex,
+            dateToken(tag.createdAt),
+            String(tag.sortOrder)
+        ].joined(separator: "|")
+    }
+
+    private func focusSessionSignature(_ session: FocusSession) -> String {
+        [
+            session.id.uuidString,
+            session.title,
+            dateToken(session.startedAt),
+            session.endedAt.map(dateToken) ?? "",
+            String(session.plannedDurationSeconds),
+            String(session.completedDurationSeconds),
+            session.linkedTodoID?.uuidString ?? "",
+            session.linkedHabitID?.uuidString ?? "",
+            session.tagID?.uuidString ?? "",
+            session.modeRawValue
+        ].joined(separator: "|")
+    }
+
+    private func preferenceSignature(_ preference: PlannerPreference) -> String {
+        [
+            preference.id,
+            preference.localeIdentifier,
+            String(preference.defaultFocusMinutes),
+            preference.cloudKitContainerIdentifier,
+            String(preference.showFuFuTheme),
+            String(preference.notificationLeadMinutes),
+            String(preference.weekStartDayRawValue),
+            String(preference.localRemindersEnabled),
+            preference.eventColorHexList,
+            preference.eventTagNameList,
+            String(preference.defaultEventIsAllDay),
+            String(preference.showCompletedSchedules),
+            String(preference.completedSchedulesUseStrikethrough),
+            String(preference.showChineseCalendar),
+            String(preference.scheduleTimeCollapseEnabled),
+            String(preference.scheduleCollapsedStartHour),
+            String(preference.scheduleCollapsedEndHour),
+            preference.timeDisplayRawValue
+        ].joined(separator: "|")
+    }
+
+    private func courseTimetableSignature(_ timetable: CourseTimetable) -> String {
+        [
+            timetable.id.uuidString,
+            timetable.name,
+            dateToken(timetable.semesterStartDate),
+            String(timetable.semesterWeeks),
+            String(timetable.periodsPerDay),
+            String(timetable.lessonDurationMinutes),
+            String(timetable.breakDurationMinutes),
+            String(timetable.skipHolidays),
+            dateToken(timetable.createdAt),
+            dateToken(timetable.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func coursePeriodSignature(_ period: CoursePeriod) -> String {
+        [
+            period.id.uuidString,
+            period.timetableID.uuidString,
+            String(period.index),
+            String(period.startMinutesFromMidnight),
+            String(period.endMinutesFromMidnight)
+        ].joined(separator: "|")
+    }
+
+    private func courseSignature(_ course: Course) -> String {
+        [
+            course.id.uuidString,
+            course.timetableID.uuidString,
+            course.name,
+            course.colorHex,
+            course.teacherName,
+            course.location,
+            dateToken(course.createdAt),
+            dateToken(course.updatedAt)
+        ].joined(separator: "|")
+    }
+
+    private func courseSessionSignature(_ session: CourseSession) -> String {
+        [
+            session.id.uuidString,
+            session.courseID.uuidString,
+            String(session.weekday),
+            String(session.startPeriodIndex),
+            String(session.endPeriodIndex),
+            String(session.startWeek),
+            String(session.endWeek)
         ].joined(separator: "|")
     }
 
@@ -1337,6 +1610,38 @@ private struct ScheduleTimeGridView: View {
 }
 
 #if os(macOS)
+private struct SidebarToolbarOverflowCleaner: NSViewRepresentable {
+    var trigger: NavigationSplitViewVisibility
+
+    func makeNSView(context: Context) -> CleanerView {
+        CleanerView()
+    }
+
+    func updateNSView(_ nsView: CleanerView, context: Context) {
+        _ = trigger
+        nsView.removeSidebarToolbarOverflowSoon()
+    }
+
+    final class CleanerView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            removeSidebarToolbarOverflowSoon()
+        }
+
+        func removeSidebarToolbarOverflowSoon() {
+            for delay in [0.0, 0.08, 0.24, 0.6, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let window = self?.window else {
+                        return
+                    }
+
+                    window.toolbar = nil
+                }
+            }
+        }
+    }
+}
+
 private struct SidebarSectionRow: View {
     var section: AppSection
     var language: AppLanguage

@@ -21,6 +21,30 @@ struct MonthGridView: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
     private let multiDaySegmentHeight: CGFloat = 18
     private let dayCellHorizontalPadding: CGFloat = 8
+    private let monthGridContentPadding: CGFloat = 16
+    private let monthGridHeaderHeight: CGFloat = 34
+    private let monthGridContentSpacing: CGFloat = 14
+    private let weekdayHeaderHeight: CGFloat = 34
+    private let dayCellVerticalPadding: CGFloat = 8
+    private let dayDateHeaderHeight: CGFloat = 24
+    private let dayContentSpacing: CGFloat = 2
+    private let plannerItemRowHeight: CGFloat = 18
+    private let plannerItemListSpacing: CGFloat = 4
+    private let minimumVisiblePlannerItemRows: CGFloat = 1
+
+    private struct MonthGridLayoutMetrics {
+        let contentPadding: CGFloat
+        let contentSpacing: CGFloat
+        let headerHeight: CGFloat
+        let weekdayHeaderHeight: CGFloat
+        let rowCount: CGFloat
+        let dayCellHeight: CGFloat
+        let plannerItemListHeight: CGFloat
+
+        var gridHeight: CGFloat {
+            weekdayHeaderHeight + rowCount * dayCellHeight
+        }
+    }
 
     private enum MultiDaySegmentPosition {
         case single
@@ -53,12 +77,13 @@ struct MonthGridView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let dayCellMinHeight = adaptiveDayCellMinHeight(for: proxy.size)
+            let visiblePlannerDays = plannerDays(maxVisibleItems: Int.max)
+            let layoutMetrics = monthGridLayoutMetrics(for: proxy.size, dayCount: visiblePlannerDays.count)
 
             ZStack {
                 calendarWatermark
 
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: layoutMetrics.contentSpacing) {
                     HStack(spacing: 10) {
                         Button {
                             moveMonth(by: -1)
@@ -91,16 +116,25 @@ struct MonthGridView: View {
                         .controlSize(.small)
                         .tint(MeowPlannerTheme.caramel)
                     }
+                    .frame(height: layoutMetrics.headerHeight, alignment: .center)
 
                     LazyVGrid(columns: columns, spacing: 0) {
                         ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
-                            weekdayHeaderCell(symbol)
+                            weekdayHeaderCell(symbol, height: layoutMetrics.weekdayHeaderHeight)
                         }
 
-                        ForEach(plannerDays) { day in
-                            dayCell(day, minHeight: dayCellMinHeight)
+                        ForEach(visiblePlannerDays) { day in
+                            dayCell(
+                                day,
+                                height: layoutMetrics.dayCellHeight,
+                                plannerItemListHeight: layoutMetrics.plannerItemListHeight,
+                                visibleDays: visiblePlannerDays
+                            )
                         }
                     }
+                    #if os(macOS)
+                    .frame(height: layoutMetrics.gridHeight, alignment: .top)
+                    #endif
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay {
                         RoundedRectangle(cornerRadius: 8)
@@ -108,7 +142,7 @@ struct MonthGridView: View {
                     }
                 }
             }
-            .padding()
+            .padding(layoutMetrics.contentPadding)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .background(
@@ -137,10 +171,34 @@ struct MonthGridView: View {
         }
     }
 
-    private func adaptiveDayCellMinHeight(for availableSize: CGSize) -> CGFloat {
-        let nonGridHeight: CGFloat = 116
-        let rowCount: CGFloat = 6
-        return max(44, (availableSize.height - nonGridHeight) / rowCount)
+    private func monthGridLayoutMetrics(for availableSize: CGSize, dayCount: Int) -> MonthGridLayoutMetrics {
+        let rowCount = CGFloat(max(1, (max(dayCount, 1) + 6) / 7))
+        let availableHeight = availableSize.height.isFinite ? max(0, availableSize.height) : 0
+        let fixedHeight = monthGridContentPadding * 2 + monthGridHeaderHeight + monthGridContentSpacing + weekdayHeaderHeight
+        let proposedDayCellHeight = (availableHeight - fixedHeight) / rowCount
+        let minimumDayCellHeight = dayCellVerticalPadding * 2
+            + dayDateHeaderHeight
+            + dayContentSpacing
+            + plannerItemListHeight(for: minimumVisiblePlannerItemRows)
+        let dayCellHeight = max(minimumDayCellHeight, proposedDayCellHeight.rounded(.down))
+        let plannerItemListHeight = max(
+            plannerItemListHeight(for: minimumVisiblePlannerItemRows),
+            dayCellHeight - dayCellVerticalPadding * 2 - dayDateHeaderHeight - dayContentSpacing
+        )
+
+        return MonthGridLayoutMetrics(
+            contentPadding: monthGridContentPadding,
+            contentSpacing: monthGridContentSpacing,
+            headerHeight: monthGridHeaderHeight,
+            weekdayHeaderHeight: weekdayHeaderHeight,
+            rowCount: rowCount,
+            dayCellHeight: dayCellHeight,
+            plannerItemListHeight: plannerItemListHeight
+        )
+    }
+
+    private func plannerItemListHeight(for visibleRows: CGFloat) -> CGFloat {
+        plannerItemRowHeight * visibleRows + plannerItemListSpacing * max(0, visibleRows - 1)
     }
 
     private var monthTitle: String {
@@ -159,12 +217,12 @@ struct MonthGridView: View {
         weekStartPreference.orderedShortWeekdaySymbols(calendar: calendar)
     }
 
-    private var plannerDays: [MonthPlannerDay] {
+    private func plannerDays(maxVisibleItems: Int) -> [MonthPlannerDay] {
         MonthPlannerGridBuilder.days(
             for: displayedMonth,
             events: events,
             todos: todos,
-            maxVisibleItems: 3,
+            maxVisibleItems: maxVisibleItems,
             calendar: calendar
         )
     }
@@ -197,12 +255,13 @@ struct MonthGridView: View {
             .rotationEffect(.degrees(10))
     }
 
-    private func weekdayHeaderCell(_ symbol: String) -> some View {
+    private func weekdayHeaderCell(_ symbol: String, height: CGFloat) -> some View {
         Text(symbol)
             .font(.callout.weight(.semibold))
             .foregroundStyle(MeowPlannerTheme.accentText)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
+            .frame(height: height)
             .background(MeowPlannerTheme.monthGridHeaderBackground)
             .overlay(alignment: .bottom) {
                 Rectangle()
@@ -216,13 +275,18 @@ struct MonthGridView: View {
             }
     }
 
-    private func dayCell(_ day: MonthPlannerDay, minHeight: CGFloat) -> some View {
+    private func dayCell(
+        _ day: MonthPlannerDay,
+        height: CGFloat,
+        plannerItemListHeight: CGFloat,
+        visibleDays: [MonthPlannerDay]
+    ) -> some View {
         let isSelected = calendar.isDate(day.date, inSameDayAs: selectedDate)
 
         return Button {
             selectDate(day.date)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: dayContentSpacing) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(day.date.formatted(.dateTime.day()))
                         .font(.title3.weight(isSelected ? .bold : .medium))
@@ -240,37 +304,15 @@ struct MonthGridView: View {
 
                     Spacer(minLength: 0)
                 }
+                .frame(height: dayDateHeaderHeight, alignment: .top)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(day.items) { item in
-                        if let event = multiDayEvent(for: item) {
-                            if let position = multiDaySegmentPosition(for: event, on: day.date),
-                               let span = multiDayEventSpan(for: event, on: day.date) {
-                                multiDayTopSpacingPlaceholders(
-                                    count: multiDaySpanTopSpacerCount(for: event, on: day.date, in: day)
-                                )
-                                multiDayEventSegment(item, position: position, span: span)
-                            } else {
-                                multiDayContinuationPlaceholder(item)
-                            }
-                        } else {
-                            plannerItemRow(item)
-                        }
-                    }
-
-                    if day.overflowCount > 0 {
-                        Text("+\(day.overflowCount)")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(MeowPlannerTheme.accentText)
-                            .padding(.horizontal, 6)
-                    }
-                }
+                plannerItemList(day, height: plannerItemListHeight, visibleDays: visibleDays)
 
                 Spacer(minLength: 0)
             }
-            .padding(8)
+            .padding(dayCellVerticalPadding)
             #if os(macOS)
-            .frame(minHeight: minHeight, alignment: .top)
+            .frame(height: height, alignment: .top)
             #else
             .frame(minHeight: 58, alignment: .top)
             #endif
@@ -289,8 +331,34 @@ struct MonthGridView: View {
 
                     selectDate(day.date)
                     onDayDoubleClick(day.date)
-                }
+            }
         )
+    }
+
+    private func plannerItemList(_ day: MonthPlannerDay, height: CGFloat, visibleDays: [MonthPlannerDay]) -> some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: plannerItemListSpacing) {
+                ForEach(day.items) { item in
+                    if let event = multiDayEvent(for: item) {
+                        if let position = multiDaySegmentPosition(for: event, on: day.date),
+                           let span = multiDayEventSpan(for: event, on: day.date) {
+                            multiDayTopSpacingPlaceholders(
+                                count: multiDaySpanTopSpacerCount(for: event, on: day.date, in: day, visibleDays: visibleDays)
+                            )
+                            multiDayEventSegment(item, position: position, span: span)
+                        } else {
+                            multiDayContinuationPlaceholder(item)
+                        }
+                    } else {
+                        plannerItemRow(item)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .hiddenVerticalScrollIndicatorsOnMac()
+        }
+        .scrollIndicators(.hidden)
+        .frame(height: height, alignment: .top)
     }
 
     private func multiDayEventSegment(_ item: MonthPlannerItem, position: MultiDaySegmentPosition, span: Int) -> some View {
@@ -371,6 +439,7 @@ struct MonthGridView: View {
         .foregroundStyle(Color.white)
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
+        .frame(height: plannerItemRowHeight, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(itemBackground(item), in: RoundedRectangle(cornerRadius: 4))
         .opacity(item.isCompleted ? 0.52 : 1)
@@ -499,7 +568,12 @@ struct MonthGridView: View {
         return max(1, min(7, dayCount + 1))
     }
 
-    private func multiDaySpanTopSpacerCount(for event: PlannerEvent, on date: Date, in day: MonthPlannerDay) -> Int {
+    private func multiDaySpanTopSpacerCount(
+        for event: PlannerEvent,
+        on date: Date,
+        in day: MonthPlannerDay,
+        visibleDays: [MonthPlannerDay]
+    ) -> Int {
         guard let span = multiDayEventSpan(for: event, on: date),
               let currentIndex = day.items.firstIndex(where: { $0.id == event.id }) else {
             return 0
@@ -507,7 +581,7 @@ struct MonthGridView: View {
 
         let maxCoveredIndex = (0..<span).reduce(currentIndex) { result, offset in
             guard let coveredDate = calendar.date(byAdding: .day, value: offset, to: date),
-                  let coveredDay = plannerDays.first(where: { calendar.isDate($0.date, inSameDayAs: coveredDate) }) else {
+                  let coveredDay = visibleDays.first(where: { calendar.isDate($0.date, inSameDayAs: coveredDate) }) else {
                 return result
             }
 

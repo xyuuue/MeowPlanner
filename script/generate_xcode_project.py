@@ -70,31 +70,46 @@ def config_list_id(target: str) -> str:
 
 CORE_SOURCES = [
     "Sources/MeowPlannerCore/MeowPlannerCore.swift",
+    "Sources/MeowPlannerCore/Models/CourseTimetable.swift",
     "Sources/MeowPlannerCore/Models/FocusSession.swift",
     "Sources/MeowPlannerCore/Models/Habit.swift",
     "Sources/MeowPlannerCore/Models/HabitCheckIn.swift",
     "Sources/MeowPlannerCore/Models/PlannerEvent.swift",
     "Sources/MeowPlannerCore/Models/PlannerPreference.swift",
+    "Sources/MeowPlannerCore/Models/TodoGroup.swift",
     "Sources/MeowPlannerCore/Models/TodoItem.swift",
+    "Sources/MeowPlannerCore/Services/AccountAuthentication.swift",
+    "Sources/MeowPlannerCore/Services/CloudAppDataSync.swift",
+    "Sources/MeowPlannerCore/Services/CloudTodoSync.swift",
+    "Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift",
+    "Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift",
     "Sources/MeowPlannerCore/Services/FocusTimerState.swift",
     "Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift",
     "Sources/MeowPlannerCore/Services/NotificationScheduler.swift",
     "Sources/MeowPlannerCore/Services/ReminderPlanner.swift",
     "Sources/MeowPlannerCore/Services/RepeatRule.swift",
+    "Sources/MeowPlannerCore/Services/TodoListPlanner.swift",
     "Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift",
     "Sources/MeowPlannerCore/Support/AppLanguage.swift",
     "Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift",
-    "Sources/MeowPlannerCore/Support/WidgetConstants.swift",
+    "Sources/MeowPlannerCore/Support/WeekStartPreference.swift",
     "Sources/MeowPlannerCore/Support/WidgetAppIntents.swift",
+    "Sources/MeowPlannerCore/Support/WidgetConstants.swift",
 ]
 
 APP_SOURCES = [
     "Sources/MeowPlannerApp/App/MeowPlannerApp.swift",
+    "Sources/MeowPlannerApp/Support/AccountSessionStore.swift",
+    "Sources/MeowPlannerApp/Support/AppDockIconController.swift",
     "Sources/MeowPlannerApp/Support/AppIconInstaller.swift",
     "Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift",
+    "Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift",
+    "Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift",
     "Sources/MeowPlannerApp/Support/AppNavigation.swift",
     "Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift",
     "Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift",
+    "Sources/MeowPlannerApp/Support/WidgetConstants.swift",
+    "Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift",
     "Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift",
     "Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift",
     "Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift",
@@ -103,7 +118,11 @@ APP_SOURCES = [
     "Sources/MeowPlannerApp/Views/Habits/HabitsView.swift",
     "Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift",
     "Sources/MeowPlannerApp/Views/RootView.swift",
+    "Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift",
     "Sources/MeowPlannerApp/Views/Settings/SettingsView.swift",
+    "Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift",
+    "Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift",
+    "Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift",
 ]
 
 WIDGET_SOURCES = [
@@ -111,9 +130,11 @@ WIDGET_SOURCES = [
     "Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift",
     "Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift",
     "Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift",
+    "Sources/MeowPlannerWidget/WidgetConstants.swift",
 ]
 
 CONFIG_FILES = [
+    "Config/GoogleService-Info.plist",
     "Config/MeowPlanner-Info.plist",
     "Config/MeowPlanner.entitlements",
     "Config/MeowPlannerWidget-Info.plist",
@@ -122,6 +143,10 @@ CONFIG_FILES = [
 
 RESOURCE_FILES = [
     "Resources/AppIcon/AppIcon.icns",
+]
+
+APP_RESOURCE_FILES = RESOURCE_FILES + [
+    "Config/GoogleService-Info.plist",
 ]
 
 RESOURCE_FOLDERS = [
@@ -224,7 +249,7 @@ def main() -> None:
                 f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path)};",
             )
 
-    for path in RESOURCE_FILES + RESOURCE_FOLDERS:
+    for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS:
         add_object(
             objects,
             build_file("MeowPlanner", path),
@@ -236,6 +261,13 @@ def main() -> None:
     core_widget_framework = build_file("MeowPlannerWidgetExtension", "MeowPlannerCore.framework", "framework")
     core_widget_embed = build_file("MeowPlannerWidgetExtension", "MeowPlannerCore.framework", "embed")
     widget_embed = build_file("MeowPlanner", "MeowPlannerWidgetExtension.appex", "embed")
+    firebase_package = oid("package:firebase-ios-sdk")
+    firebase_core_product = oid("product:FirebaseCore")
+    firebase_auth_product = oid("product:FirebaseAuth")
+    firebase_firestore_product = oid("product:FirebaseFirestore")
+    firebase_core_build = build_file("MeowPlanner", "FirebaseCore", "package")
+    firebase_auth_build = build_file("MeowPlanner", "FirebaseAuth", "package")
+    firebase_firestore_build = build_file("MeowPlanner", "FirebaseFirestore", "package")
 
     add_object(objects, core_app_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};")
     add_object(
@@ -253,6 +285,21 @@ def main() -> None:
         objects,
         widget_embed,
         f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {widget_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
+    )
+    add_object(
+        objects,
+        firebase_core_build,
+        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_core_product};",
+    )
+    add_object(
+        objects,
+        firebase_auth_build,
+        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_auth_product};",
+    )
+    add_object(
+        objects,
+        firebase_firestore_build,
+        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_firestore_product};",
     )
 
     def sources_phase(target: str, sources: list[str]) -> None:
@@ -304,8 +351,8 @@ def main() -> None:
     resources_phase("MeowPlannerCore", [])
 
     sources_phase("MeowPlanner", APP_SOURCES)
-    frameworks_phase("MeowPlanner", [core_app_framework])
-    resources_phase("MeowPlanner", [build_file("MeowPlanner", path) for path in RESOURCE_FILES + RESOURCE_FOLDERS])
+    frameworks_phase("MeowPlanner", [core_app_framework, firebase_core_build, firebase_auth_build, firebase_firestore_build])
+    resources_phase("MeowPlanner", [build_file("MeowPlanner", path) for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS])
     app_embed_frameworks = copy_phase("MeowPlanner", "Embed Frameworks", "10", [core_app_embed])
     app_embed_extensions = copy_phase("MeowPlanner", "Embed App Extensions", "13", [widget_embed])
 
@@ -388,6 +435,7 @@ def main() -> None:
     ]
 
     for target_id, name, product, product_type, phases, dependencies in target_data:
+        package_product_dependencies = [firebase_core_product, firebase_auth_product, firebase_firestore_product] if name == "MeowPlanner" else []
         add_object(
             objects,
             target_id,
@@ -397,6 +445,7 @@ def main() -> None:
             "\t\tbuildRules = (\n\t\t);\n"
             f"\t\tdependencies = {list_block(dependencies, indent=3)};\n"
             f"\t\tname = {name};\n"
+            f"\t\tpackageProductDependencies = {list_block(package_product_dependencies, indent=3)};\n"
             f"\t\tproductName = {name};\n"
             f"\t\tproductReference = {product};\n"
             f"\t\tproductType = \"{product_type}\";",
@@ -610,6 +659,29 @@ def main() -> None:
 
     add_object(
         objects,
+        firebase_package,
+        "\t\tisa = XCRemoteSwiftPackageReference;\n"
+        "\t\trepositoryURL = https://github.com/firebase/firebase-ios-sdk.git;\n"
+        "\t\trequirement = {\n"
+        "\t\t\tkind = upToNextMajorVersion;\n"
+        "\t\t\tminimumVersion = 12.14.0;\n"
+        "\t\t};",
+    )
+    for product_id, product_name in [
+        (firebase_core_product, "FirebaseCore"),
+        (firebase_auth_product, "FirebaseAuth"),
+        (firebase_firestore_product, "FirebaseFirestore"),
+    ]:
+        add_object(
+            objects,
+            product_id,
+            "\t\tisa = XCSwiftPackageProductDependency;\n"
+            f"\t\tpackage = {firebase_package};\n"
+            f"\t\tproductName = {product_name};",
+        )
+
+    add_object(
+        objects,
         project,
         "\t\tisa = PBXProject;\n"
         "\t\tattributes = {\n"
@@ -629,6 +701,7 @@ def main() -> None:
         "\t\thasScannedForEncodings = 0;\n"
         "\t\tknownRegions = (\n\t\t\ten,\n\t\t\tBase,\n\t\t);\n"
         f"\t\tmainGroup = {main_group};\n"
+        f"\t\tpackageReferences = {list_block([firebase_package], indent=3)};\n"
         f"\t\tproductRefGroup = {products_group};\n"
         "\t\tprojectDirPath = \"\";\n"
         "\t\tprojectRoot = \"\";\n"

@@ -355,6 +355,7 @@ struct TodoHomeView: View {
     private func syncWidgetTimelineAfterMutation() {
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+        FirestoreAppDataSyncService.shared.scheduleSync(using: modelContext)
     }
 }
 

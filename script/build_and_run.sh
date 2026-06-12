@@ -1,14 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
 APP_NAME="MeowPlanner"
 BUNDLE_ID="com.yuelingqiu.MeowPlanner"
 MIN_SYSTEM_VERSION="14.0"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 XCODE_DESTINATION="${XCODE_DESTINATION:-}"
 XCODE_ONLY_ACTIVE_ARCH="${ONLY_ACTIVE_ARCH:-}"
+# SIGNED_BUILD=0 keeps local builds ad-hoc signed unless --signed is passed.
+SIGNED_BUILD="${SIGNED_BUILD:-0}"
 TEMP_ENTITLEMENTS_FILE=""
+
+MODE="run"
+for arg in "$@"; do
+  case "$arg" in
+    --signed|signed)
+      SIGNED_BUILD=1
+      ;;
+    run|--run|--build-only|build|--debug|debug|--logs|logs|--telemetry|telemetry|--verify|verify)
+      MODE="$arg"
+      ;;
+    *)
+      echo "usage: $0 [--signed] [run|--build-only|--debug|--logs|--telemetry|--verify]" >&2
+      exit 2
+      ;;
+  esac
+done
 
 cleanup_temp_entitlements() {
   if [ -n "$TEMP_ENTITLEMENTS_FILE" ]; then
@@ -40,9 +57,23 @@ build_with_xcode() {
     -project "$ROOT_DIR/$APP_NAME.xcodeproj" \
     -scheme "$APP_NAME" \
     -configuration "$CONFIGURATION" \
-    -derivedDataPath "$XCODE_DERIVED_DATA" \
-    CODE_SIGNING_ALLOWED=NO
+    -derivedDataPath "$XCODE_DERIVED_DATA"
   )
+
+  if [[ "$SIGNED_BUILD" == "1" ]]; then
+    if [[ -z "${DEVELOPMENT_TEAM:-}" ]]; then
+      echo "error: signed build requires DEVELOPMENT_TEAM=<Apple Developer Team ID>" >&2
+      exit 2
+    fi
+    xcodebuild_args+=(
+      -allowProvisioningUpdates
+      CODE_SIGNING_ALLOWED=YES
+      CODE_SIGN_STYLE=Automatic
+      DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+    )
+  else
+    xcodebuild_args+=(CODE_SIGNING_ALLOWED=NO)
+  fi
 
   if [[ -n "$XCODE_DESTINATION" ]]; then
     xcodebuild_args+=(-destination "$XCODE_DESTINATION")
@@ -58,21 +89,24 @@ build_with_xcode() {
   mkdir -p "$DIST_DIR"
   cp -R "$XCODE_APP" "$APP_BUNDLE"
 
-  local app_core="$APP_BUNDLE/Contents/Frameworks/MeowPlannerCore.framework"
+  if [[ "$SIGNED_BUILD" == "1" ]]; then
+    return
+  fi
+
   local widget="$APP_BUNDLE/Contents/PlugIns/MeowPlannerWidgetExtension.appex"
-  local widget_core="$widget/Contents/Frameworks/MeowPlannerCore.framework"
-  local app_entitlements="$ROOT_DIR/Config/MeowPlanner.entitlements"
   local widget_entitlements="$ROOT_DIR/Config/MeowPlannerWidget.entitlements"
+  local framework_search_roots=()
   TEMP_ENTITLEMENTS_FILE="$(mktemp -t meowplanner_local.entitlements.plist)"
 
-  if [[ -d "$widget_core" ]]; then
-    codesign --force --sign - "$widget_core"
+  [[ -d "$APP_BUNDLE/Contents/Frameworks" ]] && framework_search_roots+=("$APP_BUNDLE/Contents/Frameworks")
+  [[ -d "$APP_BUNDLE/Contents/PlugIns" ]] && framework_search_roots+=("$APP_BUNDLE/Contents/PlugIns")
+  if [[ ${#framework_search_roots[@]} -gt 0 ]]; then
+    while IFS= read -r embedded_framework; do
+      codesign --force --sign - "$embedded_framework"
+    done < <(find "${framework_search_roots[@]}" -maxdepth 6 -name "*.framework" -print)
   fi
   if [[ -d "$widget" ]]; then
     codesign --force --sign - --entitlements "$widget_entitlements" "$widget"
-  fi
-  if [[ -d "$app_core" ]]; then
-    codesign --force --sign - "$app_core"
   fi
 
   cat > "$TEMP_ENTITLEMENTS_FILE" <<EOF
@@ -81,6 +115,8 @@ build_with_xcode() {
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
