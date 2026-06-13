@@ -155,7 +155,6 @@ struct CalendarHomeView: View {
                     mainBackgroundMotifs
                 }
         }
-        .navigationTitle("MeowPlanner")
         .sheet(isPresented: $showingEventEditor) {
             EventEditorView(defaultDate: selectedDate, localRemindersEnabled: localRemindersEnabled, defaultEventIsAllDay: defaultEventIsAllDay)
         }
@@ -450,10 +449,13 @@ private struct EventEditorView: View {
             Form {
                 TextField(PlannerCopy.text(.title, language: appLanguage), text: $title)
                 Toggle(PlannerCopy.text(.allDay, language: appLanguage), isOn: $isAllDay)
+                    .fufuControlTint()
                     .disabled(isMultiDay)
                 Toggle(PlannerCopy.text(.multiDayTask, language: appLanguage), isOn: $isMultiDay)
+                    .fufuControlTint()
                 datePickerRows
                 Toggle(PlannerCopy.text(.reminder, language: appLanguage), isOn: $hasReminder)
+                    .fufuControlTint()
                     .disabled(!localRemindersEnabled)
                 if localRemindersEnabled && hasReminder {
                     PlannerNumberInputRow(
@@ -471,6 +473,7 @@ private struct EventEditorView: View {
                         Text(selection.title(language: appLanguage)).tag(selection)
                     }
                 }
+                .fufuControlTint()
                 Button {
                     showingTagSelector = true
                 } label: {
@@ -1023,7 +1026,7 @@ private struct FuFuInlineDatePickerPanel: View {
                 DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
                     .labelsHidden()
                     .datePickerStyle(.compact)
-                    .tint(MeowPlannerTheme.caramel)
+                    .fufuControlTint()
             }
 
             if allowsEndTime,
@@ -1036,7 +1039,7 @@ private struct FuFuInlineDatePickerPanel: View {
                 Toggle(PlannerCopy.text(.hasEndTime, language: appLanguage), isOn: endTimeToggleBinding(hasEndTime))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MeowPlannerTheme.cocoa)
-                    .tint(MeowPlannerTheme.caramel)
+                    .fufuControlTint()
 
                 if hasEndTime.wrappedValue {
                     HStack {
@@ -1047,7 +1050,7 @@ private struct FuFuInlineDatePickerPanel: View {
                         DatePicker("", selection: endTimeSelectionBinding(endSelection), displayedComponents: .hourAndMinute)
                             .labelsHidden()
                             .datePickerStyle(.compact)
-                            .tint(MeowPlannerTheme.caramel)
+                            .fufuControlTint()
                     }
                 }
             }

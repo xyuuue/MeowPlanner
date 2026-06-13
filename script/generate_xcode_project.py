@@ -99,6 +99,7 @@ CORE_SOURCES = [
 
 APP_SOURCES = [
     "Sources/MeowPlannerApp/App/MeowPlannerApp.swift",
+    "Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift",
     "Sources/MeowPlannerApp/Support/AccountSessionStore.swift",
     "Sources/MeowPlannerApp/Support/AppDockIconController.swift",
     "Sources/MeowPlannerApp/Support/AppIconInstaller.swift",
@@ -110,6 +111,8 @@ APP_SOURCES = [
     "Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift",
     "Sources/MeowPlannerApp/Support/WidgetConstants.swift",
     "Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift",
+    "Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift",
+    "Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift",
     "Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift",
     "Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift",
     "Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift",

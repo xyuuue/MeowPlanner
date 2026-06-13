@@ -48,3 +48,45 @@ public enum CloudDeletionTracker {
             .sorted()
     }
 }
+
+public enum CloudRecordMergeDecision {
+    public static func shouldApplyRemoteRecord(
+        localUpdatedAt: Date?,
+        remoteUpdatedAt: Date?,
+        isPendingLocalDeletion: Bool = false,
+        remoteIsDeleted: Bool = false
+    ) -> Bool {
+        if isPendingLocalDeletion && !remoteIsDeleted {
+            return false
+        }
+
+        guard let localUpdatedAt else {
+            return true
+        }
+
+        guard let remoteUpdatedAt else {
+            return false
+        }
+
+        return remoteUpdatedAt >= localUpdatedAt
+    }
+
+    public static func shouldApplyRemoteDeletion(
+        localUpdatedAt: Date?,
+        remoteUpdatedAt: Date?
+    ) -> Bool {
+        shouldApplyRemoteRecord(
+            localUpdatedAt: localUpdatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+    }
+}
+
+public enum SyncedUserDefaultMergeDecision {
+    public static func shouldApplyRemoteValue(localUpdatedAt: Date?, remoteUpdatedAt: Date?) -> Bool {
+        CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: localUpdatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+    }
+}

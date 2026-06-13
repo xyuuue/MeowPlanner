@@ -218,7 +218,9 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appLanguage) private var appLanguage
     @AppStorage(AppLanguage.storageKey) private var cloudAppLanguageID = AppLanguage.english.rawValue
+    @AppStorage(AppLanguage.updatedAtStorageKey) private var cloudAppLanguageUpdatedAt = 0.0
     @AppStorage(AppAppearancePreference.storageKey) private var cloudAppearanceID = AppAppearancePreference.system.rawValue
+    @AppStorage(AppAppearancePreference.updatedAtStorageKey) private var cloudAppearanceUpdatedAt = 0.0
     @AppStorage(AppDockIconController.storageKey) private var cloudShowDockIcon = AppDockIconController.defaultShowDockIcon
     @AppStorage("meowplanner.sidebar.sectionOrder") private var sidebarSectionOrderRaw = AppSection.defaultSidebarOrderStorageValue
     @Query(sort: \PlannerEvent.startDate) private var widgetEvents: [PlannerEvent]
@@ -236,6 +238,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var accountStore = AccountSessionStore.shared
     @State private var selection: AppSection = .calendar
+    @State private var settingsNavigationPath: [SettingsDestination] = []
     @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var calendarRenderToken = UUID()
     @State private var pendingWidgetRefreshTask: Task<Void, Never>?
@@ -260,7 +263,6 @@ struct RootView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(MeowPlannerTheme.plannerGradient)
-            .navigationTitle("MeowPlanner")
             .navigationSplitViewColumnWidth(min: 96, ideal: 210, max: 260)
         } detail: {
             ZStack {
@@ -279,6 +281,7 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar(removing: .sidebarToggle)
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .background(SidebarToolbarOverflowCleaner(trigger: sidebarVisibility).frame(width: 0, height: 0))
         .onAppear {
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
@@ -348,7 +351,7 @@ struct RootView: View {
     }
 
     private func scheduleCloudAppDataSync() {
-        FirestoreAppDataSyncService.shared.scheduleSync(using: modelContext)
+        FirestoreAppDataSyncService.shared.scheduleSync(for: accountStore.currentProfile?.remoteUserID, using: modelContext)
     }
 
     private var orderedSections: [AppSection] {
@@ -570,7 +573,9 @@ struct RootView: View {
         let courseSessionPart = cloudCourseSessions.map(courseSessionSignature).joined(separator: ";")
         let settingsPart = [
             cloudAppLanguageID,
+            String(cloudAppLanguageUpdatedAt),
             cloudAppearanceID,
+            String(cloudAppearanceUpdatedAt),
             String(cloudShowDockIcon),
             sidebarSectionOrderRaw
         ].joined(separator: ";")
@@ -593,6 +598,8 @@ struct RootView: View {
     }
 
     private func selectSidebarSection(_ section: AppSection) {
+        settingsNavigationPath.removeAll()
+
         switch section {
         case .calendar:
             refreshCalendarAfterExternalOpen()
@@ -856,6 +863,10 @@ struct RootView: View {
         String(date.timeIntervalSince1970)
     }
 
+    private var isSignedOutWorkspace: Bool {
+        accountStore.currentProfile == nil
+    }
+
     @ViewBuilder
     private var sectionView: some View {
         sectionContent(for: selection)
@@ -863,20 +874,63 @@ struct RootView: View {
 
     @ViewBuilder
     private func sectionContent(for section: AppSection) -> some View {
-        switch section {
-        case .calendar:
-            CalendarHomeView()
-                .id(calendarRenderToken)
-        case .todo:
-            TodoHomeView()
-        case .schedule:
-            ScheduleAgendaView()
-        case .timetable:
-            CourseTimetableView()
-        case .focus:
-            FocusView()
-        case .settings:
-            SettingsView()
+        Group {
+            switch section {
+            case .calendar:
+                CalendarHomeView()
+                    .id(calendarRenderToken)
+            case .todo:
+                TodoHomeView()
+            case .schedule:
+                ScheduleAgendaView()
+            case .timetable:
+                CourseTimetableView()
+            case .focus:
+                FocusView()
+            case .settings:
+                SettingsView(navigationPath: $settingsNavigationPath)
+            }
+        }
+        .modifier(SignedOutWorkspaceReadOnlyModifier(
+            isEnabled: isSignedOutWorkspace && section != .settings,
+            language: appLanguage
+        ))
+    }
+}
+
+private struct SignedOutWorkspaceReadOnlyModifier: ViewModifier {
+    var isEnabled: Bool
+    var language: AppLanguage
+
+    func body(content: Content) -> some View {
+        content
+            .disabled(isEnabled)
+            .overlay(alignment: .topTrailing) {
+                if isEnabled {
+                    signedOutBadge
+                }
+            }
+    }
+
+    private var signedOutBadge: some View {
+        Label(title, systemImage: "lock")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(MeowPlannerTheme.cocoa)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(MeowPlannerTheme.cream.opacity(0.88), in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(MeowPlannerTheme.caramel.opacity(0.28), lineWidth: 1)
+            }
+            .padding(16)
+            .allowsHitTesting(false)
+    }
+
+    private var title: String {
+        switch language {
+        case .english: "Sign in to edit"
+        case .chinese: "登录后编辑"
         }
     }
 }
@@ -980,7 +1034,7 @@ private struct ScheduleAgendaView: View {
                 Text(option.title(language: appLanguage)).tag(option)
             }
         }
-        .pickerStyle(.segmented)
+        .fufuSegmentedPickerStyle()
         .frame(width: 180)
     }
 
@@ -1124,7 +1178,7 @@ private struct ScheduleDatePickerPanel: View {
                     Text(option.title(language: language)).tag(option)
                 }
             }
-            .pickerStyle(.segmented)
+            .fufuSegmentedPickerStyle()
 
             HStack {
                 Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
@@ -1636,6 +1690,7 @@ private struct SidebarToolbarOverflowCleaner: NSViewRepresentable {
                     }
 
                     window.toolbar = nil
+                    MainWindowChromeConfigurator.apply(to: window)
                 }
             }
         }

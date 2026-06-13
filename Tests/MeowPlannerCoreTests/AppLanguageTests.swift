@@ -9,6 +9,7 @@ struct AppLanguageTests {
         #expect(AppLanguage.english.displayName == "English")
         #expect(AppLanguage.chinese.displayName == "中文")
         #expect(AppLanguage.storageKey == "appLanguage")
+        #expect(AppLanguage.updatedAtStorageKey == "appLanguage.updatedAt")
     }
 
     @Test("planner copy resolves core navigation labels")
@@ -39,8 +40,21 @@ struct AppLanguageTests {
         #expect(PlannerCopy.text(.account, language: .chinese) == "账号")
         #expect(PlannerCopy.text(.email, language: .english) == "Email")
         #expect(PlannerCopy.text(.email, language: .chinese) == "邮箱")
-        #expect(PlannerCopy.text(.phoneComingSoon, language: .english) == "Coming soon")
-        #expect(PlannerCopy.text(.wechatNeedsSetup, language: .chinese) == "需要开放平台配置")
+        #expect(PlannerCopy.text(.signInExistingAccount, language: .english) == "Sign In")
+        #expect(PlannerCopy.text(.createNewAccount, language: .chinese) == "新建账号")
+        #expect(PlannerCopy.text(.forgotPassword, language: .english) == "Forgot Password")
+        #expect(PlannerCopy.text(.changePassword, language: .chinese) == "更改密码")
+        #expect(PlannerCopy.text(.linkAccount, language: .chinese) == "关联账号")
+        #expect(PlannerCopy.text(.deleteAccount, language: .english) == "Delete Account")
+        #expect(PlannerCopy.text(.deleteAccountConfirmationMessage, language: .chinese) == "是否确认删除账号，删除账号不可找回")
+        #expect(PlannerCopy.text(.optionalEmail, language: .chinese) == "邮箱（可选）")
+        #expect(PlannerCopy.text(.verificationCode, language: .english) == "Verification Code")
+        #expect(PlannerCopy.text(.verificationCode, language: .chinese) == "验证码")
+        #expect(PlannerCopy.text(.confirmNewPassword, language: .chinese) == "再次输入新密码")
+        #expect(PlannerCopy.text(.passwordConfirmationMismatch, language: .chinese) == "两次输入的密码不一样")
+        #expect(PlannerCopy.text(.sendResetLink, language: .chinese) == "发送链接")
+        #expect(PlannerCopy.text(.passwordResetLinkSent, language: .chinese) == "查看邮箱链接，如果在 inbox 里面没有找到，请查看 spam")
+        #expect(PlannerCopy.text(.passwordResetComplete, language: .chinese) == "密码已更新，请使用新密码登录。")
     }
 
     @Test("English product copy contains no Chinese text")

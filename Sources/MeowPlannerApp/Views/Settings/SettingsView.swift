@@ -3,6 +3,20 @@ import SwiftData
 import SwiftUI
 import WidgetKit
 
+enum SettingsDestination: Hashable {
+    case account
+    case personalization
+}
+
+private enum SettingsSheet: String, Identifiable {
+    case eventColorEditor
+    case linkAccount
+    case changePassword
+    case deleteAccount
+
+    var id: String { rawValue }
+}
+
 struct SettingsView: View {
     @Query private var preferences: [PlannerPreference]
     @Environment(\.appLanguage) private var appLanguage
@@ -11,6 +25,7 @@ struct SettingsView: View {
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
     @StateObject private var accountStore = AccountSessionStore.shared
+    private let defaults = UserDefaults.standard
 
     @State private var focusMinutes = PlannerPreference.defaults.defaultFocusMinutes
     @State private var weekStartPreference = PlannerPreference.defaults.weekStartPreference
@@ -26,152 +41,42 @@ struct SettingsView: View {
     @State private var timeDisplayPreference = PlannerPreference.defaults.timeDisplayPreference
     @State private var eventColorHexes = PlannerPreference.defaultEventColorHexes
     @State private var showingTimeCollapsePanel = false
-    @State private var showingEventColorEditor = false
+    @State private var activeSettingsSheet: SettingsSheet?
+    @State private var showingDeleteAccountConfirmation = false
     @State private var eventColorEditorHex = PlannerPreference.defaultEventColorHexes[0]
     @State private var eventColorEditorOriginalHex: String?
+    @Binding private var navigationPath: [SettingsDestination]
+
+    init(navigationPath: Binding<[SettingsDestination]> = .constant([])) {
+        _navigationPath = navigationPath
+    }
 
     var body: some View {
-        Form {
-            Section {
-                HStack(spacing: 14) {
-                    FuFuAssetImage(size: 64)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("MeowPlanner")
-                            .font(.title3.bold())
-                        Text(PlannerCopy.text(.fufuTimePlanner, language: appLanguage))
-                            .foregroundStyle(.secondary)
-                        Text(PlannerCopy.text(.appSubtitle, language: appLanguage))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+        NavigationStack(path: $navigationPath) {
+            settingsHomePage
+                .navigationDestination(for: SettingsDestination.self) { destination in
+                    switch destination {
+                    case .account:
+                        accountSettingsPage
+                    case .personalization:
+                        personalizationSettingsPage
                     }
                 }
-            }
-
-            AccountSettingsSection(accountStore: accountStore)
-
-            Section(PlannerCopy.text(.language, language: appLanguage)) {
-                Picker(PlannerCopy.text(.language, language: appLanguage), selection: $appLanguageID) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.displayName).tag(language.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-
-            Section(appearanceSectionTitle) {
-                Picker(appearanceSystemModeTitle, selection: appearanceSystemModeBinding) {
-                    Text(AppAppearancePreference.system.title(language: appLanguage))
-                        .tag(AppAppearancePreference.system.rawValue)
-                    Text(appearanceManualModeTitle)
-                        .tag(appearanceManualSelectionID)
-                }
-                .pickerStyle(.segmented)
-
-                if AppAppearancePreference(storedValue: appearanceID) != .system {
-                    Picker(appearanceManualModeTitle, selection: appearanceManualModeBinding) {
-                        Text(AppAppearancePreference.light.title(language: appLanguage))
-                            .tag(AppAppearancePreference.light.rawValue)
-                        Text(AppAppearancePreference.dark.title(language: appLanguage))
-                            .tag(AppAppearancePreference.dark.rawValue)
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
-
-            Section(PlannerCopy.text(.dockIcon, language: appLanguage)) {
-                Toggle(PlannerCopy.text(.showDockIcon, language: appLanguage), isOn: $showDockIcon)
-            }
-
-            Section(PlannerCopy.text(.focusSettings, language: appLanguage)) {
-                PlannerNumberInputRow(
-                    title: PlannerCopy.text(.defaultFocus, language: appLanguage),
-                    value: $focusMinutes,
-                    range: 0...Int.max,
-                    suffix: minuteUnit
-                )
-            }
-
-            Section(PlannerCopy.text(.personalizationSettings, language: appLanguage)) {
-                Picker(PlannerCopy.text(.weekStartsOn, language: appLanguage), selection: $weekStartPreference) {
-                    ForEach(WeekStartPreference.allCases) { preference in
-                        Text(preference.title(language: appLanguage)).tag(preference)
-                    }
-                }
-                Toggle(PlannerCopy.text(.defaultAllDaySchedule, language: appLanguage), isOn: $defaultEventIsAllDay)
-                Toggle(PlannerCopy.text(.hideCompletedSchedules, language: appLanguage), isOn: $hideCompletedSchedules)
-                Toggle(PlannerCopy.text(.completedScheduleStrikethrough, language: appLanguage), isOn: $completedSchedulesUseStrikethrough)
-                    .disabled(hideCompletedSchedules)
-                Toggle(PlannerCopy.text(.showChineseCalendar, language: appLanguage), isOn: $showChineseCalendar)
-                Toggle(PlannerCopy.text(.timeCollapse, language: appLanguage), isOn: $scheduleTimeCollapseEnabled)
-                if scheduleTimeCollapseEnabled {
-                    timeCollapseSettingsButton
-                }
-                Picker(PlannerCopy.text(.timeDisplay, language: appLanguage), selection: $timeDisplayPreference) {
-                    ForEach(TimeDisplayPreference.allCases) { preference in
-                        Text(preference.title(language: appLanguage)).tag(preference)
-                    }
-                }
-                .pickerStyle(.segmented)
-                Toggle(PlannerCopy.text(.localReminders, language: appLanguage), isOn: $notificationsEnabled)
-            }
-
-            Section(PlannerCopy.text(.eventColors, language: appLanguage)) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(eventColorHexes, id: \.self) { colorHex in
-                            SettingsEventColorSwatch(
-                                colorHex: colorHex,
-                                canDelete: eventColorHexes.count > 1,
-                                onEdit: { openEventColorEditor(colorHex) },
-                                onDelete: { deleteEventColor(colorHex) }
-                            )
-                        }
-
-                        Button {
-                            openEventColorEditor()
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 15, weight: .bold))
-                                .frame(width: 32, height: 32)
-                                .foregroundStyle(MeowPlannerTheme.caramel)
-                                .background(MeowPlannerTheme.cream.opacity(0.72), in: Circle())
-                                .overlay {
-                                    Circle()
-                                        .stroke(MeowPlannerTheme.caramel.opacity(0.32), lineWidth: 1)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(PlannerCopy.text(.addColor, language: appLanguage))
-                    }
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 12)
-                }
-            }
-
-            Section(PlannerCopy.text(.sync, language: appLanguage)) {
-                LabeledContent(PlannerCopy.text(.icloudSync, language: appLanguage)) {
-                    Text(accountStore.currentProfile?.emailAddress ?? PlannerCopy.text(.notSignedIn, language: appLanguage))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(PlannerCopy.text(.icloudDescription, language: appLanguage))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section(PlannerCopy.text(.scope, language: appLanguage)) {
-                Text(PlannerCopy.text(.scopeDescription, language: appLanguage))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        }
+        .background(MeowPlannerTheme.plannerGradient)
+        .alert(PlannerCopy.text(.deleteAccountConfirmationMessage, language: appLanguage), isPresented: $showingDeleteAccountConfirmation) {
+            Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
+            Button(PlannerCopy.text(.deleteAccount, language: appLanguage), role: .destructive) {
+                activeSettingsSheet = .deleteAccount
             }
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .verticalPageScrollOnly()
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(MeowPlannerTheme.plannerGradient)
         .onAppear(perform: loadPreference)
+        .onChange(of: appLanguageID) { _, _ in
+            defaults.set(Date().timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
+        }
+        .onChange(of: appearanceID) { _, _ in
+            defaults.set(Date().timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)
+        }
         .onChange(of: focusMinutes) { _, newValue in
             preference.defaultFocusMinutes = newValue
             try? modelContext.save()
@@ -227,7 +132,79 @@ struct SettingsView: View {
         .onChange(of: showDockIcon) { _, newValue in
             AppDockIconController.apply(showDockIcon: newValue, relaunchIfNeeded: true)
         }
-        .sheet(isPresented: $showingEventColorEditor) {
+    }
+
+    private var settingsHomePage: some View {
+        settingsForm {
+            appHeaderSection
+
+            Section {
+                NavigationLink(value: SettingsDestination.account) {
+                    SettingsDestinationRow(
+                        title: PlannerCopy.text(.account, language: appLanguage),
+                        subtitle: accountDestinationSubtitle,
+                        systemImage: "person.crop.circle"
+                    )
+                }
+
+                NavigationLink(value: SettingsDestination.personalization) {
+                    SettingsDestinationRow(
+                        title: PlannerCopy.text(.personalizationSettings, language: appLanguage),
+                        subtitle: personalizationDestinationSubtitle,
+                        systemImage: "slider.horizontal.3"
+                    )
+                }
+            }
+
+            scopeSection
+        }
+        .navigationTitle(PlannerCopy.text(.settings, language: appLanguage))
+    }
+
+    private var accountSettingsPage: some View {
+        settingsForm {
+            AccountSettingsSection(accountStore: accountStore)
+
+            syncSection
+
+            if accountStore.currentProfile != nil {
+                accountActionsSection
+            }
+        }
+        .navigationTitle(PlannerCopy.text(.account, language: appLanguage))
+    }
+
+    private var personalizationSettingsPage: some View {
+        settingsForm {
+            languageSection
+            appearanceSection
+            dockIconSection
+            focusSection
+            personalizationSection
+            eventColorsSection
+        }
+        .navigationTitle(PlannerCopy.text(.personalizationSettings, language: appLanguage))
+    }
+
+    private func settingsForm<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        Form {
+            content()
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .verticalPageScrollOnly()
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(MeowPlannerTheme.plannerGradient)
+        .sheet(item: $activeSettingsSheet) { sheet in
+            settingsSheetContent(sheet)
+        }
+    }
+
+    @ViewBuilder
+    private func settingsSheetContent(_ sheet: SettingsSheet) -> some View {
+        switch sheet {
+        case .eventColorEditor:
             SettingsEventColorEditorView(
                 initialColorHex: eventColorEditorHex,
                 originalColorHex: eventColorEditorOriginalHex
@@ -238,8 +215,207 @@ struct SettingsView: View {
                     addEventColor(colorHex)
                 }
             }
+        case .changePassword:
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .changePassword
+            )
+        case .linkAccount:
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .linkAccount
+            )
+        case .deleteAccount:
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .deleteAccount
+            )
         }
-        .navigationTitle(PlannerCopy.text(.settings, language: appLanguage))
+    }
+
+    private var appHeaderSection: some View {
+        Section {
+            HStack(spacing: 14) {
+                FuFuAssetImage(size: 64)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("MeowPlanner")
+                        .font(.title3.bold())
+                    Text(PlannerCopy.text(.fufuTimePlanner, language: appLanguage))
+                        .foregroundStyle(.secondary)
+                    Text(PlannerCopy.text(.appSubtitle, language: appLanguage))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var languageSection: some View {
+        Section(PlannerCopy.text(.language, language: appLanguage)) {
+            Picker(PlannerCopy.text(.language, language: appLanguage), selection: $appLanguageID) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.displayName).tag(language.rawValue)
+                }
+            }
+            .fufuSegmentedPickerStyle()
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section(appearanceSectionTitle) {
+            Picker(appearanceSystemModeTitle, selection: appearanceSystemModeBinding) {
+                Text(AppAppearancePreference.system.title(language: appLanguage))
+                    .tag(AppAppearancePreference.system.rawValue)
+                Text(appearanceManualModeTitle)
+                    .tag(appearanceManualSelectionID)
+            }
+            .fufuSegmentedPickerStyle()
+
+            if AppAppearancePreference(storedValue: appearanceID) != .system {
+                Picker(appearanceManualModeTitle, selection: appearanceManualModeBinding) {
+                    Text(AppAppearancePreference.light.title(language: appLanguage))
+                        .tag(AppAppearancePreference.light.rawValue)
+                    Text(AppAppearancePreference.dark.title(language: appLanguage))
+                        .tag(AppAppearancePreference.dark.rawValue)
+                }
+                .fufuSegmentedPickerStyle()
+            }
+        }
+    }
+
+    private var dockIconSection: some View {
+        Section(PlannerCopy.text(.dockIcon, language: appLanguage)) {
+            Toggle(PlannerCopy.text(.showDockIcon, language: appLanguage), isOn: $showDockIcon)
+                .fufuControlTint()
+        }
+    }
+
+    private var focusSection: some View {
+        Section(PlannerCopy.text(.focusSettings, language: appLanguage)) {
+            PlannerNumberInputRow(
+                title: PlannerCopy.text(.defaultFocus, language: appLanguage),
+                value: $focusMinutes,
+                range: 0...Int.max,
+                suffix: minuteUnit
+            )
+        }
+    }
+
+    private var personalizationSection: some View {
+        Section(PlannerCopy.text(.personalizationSettings, language: appLanguage)) {
+            Picker(PlannerCopy.text(.weekStartsOn, language: appLanguage), selection: $weekStartPreference) {
+                ForEach(WeekStartPreference.allCases) { preference in
+                    Text(preference.title(language: appLanguage)).tag(preference)
+                }
+            }
+            .fufuControlTint()
+            Toggle(PlannerCopy.text(.defaultAllDaySchedule, language: appLanguage), isOn: $defaultEventIsAllDay)
+                .fufuControlTint()
+            Toggle(PlannerCopy.text(.hideCompletedSchedules, language: appLanguage), isOn: $hideCompletedSchedules)
+                .fufuControlTint()
+            Toggle(PlannerCopy.text(.completedScheduleStrikethrough, language: appLanguage), isOn: $completedSchedulesUseStrikethrough)
+                .fufuControlTint()
+                .disabled(hideCompletedSchedules)
+            Toggle(PlannerCopy.text(.showChineseCalendar, language: appLanguage), isOn: $showChineseCalendar)
+                .fufuControlTint()
+            Toggle(PlannerCopy.text(.timeCollapse, language: appLanguage), isOn: $scheduleTimeCollapseEnabled)
+                .fufuControlTint()
+            if scheduleTimeCollapseEnabled {
+                timeCollapseSettingsButton
+            }
+            Picker(PlannerCopy.text(.timeDisplay, language: appLanguage), selection: $timeDisplayPreference) {
+                ForEach(TimeDisplayPreference.allCases) { preference in
+                    Text(preference.title(language: appLanguage)).tag(preference)
+                }
+            }
+            .fufuSegmentedPickerStyle()
+            Toggle(PlannerCopy.text(.localReminders, language: appLanguage), isOn: $notificationsEnabled)
+                .fufuControlTint()
+        }
+    }
+
+    private var eventColorsSection: some View {
+        Section(PlannerCopy.text(.eventColors, language: appLanguage)) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(eventColorHexes, id: \.self) { colorHex in
+                        SettingsEventColorSwatch(
+                            colorHex: colorHex,
+                            canDelete: eventColorHexes.count > 1,
+                            onEdit: { openEventColorEditor(colorHex) },
+                            onDelete: { deleteEventColor(colorHex) }
+                        )
+                    }
+
+                    Button {
+                        openEventColorEditor()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .frame(width: 32, height: 32)
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                            .background(MeowPlannerTheme.cream.opacity(0.72), in: Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(MeowPlannerTheme.caramel.opacity(0.32), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PlannerCopy.text(.addColor, language: appLanguage))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 12)
+            }
+        }
+    }
+
+    private var syncSection: some View {
+        Section(PlannerCopy.text(.sync, language: appLanguage)) {
+            LabeledContent(PlannerCopy.text(.icloudSync, language: appLanguage)) {
+                Text(accountStore.currentProfile?.emailAddress ?? PlannerCopy.text(.notSignedIn, language: appLanguage))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(PlannerCopy.text(.icloudDescription, language: appLanguage))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var scopeSection: some View {
+        Section(PlannerCopy.text(.scope, language: appLanguage)) {
+            Text(PlannerCopy.text(.scopeDescription, language: appLanguage))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var accountDestinationSubtitle: String {
+        if let profile = accountStore.currentProfile {
+            return accountDisplayName(for: profile)
+        }
+        return appLanguage == .chinese
+            ? "登录和账号信息"
+            : "Sign in and account details"
+    }
+
+    private var personalizationDestinationSubtitle: String {
+        appLanguage == .chinese
+            ? "语言、外观、Dock、专注和显示偏好"
+            : "Language, appearance, Dock, focus, and display preferences"
+    }
+
+    private func accountDisplayName(for profile: AccountProfile) -> String {
+        if let accountIdentifier = profile.accountIdentifier, !accountIdentifier.isEmpty {
+            return accountIdentifier
+        }
+        if let displayName = profile.displayName, !displayName.isEmpty {
+            return displayName
+        }
+        if let emailAddress = profile.emailAddress, !emailAddress.isEmpty {
+            return emailAddress
+        }
+        return profile.provider.title(language: appLanguage)
     }
 
     private var preference: PlannerPreference {
@@ -282,11 +458,12 @@ struct SettingsView: View {
                         .foregroundStyle(MeowPlannerTheme.caramel)
                     Image(systemName: "chevron.down")
                         .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(MeowPlannerTheme.caramel.opacity(0.72))
                 }
             }
         }
         .buttonStyle(.plain)
+        .fufuControlTint()
         .popover(isPresented: $showingTimeCollapsePanel, arrowEdge: .bottom) {
             timeCollapseSettingsPanel
         }
@@ -343,6 +520,38 @@ struct SettingsView: View {
         appLanguage == .chinese ? "分钟" : "min"
     }
 
+    private var accountActionsSection: some View {
+        Section {
+            Button {
+                activeSettingsSheet = .linkAccount
+            } label: {
+                Label(PlannerCopy.text(.linkAccount, language: appLanguage), systemImage: "person.crop.circle.badge.plus")
+            }
+
+            Button {
+                activeSettingsSheet = .changePassword
+            } label: {
+                Label(PlannerCopy.text(.changePassword, language: appLanguage), systemImage: "key")
+            }
+
+            Button(role: .destructive) {
+                showingDeleteAccountConfirmation = true
+            } label: {
+                SettingsDangerActionLabel(
+                    title: PlannerCopy.text(.deleteAccount, language: appLanguage),
+                    systemImage: "trash"
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button(role: .destructive) {
+                accountStore.signOut()
+            } label: {
+                Label(PlannerCopy.text(.signOut, language: appLanguage), systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        }
+    }
+
     private var appearanceManualSelectionID: String {
         "manual"
     }
@@ -390,7 +599,7 @@ struct SettingsView: View {
         let editorColorHex = colorHex ?? eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
         eventColorEditorHex = MeowPlannerTheme.normalizedHex(editorColorHex) ?? PlannerPreference.defaultEventColorHexes[0]
         eventColorEditorOriginalHex = colorHex
-        showingEventColorEditor = true
+        activeSettingsSheet = .eventColorEditor
     }
 
     private func addEventColor(_ value: String) {
@@ -429,6 +638,50 @@ struct SettingsView: View {
         eventColorHexes.removeAll { $0 == colorHex }
         preference.eventColorHexes = eventColorHexes
         try? modelContext.save()
+    }
+}
+
+private struct SettingsDestinationRow: View {
+    var title: String
+    var subtitle: String
+    var systemImage: String
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 24, height: 24)
+        }
+        .padding(.vertical, 3)
+    }
+}
+
+private struct SettingsDangerActionLabel: View {
+    var title: String
+    var systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(.red)
+            .lineLimit(1)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 10)
+            .background(.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(.red.opacity(0.28), lineWidth: 1)
+            }
     }
 }
 

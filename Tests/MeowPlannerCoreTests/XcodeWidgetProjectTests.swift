@@ -61,6 +61,18 @@ struct XcodeWidgetProjectTests {
         let script = try String(contentsOf: scriptFile, encoding: .utf8)
 
         #expect(script.contains("INSTALL_BUNDLE=\"/Applications/$APP_NAME.app\""))
+        #expect(script.contains("SIGNING_MODE=\"${SIGNING_MODE:-auto}\""))
+        #expect(script.contains("detect_development_team()"))
+        #expect(script.contains("Apple Development:"))
+        #expect(script.contains("security find-certificate -c \"$identity_name\" -p"))
+        #expect(script.contains("USE_SIGNED_BUILD=1"))
+        #expect(script.contains("verify_installable_app()"))
+        #expect(script.contains("Signature=adhoc"))
+        #expect(script.contains("TeamIdentifier=not set"))
+        #expect(script.contains("Cannot install $APP_NAME without a non-ad-hoc Apple signature"))
+        #expect(script.contains("keychain-access-groups"))
+        #expect(script.contains("verify_installable_app \"$APP_BUNDLE\""))
+        #expect(script.contains("Cannot install $APP_NAME without keychain-access-groups"))
         #expect(script.contains("install_app()"))
         #expect(script.contains("rm -rf \"$INSTALL_BUNDLE\""))
         #expect(script.contains("/usr/bin/ditto \"$APP_BUNDLE\" \"$INSTALL_BUNDLE\""))
@@ -124,6 +136,7 @@ struct XcodeWidgetProjectTests {
     func firestoreSyncCoversEveryLocalPlannerDataModel() throws {
         let root = try packageRoot()
         let rootViewFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
         let syncServiceFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift")
         let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
         let projectFile = root
@@ -131,6 +144,7 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("project.pbxproj")
 
         let rootView = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
         let syncService = try String(contentsOf: syncServiceFile, encoding: .utf8)
         let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
         let project = try String(contentsOf: projectFile, encoding: .utf8)
@@ -173,44 +187,288 @@ struct XcodeWidgetProjectTests {
         #expect(rootView.contains("appDataCloudSyncSignature"))
         #expect(rootView.contains("scheduleCloudAppDataSync()"))
         #expect(syncService.contains("CloudDeletionTracker.missingUploadedDocumentIDs"))
+        #expect(syncService.contains("CloudRecordMergeDecision.shouldApplyRemoteRecord"))
+        #expect(syncService.contains("CloudRecordMergeDecision.shouldApplyRemoteDeletion"))
+        #expect(syncService.contains("stageLocalDeletions"))
+        #expect(syncService.contains("pendingDeletedDocumentIDs"))
+        #expect(syncService.contains("clearPendingDeletedDocumentID"))
+        #expect(settingsSource.contains("defaults.set(Date().timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)"))
+        #expect(settingsSource.contains("defaults.set(Date().timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)"))
+        #expect(rootView.contains("cloudAppLanguageUpdatedAt"))
+        #expect(rootView.contains("cloudAppearanceUpdatedAt"))
+        #expect(syncService.contains("\"appLanguageUpdatedAt\": languageUpdatedAt"))
+        #expect(syncService.contains("\"appearanceUpdatedAt\": appearanceUpdatedAt"))
+        #expect(syncService.contains("SyncedUserDefaultMergeDecision.shouldApplyRemoteValue"))
+        #expect(syncService.contains("shouldApplyRemoteAppearancePreference"))
         #expect(generatorSource.contains("FirestoreAppDataSyncService.swift"))
         #expect(project.contains("FirestoreAppDataSyncService.swift"))
     }
 
-    @Test("account settings use Firebase email authentication and no Apple sign in")
-    func accountSettingsUseFirebaseEmailAuthentication() throws {
+    @Test("account settings present one login button with account modal flows")
+    func accountSettingsPresentOneLoginButtonWithAccountModalFlows() throws {
         let root = try packageRoot()
         let accountSectionFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift")
+        let accountModalFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift")
         let accountStoreFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Support/AccountSessionStore.swift")
+        let authClientFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift")
         let scriptFile = root
             .appendingPathComponent("script/build_and_run.sh")
         let entitlementsFile = root
             .appendingPathComponent("Config/MeowPlanner.entitlements")
 
         let accountSectionSource = try String(contentsOf: accountSectionFile, encoding: .utf8)
+        let accountModalSource = try String(contentsOf: accountModalFile, encoding: .utf8)
         let accountStoreSource = try String(contentsOf: accountStoreFile, encoding: .utf8)
+        let authClientSource = try String(contentsOf: authClientFile, encoding: .utf8)
         let script = try String(contentsOf: scriptFile, encoding: .utf8)
         let entitlements = try String(contentsOf: entitlementsFile, encoding: .utf8)
 
         #expect(!accountSectionSource.contains("SignInWithAppleButton"))
         #expect(!accountSectionSource.contains("AuthenticationServices"))
         #expect(!accountSectionSource.contains("ASAuthorization"))
-        #expect(accountSectionSource.contains("accountStore.signInEmail(email: emailAddress, password: password)"))
-        #expect(accountSectionSource.contains("accountStore.registerEmail(email: emailAddress, password: password)"))
-        #expect(accountSectionSource.contains("isFirebaseNetworkError"))
-        #expect(accountSectionSource.contains("Cannot connect to Firebase"))
+        #expect(accountSectionSource.contains("showingAuthenticationModal"))
+        #expect(accountSectionSource.contains("AccountAuthenticationModalView"))
+        #expect(accountSectionSource.contains("PlannerCopy.text(.loginButton"))
+        #expect(!accountSectionSource.contains("LabeledContent(PlannerCopy.text(.provider"))
+        #expect(!accountSectionSource.contains("TextField(PlannerCopy.text(.email"))
+        #expect(!accountSectionSource.contains("accountStore.registerEmail(email: emailAddress, password: password)"))
+        #expect(accountModalSource.contains("enum AccountAuthenticationMode"))
+        #expect(accountModalSource.contains("case signIn"))
+        #expect(accountModalSource.contains("case createAccount"))
+        #expect(accountModalSource.contains("case forgotPassword"))
+        #expect(accountModalSource.contains("case linkAccount"))
+        #expect(accountModalSource.contains("case deleteAccount"))
+        #expect(accountModalSource.contains("AccountLoginMethod.allCases"))
+        #expect(accountModalSource.contains("accountStore.linkAccount"))
+        #expect(accountModalSource.contains("accountStore.deleteAccount"))
+        #expect(accountModalSource.contains("accountStore.registerAccount("))
+        #expect(accountModalSource.contains("emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty"))
+        #expect(!accountModalSource.contains("emailAddressForAccountRegistration"))
+        #expect(!accountModalSource.contains("PlannerCopy.text(.optionalEmail"))
+        #expect(accountModalSource.contains("Button(role: .destructive)"))
+        #expect(accountModalSource.contains("accountStore.sendEmailVerification"))
+        #expect(accountModalSource.contains("accountStore.sendPhoneVerification"))
+        #expect(accountModalSource.contains("accountStore.sendPasswordReset"))
+        #expect(accountModalSource.contains("PlannerCopy.text(.sendResetLink"))
+        #expect(accountModalSource.contains("PlannerCopy.text(.passwordResetLinkSent"))
+        #expect(!accountModalSource.contains("enum PasswordResetStep"))
+        #expect(!accountModalSource.contains("passwordResetStep = .verifyCode"))
+        #expect(!accountModalSource.contains("accountStore.verifyPasswordResetCode"))
+        #expect(!accountModalSource.contains("passwordResetStep = .setNewPassword"))
+        #expect(!accountModalSource.contains("SecureField(PlannerCopy.text(.confirmNewPassword"))
+        #expect(!accountModalSource.contains("accountStore.confirmPasswordReset"))
+        #expect(accountModalSource.contains("accountStore.changePassword(currentPassword: currentPassword, newPassword: newPassword)"))
+        #expect(accountModalSource.contains(".disabled(currentPassword.isEmpty || newPassword.isEmpty || accountStore.isAuthenticating)"))
         #expect(accountStoreSource.contains("FirebaseAccountAuthenticationClient"))
         #expect(accountStoreSource.contains("Task {"))
+        #expect(accountStoreSource.contains("registerAccount(identifier: String, email: String, password: String)"))
         #expect(accountStoreSource.contains("await self.authenticationClient.registerEmail"))
         #expect(accountStoreSource.contains("await self.authenticationClient.signInEmail"))
+        #expect(accountStoreSource.contains("linkAccount(identifier:"))
+        #expect(accountStoreSource.contains("deleteAccount(currentPassword:"))
+        #expect(accountStoreSource.contains("sendEmailVerification"))
+        #expect(accountStoreSource.contains("sendPhoneVerification"))
+        #expect(accountStoreSource.contains("sendPasswordReset"))
+        #expect(accountStoreSource.contains("func verifyPasswordResetCode"))
+        #expect(accountStoreSource.contains("authenticationClient.verifyPasswordResetCode"))
+        #expect(accountStoreSource.contains("func confirmPasswordReset(code: String, newPassword: String, confirmPassword: String"))
+        #expect(accountStoreSource.contains("EmailAddressRules.validatePasswordConfirmation"))
+        #expect(accountStoreSource.contains("authenticationClient.confirmPasswordReset"))
+        #expect(accountStoreSource.contains("func changePassword(currentPassword: String, newPassword: String)"))
+        #expect(accountStoreSource.contains("authenticationClient.changePassword(currentPassword: currentPassword, newPassword: newPassword)"))
+        #expect(authClientSource.contains("accountAliases"))
+        #expect(authClientSource.contains("AccountAliasRules.emailAddressForAccountRegistration"))
+        #expect(!authClientSource.contains("AccountAliasRules.internalEmailAddress"))
+        #expect(!authClientSource.contains("signIn(withEmail: internalEmailAddress"))
+        #expect(authClientSource.contains("linkAccount(identifier:"))
+        #expect(authClientSource.contains("deleteAccount(currentPassword:"))
+        #expect(authClientSource.contains("reauthenticate(with:"))
+        #expect(authClientSource.contains("user.delete"))
+        #expect(authClientSource.contains("sendEmailVerification"))
+        #expect(authClientSource.contains("sendPasswordReset"))
+        #expect(authClientSource.contains("func verifyPasswordResetCode"))
+        #expect(authClientSource.contains("Auth.auth().verifyPasswordResetCode"))
+        #expect(authClientSource.contains("func confirmPasswordReset"))
+        #expect(authClientSource.contains("Auth.auth().confirmPasswordReset"))
+        #expect(authClientSource.contains("sendPhoneVerification"))
+        #expect(!authClientSource.contains("PhoneAuthProvider.provider()"))
+        #expect(authClientSource.contains("AccountAuthenticationError.providerUnavailable"))
+        let firebaseClientStart = try #require(authClientSource.range(of: "struct FirebaseAccountAuthenticationClient"))
+        let changePasswordStart = try #require(authClientSource.range(
+            of: "func changePassword(",
+            range: firebaseClientStart.upperBound..<authClientSource.endIndex
+        ))
+        let phoneVerificationStart = try #require(authClientSource.range(
+            of: "func sendPhoneVerification",
+            range: changePasswordStart.upperBound..<authClientSource.endIndex
+        ))
+        let changePasswordSource = String(authClientSource[changePasswordStart.lowerBound..<phoneVerificationStart.lowerBound])
+        #expect(changePasswordSource.contains("currentPassword: String"))
+        #expect(!changePasswordSource.contains("confirmPassword"))
+        let reauthenticationCall = "try await reauthenticate(with: currentPassword, user: user)"
+        let updatePasswordCall = "user.updatePassword(to: newPassword)"
+        let reauthenticationRange = try #require(changePasswordSource.range(of: reauthenticationCall))
+        let updatePasswordRange = try #require(changePasswordSource.range(of: updatePasswordCall))
+        #expect(reauthenticationRange.lowerBound < updatePasswordRange.lowerBound)
         #expect(!accountStoreSource.contains("signInWithApple"))
         #expect(!accountStoreSource.contains("appleAuthorizationFailed"))
         #expect(!script.contains("verify_apple_signin_entitlement"))
         #expect(!script.contains("com.apple.developer.applesignin"))
         #expect(script.contains("com.apple.security.network.client"))
         #expect(!entitlements.contains("com.apple.developer.applesignin"))
+    }
+
+    @Test("Firebase rules allow linked account aliases without exposing private planner data")
+    func firebaseRulesAllowLinkedAccountAliasesWithoutExposingPrivatePlannerData() throws {
+        let root = try packageRoot()
+        let firebaseConfigFile = root.appendingPathComponent("firebase.json")
+        let firestoreRulesFile = root.appendingPathComponent("firestore.rules")
+
+        #expect(FileManager.default.fileExists(atPath: firebaseConfigFile.path))
+        #expect(FileManager.default.fileExists(atPath: firestoreRulesFile.path))
+
+        let firebaseConfig = try String(contentsOf: firebaseConfigFile, encoding: .utf8)
+        let rules = try String(contentsOf: firestoreRulesFile, encoding: .utf8)
+
+        #expect(firebaseConfig.contains("\"firestore\""))
+        #expect(firebaseConfig.contains("\"rules\": \"firestore.rules\""))
+        #expect(rules.contains("match /users/{userID}/{document=**}"))
+        #expect(rules.contains("allow read, write: if isSignedIn() && request.auth.uid == userID;"))
+        #expect(rules.contains("match /accountAliases/{aliasID}"))
+        #expect(rules.contains("allow get: if true;"))
+        #expect(rules.contains("allow list: if isSignedIn() && resource.data.userID == request.auth.uid;"))
+        #expect(rules.contains("request.resource.data.userID == request.auth.uid"))
+        #expect(rules.contains("resource.data.userID == request.auth.uid"))
+        #expect(rules.contains("request.resource.data.keys().hasOnly(["))
+        #expect(rules.contains("'identifier'"))
+        #expect(rules.contains("'emailAddress'"))
+        #expect(rules.contains("'userID'"))
+        #expect(rules.contains("'createdAt'"))
+        #expect(rules.contains("'updatedAt'"))
+    }
+
+    @Test("planner surfaces stay mounted while signed out with an empty workspace")
+    func plannerSurfacesStayMountedWhileSignedOutWithEmptyWorkspace() throws {
+        let root = try packageRoot()
+        let appFile = root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let gatedRootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift")
+        let accountContainerFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift")
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let rootViewFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let menuBarFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift")
+        let languageFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let gatedRootSource = sourceIfPresent(gatedRootFile)
+        let accountContainerSource = sourceIfPresent(accountContainerFile)
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let menuBarSource = try String(contentsOf: menuBarFile, encoding: .utf8)
+        let languageSource = try String(contentsOf: languageFile, encoding: .utf8)
+        let sheetModifierCount = settingsSource.components(separatedBy: ".sheet(").count - 1
+        let settingsFormSource = try sourceWindow(
+            in: settingsSource,
+            from: "private func settingsForm",
+            length: 900
+        )
+        let deleteAccountButtonSource = try sourceWindow(
+            in: settingsSource,
+            from: "showingDeleteAccountConfirmation = true",
+            length: 900
+        )
+
+        #expect(appSource.contains("AccountGatedRootView"))
+        #expect(appSource.contains("AccountGatedSettingsView"))
+        #expect(!gatedRootSource.contains("SignedOutAccountGateView"))
+        #expect(gatedRootSource.contains("accountStore.currentProfile"))
+        #expect(gatedRootSource.contains(".modelContainer(accountContainer)"))
+        #expect(gatedRootSource.contains(".modelContainer(signedOutModelContainer)"))
+        #expect(accountContainerSource.contains("ModelContainerFactory.makeAccountScoped"))
+        #expect(accountContainerSource.contains("ModelContainerFactory.makeSignedOutWorkspace"))
+        #expect(accountContainerSource.contains("signedOutModelContainer"))
+        #expect(accountContainerSource.contains("prepareSignedOutContainer"))
+        #expect(accountContainerSource.contains("migrateLegacyLocalDataIfNeeded"))
+        #expect(rootViewSource.contains("SignedOutWorkspaceReadOnlyModifier"))
+        #expect(rootViewSource.contains("isSignedOutWorkspace && section != .settings"))
+        #expect(rootViewSource.contains(".disabled(isEnabled)"))
+        #expect(rootViewSource.contains("scheduleSync(for: accountStore.currentProfile?.remoteUserID"))
+        #expect(menuBarSource.contains("accountStore.currentProfile"))
+        #expect(!menuBarSource.contains("SignedOutMenuBarView"))
+        #expect(menuBarSource.contains("signedOutModelContainer"))
+        #expect(settingsSource.contains("accountActionsSection"))
+        #expect(settingsSource.contains("Button(role: .destructive)"))
+        #expect(settingsSource.contains("PlannerCopy.text(.signOut"))
+        #expect(settingsSource.contains("PlannerCopy.text(.changePassword"))
+        #expect(settingsSource.contains("PlannerCopy.text(.linkAccount"))
+        #expect(settingsSource.contains("PlannerCopy.text(.deleteAccount"))
+        #expect(settingsSource.contains("showingDeleteAccountConfirmation"))
+        #expect(settingsSource.contains(".alert(PlannerCopy.text(.deleteAccountConfirmationMessage"))
+        #expect(settingsSource.contains("Button(PlannerCopy.text(.deleteAccount, language: appLanguage), role: .destructive)"))
+        #expect(settingsSource.contains("private enum SettingsSheet: String, Identifiable"))
+        #expect(settingsSource.contains("@State private var activeSettingsSheet: SettingsSheet?"))
+        #expect(sheetModifierCount == 1)
+        #expect(settingsFormSource.contains(".sheet(item: $activeSettingsSheet)"))
+        #expect(settingsSource.contains("activeSettingsSheet = .deleteAccount"))
+        #expect(settingsSource.contains("activeSettingsSheet = .changePassword"))
+        #expect(settingsSource.contains("activeSettingsSheet = .linkAccount"))
+        #expect(settingsSource.contains("case .changePassword"))
+        #expect(settingsSource.contains("initialMode: .changePassword"))
+        #expect(!settingsSource.contains("showingDeleteAccountModal"))
+        #expect(!settingsSource.contains("showingChangePasswordModal"))
+        #expect(!settingsSource.contains("showingLinkAccountModal"))
+        #expect(deleteAccountButtonSource.contains("SettingsDangerActionLabel("))
+        #expect(deleteAccountButtonSource.contains(".buttonStyle(.plain)"))
+        #expect(settingsSource.contains("private struct SettingsDangerActionLabel"))
+        #expect(settingsSource.contains(".foregroundStyle(.red)"))
+        #expect(settingsSource.contains(".background(.red.opacity(0.10)"))
+        #expect(settingsSource.contains(".stroke(.red.opacity(0.28)"))
+        #expect(languageSource.contains(".deleteAccountConfirmationMessage: \"是否确认删除账号，删除账号不可找回\""))
+    }
+
+    @Test("sign out clears local presentation state for private account data")
+    func signOutClearsLocalPresentationStateForPrivateAccountData() throws {
+        let root = try packageRoot()
+        let accountStoreFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/AccountSessionStore.swift")
+        let containerStoreFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift")
+        let timelineSyncFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift")
+        let coreSnapshotFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
+        let syncServiceFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift")
+
+        let accountStoreSource = try String(contentsOf: accountStoreFile, encoding: .utf8)
+        let containerStoreSource = sourceIfPresent(containerStoreFile)
+        let timelineSyncSource = try String(contentsOf: timelineSyncFile, encoding: .utf8)
+        let coreSnapshotSource = try String(contentsOf: coreSnapshotFile, encoding: .utf8)
+        let syncServiceSource = try String(contentsOf: syncServiceFile, encoding: .utf8)
+
+        #expect(accountStoreSource.contains("WidgetTimelineSyncService.clearSnapshotAndReload()"))
+        #expect(accountStoreSource.contains("AccountScopedModelContainerStore.shared.unload()"))
+        #expect(containerStoreSource.contains("func unload()"))
+        #expect(timelineSyncSource.contains("clearSnapshotAndReload"))
+        #expect(coreSnapshotSource.contains("public static func clear("))
+        #expect(syncServiceSource.contains("func scheduleSync(for userID: String?"))
+        #expect(syncServiceSource.contains("guard currentUserID == userID"))
+    }
+
+    @Test("account session does not restore stale local profile without Firebase auth")
+    func accountSessionDoesNotRestoreStaleLocalProfileWithoutFirebaseAuth() throws {
+        let root = try packageRoot()
+        let accountStoreFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/AccountSessionStore.swift")
+
+        let accountStoreSource = try String(contentsOf: accountStoreFile, encoding: .utf8)
+
+        #expect(accountStoreSource.contains("currentProfile = authenticationClient.currentProfile()"))
+        #expect(!accountStoreSource.contains("?? Self.decode(AccountProfile.self"))
+        #expect(accountStoreSource.contains("defaults.removeObject(forKey: Self.sessionStorageKey)"))
     }
 
     @Test("widget bundle version is bumped for WidgetKit metadata refresh")
@@ -222,8 +480,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.11")
-        #expect(plist["CFBundleVersion"] as? String == "12")
+        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.12")
+        #expect(plist["CFBundleVersion"] as? String == "13")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -587,7 +845,7 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains("_focusTimerStore = StateObject(wrappedValue: focusTimerStore)"))
         #expect(appSource.contains(".environmentObject(focusTimerStore)"))
         #expect(appSource.contains("MeowPlannerMenuBarLabel(openAppKitMainWindow: openAppKitMainWindow)"))
-        #expect(appSource.contains(".modelContainer(modelContainer)"))
+        #expect(appSource.contains("legacyModelContainer: legacyModelContainer"))
         #expect(appSource.contains(".menuBarExtraStyle(.window)"))
         #expect(navigationSource.contains("AppNavigationRequest.open(.focus)"))
         #expect(navigationSource.contains("AppNavigationRequest.open(.calendar)"))
@@ -599,6 +857,7 @@ struct XcodeWidgetProjectTests {
         #expect(menuBarSource.contains("Label(\"MeowPlanner\", systemImage: \"calendar.badge.clock\")"))
         #expect(menuBarSource.contains("if focusTimerStore.hasActiveSession"))
         #expect(menuBarSource.contains("FocusTimerMenuPanel("))
+        #expect(menuBarSource.contains(".modelContainer(accountContainer)"))
         #expect(menuBarSource.contains("inactiveMenu"))
         #expect(menuBarSource.contains("openCalendarPage()"))
         #expect(menuBarSource.contains("openFocusPage()"))
@@ -738,8 +997,8 @@ struct XcodeWidgetProjectTests {
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
         let themeSource = try String(contentsOf: themeFile, encoding: .utf8)
 
-        #expect(appSource.contains("RootView()"))
-        #expect(appSource.contains("SettingsView()"))
+        #expect(appSource.contains("AccountGatedRootView("))
+        #expect(appSource.contains("AccountGatedSettingsView("))
         #expect(appSource.contains("@AppStorage(AppAppearancePreference.storageKey)"))
         #expect(appSource.contains(".preferredColorScheme(appAppearance.preferredColorScheme)"))
         #expect(appSource.contains("AppAppearancePreferenceApplicator.apply(appAppearance)"))
@@ -815,6 +1074,99 @@ struct XcodeWidgetProjectTests {
         #expect(rootViewSource.contains("MeowPlannerTheme.softBrownHighlight"))
     }
 
+    @Test("segmented controls use FuFu brown tint instead of system blue")
+    func segmentedControlsUseFuFuBrownTintInsteadOfSystemBlue() throws {
+        let root = try packageRoot()
+        let themeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift")
+        let pickerFiles = [
+            "Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift",
+            "Sources/MeowPlannerApp/Views/Focus/FocusView.swift",
+            "Sources/MeowPlannerApp/Views/RootView.swift",
+            "Sources/MeowPlannerApp/Views/Settings/SettingsView.swift"
+        ]
+
+        let themeSource = try String(contentsOf: themeFile, encoding: .utf8)
+
+        #expect(themeSource.contains("func fufuSegmentedPickerStyle() -> some View"))
+        #expect(themeSource.contains(".pickerStyle(.segmented)"))
+        #expect(themeSource.contains(".tint(MeowPlannerTheme.pawButtonBrown)"))
+
+        for pickerFile in pickerFiles {
+            let source = try String(contentsOf: root.appendingPathComponent(pickerFile), encoding: .utf8)
+
+            #expect(source.contains(".fufuSegmentedPickerStyle()"))
+            #expect(!source.contains(".pickerStyle(.segmented)"))
+        }
+    }
+
+    @Test("toggles checkboxes and popup pickers use FuFu brown tint instead of system blue")
+    func togglesCheckboxesAndPopupPickersUseFuFuBrownTintInsteadOfSystemBlue() throws {
+        let root = try packageRoot()
+        let themeSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift"),
+            encoding: .utf8
+        )
+        let settingsSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift"),
+            encoding: .utf8
+        )
+        let timetableSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift"),
+            encoding: .utf8
+        )
+        let calendarSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift"),
+            encoding: .utf8
+        )
+        let todoSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift"),
+            encoding: .utf8
+        )
+        let focusSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Focus/FocusView.swift"),
+            encoding: .utf8
+        )
+        let habitsSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Habits/HabitsView.swift"),
+            encoding: .utf8
+        )
+        let emptyStateSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift"),
+            encoding: .utf8
+        )
+
+        #expect(themeSource.contains("func fufuControlTint() -> some View"))
+        #expect(themeSource.contains(".tint(MeowPlannerTheme.pawButtonBrown)"))
+
+        for marker in [
+            "Toggle(PlannerCopy.text(.showDockIcon",
+            "Toggle(PlannerCopy.text(.defaultAllDaySchedule",
+            "Toggle(PlannerCopy.text(.hideCompletedSchedules",
+            "Toggle(PlannerCopy.text(.completedScheduleStrikethrough",
+            "Toggle(PlannerCopy.text(.showChineseCalendar",
+            "Toggle(PlannerCopy.text(.timeCollapse",
+            "Toggle(PlannerCopy.text(.localReminders",
+            "Picker(PlannerCopy.text(.weekStartsOn"
+        ] {
+            #expect(try sourceWindow(in: settingsSource, from: marker).contains(".fufuControlTint()"))
+        }
+
+        #expect(try sourceWindow(in: timetableSource, from: "Toggle(PlannerCopy.text(.skipHolidays").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: todoSource, from: "Picker(PlannerCopy.text(.todoGroup").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: todoSource, from: "Toggle(PlannerCopy.text(.dueDate").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: calendarSource, from: "Toggle(PlannerCopy.text(.allDay").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: calendarSource, from: "Toggle(PlannerCopy.text(.multiDayTask").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: calendarSource, from: "Toggle(PlannerCopy.text(.reminder").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: calendarSource, from: "Picker(PlannerCopy.text(.repeatSchedule").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: calendarSource, from: "Toggle(PlannerCopy.text(.hasEndTime").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: focusSource, from: "Picker(PlannerCopy.text(.focusTag").contains(".fufuControlTint()"))
+        #expect(try sourceWindow(in: habitsSource, from: "Picker(PlannerCopy.text(.icon").contains(".fufuControlTint()"))
+        #expect(!habitsSource.contains(".tint(MeowPlannerTheme.fufuBlue)"))
+        #expect(!habitsSource.contains("? MeowPlannerTheme.fufuBlue"))
+        #expect(!emptyStateSource.contains(".tint(MeowPlannerTheme.fufuBlue)"))
+    }
+
     @Test("sidebar selection uses custom row highlight instead of native blue list selection")
     func sidebarSelectionUsesCustomRowHighlightInsteadOfNativeBlueListSelection() throws {
         let root = try packageRoot()
@@ -846,6 +1198,36 @@ struct XcodeWidgetProjectTests {
         #expect(selectableRowSource.contains("isReordering: isEditingSidebarOrder"))
         #expect(sidebarRowSource.contains("Spacer(minLength: 0)"))
         #expect(rootViewSource.contains("MeowPlannerTheme.softBrownHighlight"))
+    }
+
+    @Test("settings subpage navigation resets when sidebar section changes")
+    func settingsSubpageNavigationResetsWhenSidebarSectionChanges() throws {
+        let root = try packageRoot()
+        let rootViewFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let settingsFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+
+        let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let selectSectionSource = try sourceWindow(
+            in: rootViewSource,
+            from: "private func selectSidebarSection(_ section: AppSection)",
+            length: 420
+        )
+        let settingsSectionSource = try sourceWindow(
+            in: rootViewSource,
+            from: "case .settings:",
+            length: 180
+        )
+
+        #expect(rootViewSource.contains("@State private var settingsNavigationPath: [SettingsDestination] = []"))
+        #expect(settingsSectionSource.contains("SettingsView(navigationPath: $settingsNavigationPath)"))
+        #expect(selectSectionSource.contains("settingsNavigationPath.removeAll()"))
+        #expect(settingsSource.contains("enum SettingsDestination: Hashable"))
+        #expect(settingsSource.contains("@Binding private var navigationPath: [SettingsDestination]"))
+        #expect(settingsSource.contains("init(navigationPath: Binding<[SettingsDestination]> = .constant([]))"))
+        #expect(settingsSource.contains("NavigationStack(path: $navigationPath)"))
     }
 
     @Test("macOS sidebar uses custom collapse and expand controls without overflow")
@@ -905,6 +1287,33 @@ struct XcodeWidgetProjectTests {
         #expect(!rootViewSource.contains("Button(action: toggleSidebarVisibility)"))
         #expect(!rootViewSource.contains("Label(sidebarToggleTitle, systemImage: sidebarToggleSystemImage)"))
         #expect(!rootViewSource.contains("private func toggleSidebarVisibility()"))
+    }
+
+    @Test("main window uses FuFu chrome instead of default titlebar background")
+    func mainWindowUsesFuFuChromeInsteadOfDefaultTitlebarBackground() throws {
+        let root = try packageRoot()
+        let appFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let rootViewFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let calendarHomeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
+
+        #expect(appSource.contains("MainWindowChromeConfigurator.apply(to: window)"))
+        #expect(appSource.contains("window.titlebarAppearsTransparent = true"))
+        #expect(appSource.contains("window.titleVisibility = .hidden"))
+        #expect(appSource.contains("window.styleMask.insert(.fullSizeContentView)"))
+        #expect(appSource.contains("window.backgroundColor = NSColor(MeowPlannerTheme.fufuPlannerBackground)"))
+        #expect(appSource.contains("window.titlebarSeparatorStyle = .none"))
+        #expect(rootViewSource.contains(".toolbarBackground(.hidden, for: .windowToolbar)"))
+        #expect(rootViewSource.contains("MainWindowChromeConfigurator.apply(to: window)"))
+        #expect(rootViewSource.contains("window.toolbar = nil"))
+        #expect(!rootViewSource.contains(".navigationTitle(\"MeowPlanner\")"))
+        #expect(!calendarHomeSource.contains(".navigationTitle(\"MeowPlanner\")"))
     }
 
     @Test("app navigation removes habits and adds schedule agenda")
@@ -1706,7 +2115,8 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("eventColorHexes"))
         #expect(settingsSource.contains("addEventColor"))
         #expect(settingsSource.contains("deleteEventColor"))
-        #expect(settingsSource.contains("showingEventColorEditor"))
+        #expect(settingsSource.contains("activeSettingsSheet = .eventColorEditor"))
+        #expect(!settingsSource.contains("showingEventColorEditor"))
         #expect(settingsSource.contains("SettingsEventColorEditorView"))
         #expect(settingsSource.contains("ScrollView(.horizontal"))
         #expect(settingsSource.contains("SettingsEventColorSwatch"))
@@ -2238,6 +2648,21 @@ struct XcodeWidgetProjectTests {
         }
 
         throw CocoaError(.fileNoSuchFile)
+    }
+
+    private func sourceIfPresent(_ fileURL: URL) -> String {
+        (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+    }
+
+    private func sourceWindow(in source: String, from marker: String, length: Int = 700) throws -> String {
+        let markerRange = try #require(source.range(of: marker))
+        let endIndex = source.index(
+            markerRange.lowerBound,
+            offsetBy: length,
+            limitedBy: source.endIndex
+        ) ?? source.endIndex
+
+        return String(source[markerRange.lowerBound..<endIndex])
     }
 
     private func sourceBlock(in source: String, from startMarker: String, to endMarker: String) -> String? {

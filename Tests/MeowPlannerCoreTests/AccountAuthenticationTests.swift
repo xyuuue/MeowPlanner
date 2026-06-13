@@ -44,6 +44,42 @@ struct AccountAuthenticationTests {
         }
     }
 
+    @Test("password reset requires matching new password confirmation")
+    func passwordResetRequiresMatchingNewPasswordConfirmation() throws {
+        #expect(throws: AccountAuthenticationError.passwordConfirmationMismatch) {
+            try EmailAddressRules.validatePasswordConfirmation(
+                newPassword: "meowplanner-2026",
+                confirmPassword: "meowplanner-2027"
+            )
+        }
+
+        #expect(throws: AccountAuthenticationError.weakPassword(minimumCharacters: 8)) {
+            try EmailAddressRules.validatePasswordConfirmation(
+                newPassword: "short",
+                confirmPassword: "short"
+            )
+        }
+
+        try EmailAddressRules.validatePasswordConfirmation(
+            newPassword: "meowplanner-2026",
+            confirmPassword: "meowplanner-2026"
+        )
+    }
+
+    @Test("password reset code accepts direct codes and Firebase action links")
+    func passwordResetCodeAcceptsDirectCodesAndFirebaseActionLinks() throws {
+        #expect(try PasswordResetCodeRules.normalizedCode(from: "  reset-code-123  ") == "reset-code-123")
+        #expect(
+            try PasswordResetCodeRules.normalizedCode(
+                from: "https://meowplanner.example/__/auth/action?mode=resetPassword&oobCode=link-code-456&apiKey=fake"
+            ) == "link-code-456"
+        )
+
+        #expect(throws: AccountAuthenticationError.missingVerificationCode) {
+            try PasswordResetCodeRules.normalizedCode(from: "")
+        }
+    }
+
     @Test("email registration rejects duplicate accounts")
     func emailRegistrationRejectsDuplicates() throws {
         var authenticator = EmailAccountAuthenticator()
@@ -88,7 +124,8 @@ struct AccountAuthenticationTests {
         let profile = AccountProfile.firebaseEmail(
             userID: "firebase-user-123",
             emailAddress: "  CAT@Example.COM ",
-            displayName: "  FuFu  "
+            displayName: "  FuFu  ",
+            accountIdentifier: "  FuFu_2026  "
         )
 
         #expect(profile.id == "firebase:firebase-user-123")
@@ -96,5 +133,37 @@ struct AccountAuthenticationTests {
         #expect(profile.remoteUserID == "firebase-user-123")
         #expect(profile.emailAddress == "cat@example.com")
         #expect(profile.displayName == "FuFu")
+        #expect(profile.accountIdentifier == "fufu_2026")
+    }
+
+    @Test("account alias rules normalize account names for lookup")
+    func accountAliasRulesNormalizeAccountNamesForLookup() throws {
+        #expect(try AccountAliasRules.normalizedIdentifier("  FuFu_2026  ") == "fufu_2026")
+        #expect(try AccountAliasRules.normalizedIdentifier("Yueling.Qiu-1") == "yueling.qiu-1")
+        #expect(throws: AccountAuthenticationError.invalidAccountIdentifier) {
+            try AccountAliasRules.normalizedIdentifier("ab")
+        }
+        #expect(throws: AccountAuthenticationError.invalidAccountIdentifier) {
+            try AccountAliasRules.normalizedIdentifier("bad/account")
+        }
+    }
+
+    @Test("account alias registration requires a real email address for shared data identity")
+    func accountAliasRegistrationRequiresRealEmailForSharedIdentity() throws {
+        let emailAddress = try AccountAliasRules.emailAddressForAccountRegistration(
+            identifier: "  XYue  ",
+            email: "  XYUUUE@Gmail.COM "
+        )
+
+        #expect(emailAddress == "xyuuue@gmail.com")
+        #expect(throws: AccountAuthenticationError.invalidEmail) {
+            try AccountAliasRules.emailAddressForAccountRegistration(identifier: "XYue", email: "")
+        }
+        #expect(throws: AccountAuthenticationError.invalidEmail) {
+            try AccountAliasRules.emailAddressForAccountRegistration(
+                identifier: "XYue",
+                email: "xyue@accounts.meowplanner.local"
+            )
+        }
     }
 }

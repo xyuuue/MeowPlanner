@@ -39,6 +39,14 @@ enum WidgetTimelineSyncService {
     }
 
     @MainActor
+    static func clearSnapshotAndReload() {
+        WidgetPlannerSnapshotStore.clear()
+        WidgetPlannerPreferenceStore.weekStartPreference = .sunday
+        WidgetPlannerPreferenceStore.showChineseCalendar = true
+        reloadWidgetTimelines()
+    }
+
+    @MainActor
     private static func refreshSnapshotFromPersistentStore() {
         do {
             let snapshot = try WidgetPlannerSnapshotBuilder.makeSnapshotFromPersistentStore()

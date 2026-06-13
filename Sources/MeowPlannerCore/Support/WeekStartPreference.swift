@@ -362,6 +362,23 @@ public enum WidgetPlannerSnapshotStore {
         defaults.synchronize()
     }
 
+    public static func clear() {
+        clear(defaults: defaults, fileURLs: snapshotFileURLs)
+    }
+
+    public static func clear(defaults: UserDefaults, fileURL: URL?) {
+        clear(defaults: defaults, fileURLs: fileURL.map { [$0] } ?? [])
+    }
+
+    public static func clear(defaults: UserDefaults, fileURLs: [URL]) {
+        for fileURL in fileURLs {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        defaults.removeObject(forKey: snapshotKey)
+        defaults.synchronize()
+    }
+
     private static var defaults: UserDefaults {
         UserDefaults(suiteName: WidgetPlannerPreferenceStore.suiteName) ?? .standard
     }

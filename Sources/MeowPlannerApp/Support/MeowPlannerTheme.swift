@@ -478,6 +478,15 @@ struct FuFuAssetImage: View {
 }
 
 extension View {
+    func fufuSegmentedPickerStyle() -> some View {
+        self.pickerStyle(.segmented)
+            .tint(MeowPlannerTheme.pawButtonBrown)
+    }
+
+    func fufuControlTint() -> some View {
+        tint(MeowPlannerTheme.pawButtonBrown)
+    }
+
     func verticalPageScrollOnly() -> some View {
         #if os(macOS)
         background(VerticalOnlyScrollConfigurator())

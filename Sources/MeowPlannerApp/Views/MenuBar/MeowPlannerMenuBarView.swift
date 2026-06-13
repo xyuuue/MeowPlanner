@@ -8,11 +8,12 @@ import AppKit
 struct MeowPlannerMenuBarLabel: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var focusTimerStore: FocusTimerStore
+    @StateObject private var accountStore = AccountSessionStore.shared
     var openAppKitMainWindow: () -> Void
 
     var body: some View {
         Group {
-            if focusTimerStore.hasActiveSession {
+            if accountStore.currentProfile != nil && focusTimerStore.hasActiveSession {
                 Text(focusTimerStore.hasActiveSession ? focusTimerStore.formattedRemainingTime : "MeowPlanner")
                     .font(.system(.body, design: .rounded).monospacedDigit())
             } else {
@@ -38,10 +39,102 @@ struct MeowPlannerMenuBarLabel: View {
 
 struct MeowPlannerMenuBarView: View {
     @Environment(\.appLanguage) private var appLanguage
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var focusTimerStore: FocusTimerStore
+    @StateObject private var accountStore = AccountSessionStore.shared
+    @StateObject private var accountContainerStore = AccountScopedModelContainerStore.shared
+    let legacyModelContainer: ModelContainer
     var openAppKitMainWindow: () -> Void
+
+    var body: some View {
+        Group {
+            if accountStore.currentProfile == nil,
+               let signedOutModelContainer = accountContainerStore.signedOutModelContainer {
+                SignedInMenuBarContent(
+                    appLanguage: appLanguage,
+                    focusTimerStore: focusTimerStore,
+                    openMainWindow: openMainWindow,
+                    openCalendarPage: openCalendarPage,
+                    openFocusPage: openFocusPage,
+                    openSettingsPage: openSettingsPage
+                )
+                .modelContainer(signedOutModelContainer)
+                .id(accountContainerStore.signedOutWorkspaceID)
+            } else if let accountContainer = accountContainerStore.modelContainer,
+                      accountContainerStore.activeUserID == accountStore.currentProfile?.remoteUserID {
+                SignedInMenuBarContent(
+                    appLanguage: appLanguage,
+                    focusTimerStore: focusTimerStore,
+                    openMainWindow: openMainWindow,
+                    openCalendarPage: openCalendarPage,
+                    openFocusPage: openFocusPage,
+                    openSettingsPage: openSettingsPage
+                )
+                .modelContainer(accountContainer)
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(16)
+                    .frame(width: 230)
+                    .background(MeowPlannerTheme.fufuPlannerBackground)
+            }
+        }
+        .onAppear {
+            prepareAccountContainer()
+        }
+        .onChange(of: accountStore.currentProfile?.remoteUserID) { _, _ in
+            prepareAccountContainer()
+        }
+    }
+
+    private func prepareAccountContainer() {
+        if accountStore.currentProfile == nil {
+            accountContainerStore.prepareSignedOutContainer()
+            return
+        }
+
+        accountContainerStore.prepareContainer(
+            for: accountStore.currentProfile,
+            legacyModelContainer: legacyModelContainer
+        )
+    }
+
+    private func openCalendarPage() {
+        openSection(.calendar)
+    }
+
+    private func openFocusPage() {
+        openSection(.focus)
+    }
+
+    private func openSettingsPage() {
+        openSection(.settings)
+    }
+
+    private func openSection(_ section: AppSection) {
+        MainWindowLaunchCoordinator.openOrFocusMainWindow(openWindow: openMainWindow)
+
+        AppNavigationRequest.open(section)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            AppNavigationRequest.open(section)
+        }
+    }
+
+    private func openMainWindow() {
+        openWindow(id: "main")
+        openAppKitMainWindow()
+    }
+}
+
+private struct SignedInMenuBarContent: View {
+    var appLanguage: AppLanguage
+    @ObservedObject var focusTimerStore: FocusTimerStore
+    @Environment(\.modelContext) private var modelContext
+    var openMainWindow: () -> Void
+    var openCalendarPage: () -> Void
+    var openFocusPage: () -> Void
+    var openSettingsPage: () -> Void
 
     var body: some View {
         Group {
@@ -96,33 +189,6 @@ struct MeowPlannerMenuBarView: View {
         .padding(12)
         .frame(width: 230)
         .background(MeowPlannerTheme.fufuPlannerBackground)
-    }
-
-    private func openCalendarPage() {
-        openSection(.calendar)
-    }
-
-    private func openFocusPage() {
-        openSection(.focus)
-    }
-
-    private func openSettingsPage() {
-        openSection(.settings)
-    }
-
-    private func openSection(_ section: AppSection) {
-        MainWindowLaunchCoordinator.openOrFocusMainWindow(openWindow: openMainWindow)
-
-        AppNavigationRequest.open(section)
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            AppNavigationRequest.open(section)
-        }
-    }
-
-    private func openMainWindow() {
-        openWindow(id: "main")
-        openAppKitMainWindow()
     }
 
     private func pauseOrResume() {

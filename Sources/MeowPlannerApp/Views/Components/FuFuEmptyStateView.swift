@@ -25,7 +25,7 @@ struct FuFuEmptyStateView: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
-                    .tint(MeowPlannerTheme.fufuBlue)
+                    .fufuControlTint()
             }
         }
         .padding(24)

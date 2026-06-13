@@ -6,8 +6,7 @@ struct AccountSettingsSection: View {
     @ObservedObject var accountStore: AccountSessionStore
     @Environment(\.appLanguage) private var appLanguage
 
-    @State private var emailAddress = ""
-    @State private var password = ""
+    @State private var showingAuthenticationModal = false
 
     var body: some View {
         Section(PlannerCopy.text(.account, language: appLanguage)) {
@@ -16,6 +15,12 @@ struct AccountSettingsSection: View {
             } else {
                 signedOutContent
             }
+        }
+        .sheet(isPresented: $showingAuthenticationModal) {
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .signIn
+            )
         }
     }
 
@@ -26,86 +31,49 @@ struct AccountSettingsSection: View {
                     .foregroundStyle(MeowPlannerTheme.cocoa)
             }
 
-            LabeledContent(PlannerCopy.text(.provider, language: appLanguage)) {
-                Text(profile.provider.title(language: appLanguage))
-                    .foregroundStyle(.secondary)
+            if let accountIdentifier = profile.accountIdentifier, !accountIdentifier.isEmpty {
+                LabeledContent(PlannerCopy.text(.accountIdentifier, language: appLanguage)) {
+                    Text(accountIdentifier)
+                        .foregroundStyle(.secondary)
+                }
             }
 
-            Button(role: .destructive) {
-                accountStore.signOut()
-                password = ""
-            } label: {
-                Label(PlannerCopy.text(.signOut, language: appLanguage), systemImage: "rectangle.portrait.and.arrow.right")
+            if let emailAddress = profile.emailAddress, !emailAddress.isEmpty {
+                LabeledContent(PlannerCopy.text(.email, language: appLanguage)) {
+                    Text(emailAddress)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let phoneNumber = profile.phoneNumber, !phoneNumber.isEmpty {
+                LabeledContent(PlannerCopy.text(.phone, language: appLanguage)) {
+                    Text(phoneNumber)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
 
     private var signedOutContent: some View {
         Group {
-            VStack(alignment: .leading, spacing: 10) {
-                TextField(PlannerCopy.text(.email, language: appLanguage), text: $emailAddress)
-                    .textFieldStyle(.roundedBorder)
-
-                SecureField(PlannerCopy.text(.password, language: appLanguage), text: $password)
-                    .textFieldStyle(.roundedBorder)
-
-                HStack(spacing: 10) {
-                    Button {
-                        signInEmail()
-                    } label: {
-                        Label(PlannerCopy.text(.signIn, language: appLanguage), systemImage: "envelope.open")
-                    }
-                    .disabled(emailFieldsAreIncomplete || accountStore.isAuthenticating)
-
-                    Button {
-                        registerEmail()
-                    } label: {
-                        Label(PlannerCopy.text(.createAccount, language: appLanguage), systemImage: "person.badge.plus")
-                    }
-                    .disabled(emailFieldsAreIncomplete || accountStore.isAuthenticating)
-                }
-
-                if accountStore.isAuthenticating {
-                    ProgressView()
-                        .controlSize(.small)
-                }
+            Button {
+                showingAuthenticationModal = true
+            } label: {
+                Label(PlannerCopy.text(.loginButton, language: appLanguage), systemImage: "person.crop.circle")
             }
 
             if let lastError = accountStore.lastError {
-                Text(errorMessage(for: lastError))
+                Text(AccountErrorMessageFormatter.message(for: lastError, language: appLanguage))
                     .font(.caption)
                     .foregroundStyle(MeowPlannerTheme.blush)
             }
-
-            LabeledContent(AccountProvider.phone.title(language: appLanguage)) {
-                Text(PlannerCopy.text(.phoneComingSoon, language: appLanguage))
-                    .foregroundStyle(.secondary)
-            }
-
-            LabeledContent(AccountProvider.wechat.title(language: appLanguage)) {
-                Text(PlannerCopy.text(.wechatNeedsSetup, language: appLanguage))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func signInEmail() {
-        accountStore.signInEmail(email: emailAddress, password: password)
-        clearPasswordAfterSuccessfulAuthentication()
-    }
-
-    private func registerEmail() {
-        accountStore.registerEmail(email: emailAddress, password: password)
-        clearPasswordAfterSuccessfulAuthentication()
-    }
-
-    private func clearPasswordAfterSuccessfulAuthentication() {
-        if accountStore.currentProfile != nil {
-            password = ""
         }
     }
 
     private func accountName(for profile: AccountProfile) -> String {
+        if let accountIdentifier = profile.accountIdentifier, !accountIdentifier.isEmpty {
+            return accountIdentifier
+        }
         if let displayName = profile.displayName, !displayName.isEmpty {
             return displayName
         }
@@ -114,45 +82,63 @@ struct AccountSettingsSection: View {
         }
         return profile.provider.title(language: appLanguage)
     }
+}
 
-    private var emailFieldsAreIncomplete: Bool {
-        emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty
-    }
-
-    private func errorMessage(for error: AccountSessionError) -> String {
-        switch (error, appLanguage) {
+enum AccountErrorMessageFormatter {
+    static func message(for error: AccountSessionError, language: AppLanguage) -> String {
+        switch (error, language) {
         case (.authentication(.invalidEmail), .english):
             "Use a valid email address."
         case (.authentication(.invalidEmail), .chinese):
             "请输入有效邮箱。"
+        case (.authentication(.invalidAccountIdentifier), .english):
+            "Use 3-32 letters, numbers, underscores, dots, or hyphens for the account name."
+        case (.authentication(.invalidAccountIdentifier), .chinese):
+            "账号名需要 3-32 位，只能包含字母、数字、下划线、点或连字符。"
+        case (.authentication(.invalidPhoneNumber), .english):
+            "Use an international phone number, such as +1..."
+        case (.authentication(.invalidPhoneNumber), .chinese):
+            "请输入带国家区号的手机号，例如 +1..."
         case (.authentication(.weakPassword(let minimumCharacters)), .english):
             "Use at least \(minimumCharacters) password characters."
         case (.authentication(.weakPassword(let minimumCharacters)), .chinese):
             "密码至少需要 \(minimumCharacters) 个字符。"
         case (.authentication(.accountAlreadyExists), .english):
-            "This email already has an account."
+            "This account already exists."
         case (.authentication(.accountAlreadyExists), .chinese):
-            "这个邮箱已经注册。"
+            "这个账号已经注册。"
         case (.authentication(.accountNotFound), .english):
-            "No account exists for this email."
+            "No account exists for this sign-in."
         case (.authentication(.accountNotFound), .chinese):
-            "这个邮箱还没有账号。"
+            "这个登录方式还没有账号。"
         case (.authentication(.incorrectPassword), .english):
             "The password is incorrect."
         case (.authentication(.incorrectPassword), .chinese):
             "密码不正确。"
+        case (.authentication(.missingVerificationCode), .english):
+            "Send and enter the verification code first."
+        case (.authentication(.missingVerificationCode), .chinese):
+            "请先发送并输入验证码。"
+        case (.authentication(.passwordConfirmationMismatch), .english):
+            PlannerCopy.text(.passwordConfirmationMismatch, language: .english)
+        case (.authentication(.passwordConfirmationMismatch), .chinese):
+            PlannerCopy.text(.passwordConfirmationMismatch, language: .chinese)
+        case (.authentication(.providerUnavailable), .english):
+            "This sign-in method needs platform setup before it can be used."
+        case (.authentication(.providerUnavailable), .chinese):
+            "这个登录方式需要完成平台配置后才能使用。"
         case (.remoteAuthentication(let message), .english) where isFirebaseNetworkError(message):
             "Cannot connect to Firebase. Check your network connection or the app's outgoing network permission."
         case (.remoteAuthentication(let message), .chinese) where isFirebaseNetworkError(message):
             "无法连接 Firebase。请检查网络连接或应用的联网权限。"
         case (.remoteAuthentication(let message), .english):
-            "Account sign-in failed: \(message)"
+            "Account action failed: \(message)"
         case (.remoteAuthentication(let message), .chinese):
-            "账号登录失败：\(message)"
+            "账号操作失败：\(message)"
         }
     }
 
-    private func isFirebaseNetworkError(_ message: String) -> Bool {
+    private static func isFirebaseNetworkError(_ message: String) -> Bool {
         let normalized = message.lowercased()
         return normalized.contains("network error")
             || normalized.contains("unreachable host")

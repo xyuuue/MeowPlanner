@@ -13,12 +13,14 @@ final class AccountSessionStore: ObservableObject {
 
     @Published private(set) var currentProfile: AccountProfile?
     @Published private(set) var lastError: AccountSessionError?
+    @Published private(set) var lastNotice: String?
     @Published private(set) var isAuthenticating = false
 
     private static let sessionStorageKey = "meowplanner.account.currentSession"
 
     private let defaults: UserDefaults
     private let authenticationClient: any AccountAuthenticationClient
+    private var pendingPhoneVerificationID: String?
 
     init(
         defaults: UserDefaults = .standard,
@@ -27,12 +29,28 @@ final class AccountSessionStore: ObservableObject {
         self.defaults = defaults
         self.authenticationClient = authenticationClient
         currentProfile = authenticationClient.currentProfile()
-            ?? Self.decode(AccountProfile.self, key: Self.sessionStorageKey, defaults: defaults)
+        defaults.removeObject(forKey: Self.sessionStorageKey)
+    }
+
+    func signInAccount(identifier: String, password: String) {
+        authenticate { [self] in
+            try await self.authenticationClient.signInAccount(identifier: identifier, password: password)
+        }
+    }
+
+    func registerAccount(identifier: String, email: String, password: String) {
+        authenticate { [self] in
+            let profile = try await self.authenticationClient.registerAccount(identifier: identifier, email: email, password: password)
+            try? await self.authenticationClient.sendEmailVerification()
+            return profile
+        }
     }
 
     func registerEmail(email: String, password: String) {
         authenticate { [self] in
-            try await self.authenticationClient.registerEmail(email: email, password: password)
+            let profile = try await self.authenticationClient.registerEmail(email: email, password: password)
+            try? await self.authenticationClient.sendEmailVerification()
+            return profile
         }
     }
 
@@ -42,25 +60,54 @@ final class AccountSessionStore: ObservableObject {
         }
     }
 
-    func signOut() {
-        do {
-            try authenticationClient.signOut()
-            currentProfile = nil
-            lastError = nil
-            defaults.removeObject(forKey: Self.sessionStorageKey)
-            FirestoreAppDataSyncService.shared.stopSync()
-        } catch {
-            lastError = .remoteAuthentication(message: error.localizedDescription)
+    func sendEmailVerification() {
+        performAccountOperation {
+            try await self.authenticationClient.sendEmailVerification()
         }
     }
 
-    private func authenticate(_ operation: @escaping () async throws -> AccountProfile) {
+    func sendPasswordReset(email: String, onSuccess: @escaping @MainActor () -> Void = {}) {
+        performAccountOperation({
+            try await self.authenticationClient.sendPasswordReset(email: email)
+        }, onSuccess: onSuccess)
+    }
+
+    func verifyPasswordResetCode(_ code: String, onSuccess: @escaping @MainActor (String) -> Void = { _ in }) {
+        performAccountOperation({
+            try await self.authenticationClient.verifyPasswordResetCode(code)
+        }, onSuccess: onSuccess)
+    }
+
+    func confirmPasswordReset(code: String, newPassword: String, confirmPassword: String, onSuccess: @escaping @MainActor () -> Void = {}) {
+        performAccountOperation({
+            try EmailAddressRules.validatePasswordConfirmation(
+                newPassword: newPassword,
+                confirmPassword: confirmPassword
+            )
+            try await self.authenticationClient.confirmPasswordReset(code: code, newPassword: newPassword)
+        }, onSuccess: onSuccess)
+    }
+
+    func changePassword(currentPassword: String, newPassword: String) {
+        performAccountOperation {
+            try await self.authenticationClient.changePassword(currentPassword: currentPassword, newPassword: newPassword)
+        }
+    }
+
+    func linkAccount(identifier: String, currentPassword: String) {
+        authenticate { [self] in
+            try await self.authenticationClient.linkAccount(identifier: identifier, currentPassword: currentPassword)
+        }
+    }
+
+    func deleteAccount(currentPassword: String) {
         guard !isAuthenticating else {
             return
         }
 
         isAuthenticating = true
         lastError = nil
+        lastNotice = nil
 
         Task { @MainActor in
             defer {
@@ -68,10 +115,8 @@ final class AccountSessionStore: ObservableObject {
             }
 
             do {
-                let profile = try await operation()
-                currentProfile = profile
-                lastError = nil
-                persistCurrentProfile()
+                try await authenticationClient.deleteAccount(currentPassword: currentPassword)
+                clearSignedInPresentationState()
             } catch let error as AccountAuthenticationError {
                 lastError = .authentication(error)
             } catch let error as AccountSessionError {
@@ -82,21 +127,143 @@ final class AccountSessionStore: ObservableObject {
         }
     }
 
-    private func persistCurrentProfile() {
-        Self.encode(currentProfile, key: Self.sessionStorageKey, defaults: defaults)
-    }
-
-    private static func decode<T: Decodable>(_ type: T.Type, key: String, defaults: UserDefaults) -> T? {
-        guard let data = defaults.data(forKey: key) else {
-            return nil
+    func sendPhoneVerification(phoneNumber: String) {
+        performAccountOperation {
+            let verificationID = try await self.authenticationClient.sendPhoneVerification(phoneNumber: phoneNumber)
+            self.pendingPhoneVerificationID = verificationID
         }
-        return try? JSONDecoder().decode(type, from: data)
     }
 
-    private static func encode<T: Encodable>(_ value: T, key: String, defaults: UserDefaults) {
-        guard let data = try? JSONEncoder().encode(value) else {
+    func signInPhone(verificationCode: String) {
+        authenticate { [self] in
+            guard let verificationID = self.pendingPhoneVerificationID else {
+                throw AccountAuthenticationError.missingVerificationCode
+            }
+            return try await self.authenticationClient.signInPhone(
+                verificationID: verificationID,
+                verificationCode: verificationCode
+            )
+        }
+    }
+
+    func signInWeChat() {
+        authenticate { [self] in
+            try await self.authenticationClient.signInWeChat()
+        }
+    }
+
+    func signOut() {
+        do {
+            try authenticationClient.signOut()
+            clearSignedInPresentationState()
+        } catch {
+            lastError = .remoteAuthentication(message: error.localizedDescription)
+        }
+    }
+
+    private func clearSignedInPresentationState() {
+        currentProfile = nil
+        lastError = nil
+        lastNotice = nil
+        pendingPhoneVerificationID = nil
+        defaults.removeObject(forKey: Self.sessionStorageKey)
+        FirestoreAppDataSyncService.shared.stopSync()
+        AccountScopedModelContainerStore.shared.unload()
+        AccountScopedModelContainerStore.shared.prepareSignedOutContainer()
+        WidgetTimelineSyncService.clearSnapshotAndReload()
+    }
+
+    private func authenticate(_ operation: @escaping () async throws -> AccountProfile) {
+        guard !isAuthenticating else {
             return
         }
-        defaults.set(data, forKey: key)
+
+        isAuthenticating = true
+        lastError = nil
+        lastNotice = nil
+
+        Task { @MainActor in
+            defer {
+                isAuthenticating = false
+            }
+
+            do {
+                let profile = try await operation()
+                currentProfile = profile
+                lastError = nil
+                lastNotice = nil
+                defaults.removeObject(forKey: Self.sessionStorageKey)
+            } catch let error as AccountAuthenticationError {
+                lastError = .authentication(error)
+            } catch let error as AccountSessionError {
+                lastError = error
+            } catch {
+                lastError = .remoteAuthentication(message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func performAccountOperation(
+        _ operation: @escaping () async throws -> Void,
+        onSuccess: @escaping @MainActor () -> Void = {}
+    ) {
+        guard !isAuthenticating else {
+            return
+        }
+
+        isAuthenticating = true
+        lastError = nil
+        lastNotice = nil
+
+        Task { @MainActor in
+            defer {
+                isAuthenticating = false
+            }
+
+            do {
+                try await operation()
+                lastError = nil
+                lastNotice = "OK"
+                onSuccess()
+            } catch let error as AccountAuthenticationError {
+                lastError = .authentication(error)
+            } catch let error as AccountSessionError {
+                lastError = error
+            } catch {
+                lastError = .remoteAuthentication(message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func performAccountOperation<Value>(
+        _ operation: @escaping () async throws -> Value,
+        onSuccess: @escaping @MainActor (Value) -> Void
+    ) {
+        guard !isAuthenticating else {
+            return
+        }
+
+        isAuthenticating = true
+        lastError = nil
+        lastNotice = nil
+
+        Task { @MainActor in
+            defer {
+                isAuthenticating = false
+            }
+
+            do {
+                let value = try await operation()
+                lastError = nil
+                lastNotice = "OK"
+                onSuccess(value)
+            } catch let error as AccountAuthenticationError {
+                lastError = .authentication(error)
+            } catch let error as AccountSessionError {
+                lastError = error
+            } catch {
+                lastError = .remoteAuthentication(message: error.localizedDescription)
+            }
+        }
     }
 }

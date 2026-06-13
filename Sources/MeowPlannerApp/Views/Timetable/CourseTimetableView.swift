@@ -320,6 +320,7 @@ private struct CourseTimetableSetupView: View {
             Divider().opacity(0.35)
 
             Toggle(PlannerCopy.text(.skipHolidays, language: appLanguage), isOn: $skipHolidays)
+                .fufuControlTint()
                 .padding(.vertical, 10)
         }
         .textFieldStyle(.plain)
@@ -1067,6 +1068,7 @@ private struct TimetableInlineDatePickerPanel: View {
                     DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
                         .labelsHidden()
                         .datePickerStyle(.compact)
+                        .fufuControlTint()
                 }
                 .padding(10)
                 .background(MeowPlannerTheme.cream.opacity(0.52), in: RoundedRectangle(cornerRadius: 12))
@@ -1288,6 +1290,7 @@ private struct CourseEditorView: View {
                     } label: {
                         Label(PlannerCopy.text(.addOtherSessions, language: appLanguage), systemImage: "plus")
                     }
+                    .fufuControlTint()
                     .buttonStyle(.borderless)
                     .padding(.vertical, 10)
                 }

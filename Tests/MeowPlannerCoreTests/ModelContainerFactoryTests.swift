@@ -58,4 +58,44 @@ struct ModelContainerFactoryTests {
         #expect(try context.fetch(FetchDescriptor<Course>()).first?.teacherName == "Guanglan Zhang")
         #expect(try context.fetch(FetchDescriptor<CourseSession>()).first?.weekday == 4)
     }
+
+    @Test("account store URLs are isolated per signed in user")
+    func accountStoreURLsAreIsolatedPerSignedInUser() throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerAccountStores-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+
+        let first = try ModelContainerFactory.accountStoreURL(
+            for: "firebase/user one@example.com",
+            baseDirectory: baseDirectory
+        )
+        let second = try ModelContainerFactory.accountStoreURL(
+            for: "firebase:user-two@example.com",
+            baseDirectory: baseDirectory
+        )
+
+        #expect(first != second)
+        #expect(first.deletingLastPathComponent() == baseDirectory)
+        #expect(second.deletingLastPathComponent() == baseDirectory)
+        #expect(!first.lastPathComponent.contains("/"))
+        #expect(!first.lastPathComponent.contains("@"))
+        #expect(!first.lastPathComponent.contains(":"))
+        #expect(first.pathExtension == "store")
+    }
+
+    @Test("signed out workspace is in memory and separate from account stores")
+    func signedOutWorkspaceIsInMemoryAndSeparateFromAccountStores() throws {
+        let signedOutContainer = try ModelContainerFactory.makeSignedOutWorkspace()
+        let signedOutContext = ModelContext(signedOutContainer)
+        signedOutContext.insert(TodoItem(title: "Temporary signed out todo"))
+        try signedOutContext.save()
+
+        let secondSignedOutContainer = try ModelContainerFactory.makeSignedOutWorkspace()
+        let secondSignedOutContext = ModelContext(secondSignedOutContainer)
+        let savedSignedOutTodos = try secondSignedOutContext.fetch(FetchDescriptor<TodoItem>())
+
+        #expect(savedSignedOutTodos.isEmpty)
+    }
 }

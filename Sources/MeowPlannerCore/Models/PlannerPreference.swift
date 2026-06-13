@@ -3,6 +3,7 @@ import SwiftData
 
 public enum AppAppearancePreference: String, CaseIterable, Identifiable, Sendable {
     public static let storageKey = "meowplanner.appearance.preference"
+    public static let updatedAtStorageKey = "meowplanner.appearance.preference.updatedAt"
 
     case system
     case light

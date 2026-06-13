@@ -30,7 +30,7 @@ struct HabitsView: View {
                         Label(PlannerCopy.text(.habit, language: appLanguage), systemImage: "plus")
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(MeowPlannerTheme.fufuBlue)
+                    .fufuControlTint()
                 }
 
                 if habits.isEmpty {
@@ -89,7 +89,7 @@ struct HabitsView: View {
                 Label(alreadyCheckedIn ? PlannerCopy.text(.checked, language: appLanguage) : PlannerCopy.text(.checkIn, language: appLanguage), systemImage: alreadyCheckedIn ? "checkmark.circle.fill" : "circle")
             }
             .buttonStyle(.bordered)
-            .tint(alreadyCheckedIn ? MeowPlannerTheme.fufuBlue : MeowPlannerTheme.caramel)
+            .fufuControlTint()
 
             Button(role: .destructive) {
                 modelContext.delete(habit)
@@ -130,6 +130,7 @@ private struct HabitEditorView: View {
                     Label(PlannerCopy.text(.book, language: appLanguage), systemImage: "book.fill").tag("book.fill")
                     Label(PlannerCopy.text(.walk, language: appLanguage), systemImage: "figure.walk").tag("figure.walk")
                 }
+                .fufuControlTint()
             }
             .formStyle(.grouped)
             .navigationTitle(PlannerCopy.text(.newHabit, language: appLanguage))

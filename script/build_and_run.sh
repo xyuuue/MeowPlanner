@@ -7,21 +7,25 @@ MIN_SYSTEM_VERSION="14.0"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 XCODE_DESTINATION="${XCODE_DESTINATION:-}"
 XCODE_ONLY_ACTIVE_ARCH="${ONLY_ACTIVE_ARCH:-}"
-# SIGNED_BUILD=0 keeps local builds ad-hoc signed unless --signed is passed.
-SIGNED_BUILD="${SIGNED_BUILD:-0}"
+SIGNING_MODE="${SIGNING_MODE:-auto}"
 TEMP_ENTITLEMENTS_FILE=""
+USE_SIGNED_BUILD=0
+RESOLVED_DEVELOPMENT_TEAM=""
 
 MODE="run"
 for arg in "$@"; do
   case "$arg" in
     --signed|signed)
-      SIGNED_BUILD=1
+      SIGNING_MODE="signed"
+      ;;
+    --unsigned|unsigned)
+      SIGNING_MODE="unsigned"
       ;;
     run|--run|--build-only|build|--debug|debug|--logs|logs|--telemetry|telemetry|--verify|verify)
       MODE="$arg"
       ;;
     *)
-      echo "usage: $0 [--signed] [run|--build-only|--debug|--logs|--telemetry|--verify]" >&2
+      echo "usage: $0 [--signed|--unsigned] [run|--build-only|--debug|--logs|--telemetry|--verify]" >&2
       exit 2
       ;;
   esac
@@ -50,7 +54,69 @@ XCODE_APP="$XCODE_DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 
 cd "$ROOT_DIR"
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+detect_development_team() {
+  if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
+    echo "$DEVELOPMENT_TEAM"
+    return 0
+  fi
+
+  local identity_name
+  identity_name="$(
+    security find-identity -p codesigning -v 2>/dev/null \
+      | awk -F'"' '/Apple Development:/ {print $2; exit}' \
+      || true
+  )"
+
+  if [[ -z "$identity_name" ]]; then
+    return 1
+  fi
+
+  local detected_team
+  detected_team="$(
+    security find-certificate -c "$identity_name" -p 2>/dev/null \
+      | openssl x509 -noout -subject 2>/dev/null \
+      | sed -n 's/.*\/OU=\([^/]*\).*/\1/p' \
+      | head -n 1 \
+      || true
+  )"
+
+  if [[ -n "$detected_team" ]]; then
+    echo "$detected_team"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_signing_mode() {
+  case "$SIGNING_MODE" in
+    signed)
+      if RESOLVED_DEVELOPMENT_TEAM="$(detect_development_team)"; then
+        USE_SIGNED_BUILD=1
+      else
+        echo "error: signed build requires DEVELOPMENT_TEAM=<Apple Developer Team ID> or an Apple Development signing identity with a Team ID." >&2
+        exit 2
+      fi
+      ;;
+    auto)
+      if RESOLVED_DEVELOPMENT_TEAM="$(detect_development_team)"; then
+        USE_SIGNED_BUILD=1
+      else
+        echo "error: auto signing requires DEVELOPMENT_TEAM=<Apple Developer Team ID> or an Apple Development signing identity with a Team ID." >&2
+        exit 2
+      fi
+      ;;
+    unsigned)
+      USE_SIGNED_BUILD=0
+      ;;
+    *)
+      echo "error: SIGNING_MODE must be auto, signed, or unsigned." >&2
+      exit 2
+      ;;
+  esac
+}
+
+resolve_signing_mode
 
 build_with_xcode() {
   local xcodebuild_args=(
@@ -60,16 +126,12 @@ build_with_xcode() {
     -derivedDataPath "$XCODE_DERIVED_DATA"
   )
 
-  if [[ "$SIGNED_BUILD" == "1" ]]; then
-    if [[ -z "${DEVELOPMENT_TEAM:-}" ]]; then
-      echo "error: signed build requires DEVELOPMENT_TEAM=<Apple Developer Team ID>" >&2
-      exit 2
-    fi
+  if [[ "$USE_SIGNED_BUILD" == "1" ]]; then
     xcodebuild_args+=(
       -allowProvisioningUpdates
       CODE_SIGNING_ALLOWED=YES
       CODE_SIGN_STYLE=Automatic
-      DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+      DEVELOPMENT_TEAM="$RESOLVED_DEVELOPMENT_TEAM"
     )
   else
     xcodebuild_args+=(CODE_SIGNING_ALLOWED=NO)
@@ -89,7 +151,7 @@ build_with_xcode() {
   mkdir -p "$DIST_DIR"
   cp -R "$XCODE_APP" "$APP_BUNDLE"
 
-  if [[ "$SIGNED_BUILD" == "1" ]]; then
+  if [[ "$USE_SIGNED_BUILD" == "1" ]]; then
     return
   fi
 
@@ -193,12 +255,50 @@ else
   build_with_swiftpm
 fi
 
+verify_installable_app() {
+  local bundle="$1"
+  local entitlements_file
+  local signature_file
+  entitlements_file="$(mktemp -t meowplanner.entitlements.verify.plist)"
+  signature_file="$(mktemp -t meowplanner.signature.verify.txt)"
+
+  if ! codesign -dv "$bundle" >"$signature_file" 2>&1; then
+    rm -f "$entitlements_file" "$signature_file"
+    echo "error: Cannot inspect signature for $bundle." >&2
+    exit 1
+  fi
+
+  if /usr/bin/grep -q "Signature=adhoc" "$signature_file" || /usr/bin/grep -q "TeamIdentifier=not set" "$signature_file"; then
+    rm -f "$entitlements_file" "$signature_file"
+    echo "error: Cannot install $APP_NAME without a non-ad-hoc Apple signature." >&2
+    echo "Firebase Auth stores its session in the macOS Keychain, and ad-hoc signed apps cannot use the required Keychain entitlement." >&2
+    exit 1
+  fi
+
+  if ! codesign -d --entitlements :- "$bundle" >"$entitlements_file" 2>/dev/null; then
+    rm -f "$entitlements_file" "$signature_file"
+    echo "error: Cannot inspect entitlements for $bundle." >&2
+    exit 1
+  fi
+
+  if ! /usr/bin/grep -q "keychain-access-groups" "$entitlements_file"; then
+    rm -f "$entitlements_file" "$signature_file"
+    echo "error: Cannot install $APP_NAME without keychain-access-groups." >&2
+    echo "Firebase Auth stores its session in the macOS Keychain. Use a signed local build or set DEVELOPMENT_TEAM=<Apple Developer Team ID>." >&2
+    exit 1
+  fi
+
+  rm -f "$entitlements_file" "$signature_file"
+}
+
 install_app() {
+  pkill -x "$APP_NAME" >/dev/null 2>&1 || true
   rm -rf "$INSTALL_BUNDLE"
   /usr/bin/ditto "$APP_BUNDLE" "$INSTALL_BUNDLE"
   /usr/bin/touch "$INSTALL_BUNDLE"
 }
 
+verify_installable_app "$APP_BUNDLE"
 install_app
 
 refresh_widget_registration() {
@@ -241,7 +341,7 @@ case "$MODE" in
     echo "Verified $APP_NAME is running from $INSTALL_BUNDLE"
     ;;
   *)
-    echo "usage: $0 [run|--build-only|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [--signed|--unsigned] [run|--build-only|--debug|--logs|--telemetry|--verify]" >&2
     exit 2
     ;;
 esac

@@ -28,6 +28,8 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
     public var provider: AccountProvider
     public var remoteUserID: String?
     public var emailAddress: String?
+    public var phoneNumber: String?
+    public var accountIdentifier: String?
     public var displayName: String?
     public var createdAt: Date
     public var lastSignedInAt: Date
@@ -37,6 +39,8 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         provider: AccountProvider,
         remoteUserID: String? = nil,
         emailAddress: String?,
+        phoneNumber: String? = nil,
+        accountIdentifier: String? = nil,
         displayName: String?,
         createdAt: Date,
         lastSignedInAt: Date
@@ -45,6 +49,8 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         self.provider = provider
         self.remoteUserID = remoteUserID
         self.emailAddress = emailAddress
+        self.phoneNumber = Self.normalizedOptionalPhoneNumber(phoneNumber)
+        self.accountIdentifier = Self.normalizedOptionalAccountIdentifier(accountIdentifier)
         self.displayName = displayName
         self.createdAt = createdAt
         self.lastSignedInAt = lastSignedInAt
@@ -87,6 +93,7 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         userID: String,
         emailAddress: String?,
         displayName: String?,
+        accountIdentifier: String? = nil,
         now: Date = Date()
     ) -> AccountProfile {
         AccountProfile(
@@ -94,6 +101,27 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
             provider: .email,
             remoteUserID: userID,
             emailAddress: normalizedOptionalEmail(emailAddress),
+            accountIdentifier: accountIdentifier,
+            displayName: normalizedOptionalDisplayName(displayName),
+            createdAt: now,
+            lastSignedInAt: now
+        )
+    }
+
+    public static func firebasePhone(
+        userID: String,
+        phoneNumber: String?,
+        displayName: String?,
+        accountIdentifier: String? = nil,
+        now: Date = Date()
+    ) -> AccountProfile {
+        AccountProfile(
+            id: "firebase:\(userID)",
+            provider: .phone,
+            remoteUserID: userID,
+            emailAddress: nil,
+            phoneNumber: phoneNumber,
+            accountIdentifier: accountIdentifier,
             displayName: normalizedOptionalDisplayName(displayName),
             createdAt: now,
             lastSignedInAt: now
@@ -115,14 +143,74 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         }
         return trimmed
     }
+
+    private static func normalizedOptionalPhoneNumber(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty
+        else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private static func normalizedOptionalAccountIdentifier(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+        return try? AccountAliasRules.normalizedIdentifier(value)
+    }
 }
 
 public enum AccountAuthenticationError: Error, Equatable, Sendable {
     case invalidEmail
+    case invalidAccountIdentifier
+    case invalidPhoneNumber
     case weakPassword(minimumCharacters: Int)
     case accountAlreadyExists
     case accountNotFound
     case incorrectPassword
+    case missingVerificationCode
+    case passwordConfirmationMismatch
+    case providerUnavailable
+}
+
+public enum AccountAliasRules {
+    public static let minimumIdentifierCharacters = 3
+    public static let maximumIdentifierCharacters = 32
+    public static let internalEmailDomain = "accounts.meowplanner.local"
+
+    public static func normalizedIdentifier(_ value: String) throws -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= minimumIdentifierCharacters,
+              trimmed.count <= maximumIdentifierCharacters
+        else {
+            throw AccountAuthenticationError.invalidAccountIdentifier
+        }
+
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
+        guard trimmed.unicodeScalars.allSatisfy({ allowedCharacters.contains($0) }) else {
+            throw AccountAuthenticationError.invalidAccountIdentifier
+        }
+
+        return trimmed.lowercased()
+    }
+
+    public static func isInternalEmailAddress(_ value: String?) -> Bool {
+        guard let normalizedEmail = value.flatMap(EmailAddressRules.normalizedEmail) else {
+            return false
+        }
+        return normalizedEmail.hasSuffix("@\(internalEmailDomain)")
+    }
+
+    public static func emailAddressForAccountRegistration(identifier: String, email: String) throws -> String {
+        _ = try normalizedIdentifier(identifier)
+        guard let normalizedEmail = EmailAddressRules.normalizedEmail(email),
+              !isInternalEmailAddress(normalizedEmail)
+        else {
+            throw AccountAuthenticationError.invalidEmail
+        }
+        return normalizedEmail
+    }
 }
 
 public enum EmailAddressRules {
@@ -159,10 +247,36 @@ public enum EmailAddressRules {
         return String(localPart)
     }
 
-    static func validatePassword(_ password: String) throws {
+    public static func validatePassword(_ password: String) throws {
         guard password.count >= minimumPasswordCharacters else {
             throw AccountAuthenticationError.weakPassword(minimumCharacters: minimumPasswordCharacters)
         }
+    }
+
+    public static func validatePasswordConfirmation(newPassword: String, confirmPassword: String) throws {
+        try validatePassword(newPassword)
+        guard newPassword == confirmPassword else {
+            throw AccountAuthenticationError.passwordConfirmationMismatch
+        }
+    }
+}
+
+public enum PasswordResetCodeRules {
+    public static func normalizedCode(from value: String) throws -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw AccountAuthenticationError.missingVerificationCode
+        }
+
+        if let components = URLComponents(string: trimmed),
+           let code = components.queryItems?.first(where: { $0.name == "oobCode" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !code.isEmpty
+        {
+            return code
+        }
+
+        return trimmed
     }
 }
 

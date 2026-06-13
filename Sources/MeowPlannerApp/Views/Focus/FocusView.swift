@@ -234,7 +234,7 @@ struct FocusView: View {
                 Text(section.title(language: appLanguage)).tag(section)
             }
         }
-        .pickerStyle(.segmented)
+        .fufuSegmentedPickerStyle()
         .frame(maxWidth: 420)
     }
 
@@ -363,7 +363,7 @@ struct FocusView: View {
             Text(PlannerCopy.text(.focusModeCountdown, language: appLanguage)).tag(FocusMode.countdown)
             Text(PlannerCopy.text(.focusModeStopwatch, language: appLanguage)).tag(FocusMode.stopwatch)
         }
-        .pickerStyle(.segmented)
+        .fufuSegmentedPickerStyle()
         .frame(width: 210)
         .disabled(focusTimerStore.hasActiveSession)
     }
@@ -732,7 +732,7 @@ struct FocusView: View {
                         Text(range.title(language: appLanguage)).tag(range)
                     }
                 }
-                .pickerStyle(.segmented)
+                .fufuSegmentedPickerStyle()
                 .frame(maxWidth: 420)
 
                 dateNavigator(
@@ -1275,7 +1275,7 @@ private struct FocusSessionEditorView: View {
                     Text(PlannerCopy.text(.focusModeCountdown, language: appLanguage)).tag(FocusMode.countdown)
                     Text(PlannerCopy.text(.focusModeStopwatch, language: appLanguage)).tag(FocusMode.stopwatch)
                 }
-                .pickerStyle(.segmented)
+                .fufuSegmentedPickerStyle()
 
                 Picker(PlannerCopy.text(.focusTag, language: appLanguage), selection: $selectedTagID) {
                     Text(PlannerCopy.text(.uncategorizedFocus, language: appLanguage)).tag(UUID?.none)
@@ -1283,10 +1283,13 @@ private struct FocusSessionEditorView: View {
                         Text(tag.name).tag(Optional(tag.id))
                     }
                 }
+                .fufuControlTint()
 
                 DatePicker(PlannerCopy.text(.startDate, language: appLanguage), selection: $startedAt)
+                    .fufuControlTint()
 
                 DatePicker(PlannerCopy.text(.end, language: appLanguage), selection: $endedAt)
+                    .fufuControlTint()
 
                 PlannerNumberInputRow(
                     title: PlannerCopy.text(.completedMinutes, language: appLanguage),

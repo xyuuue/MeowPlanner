@@ -45,4 +45,94 @@ struct CloudAppDataSyncTests {
 
         #expect(missing == ["already-deleted", "local-1"])
     }
+
+    @Test("merge keeps local records when the local update is newer")
+    func mergeKeepsLocalRecordsWhenTheLocalUpdateIsNewer() {
+        let localUpdatedAt = Date(timeIntervalSince1970: 2_000)
+        let remoteUpdatedAt = Date(timeIntervalSince1970: 1_000)
+
+        let shouldApplyRemote = CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: localUpdatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+
+        #expect(!shouldApplyRemote)
+    }
+
+    @Test("merge applies remote records when the remote update is newer")
+    func mergeAppliesRemoteRecordsWhenTheRemoteUpdateIsNewer() {
+        let localUpdatedAt = Date(timeIntervalSince1970: 1_000)
+        let remoteUpdatedAt = Date(timeIntervalSince1970: 2_000)
+
+        let shouldApplyRemote = CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: localUpdatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+
+        #expect(shouldApplyRemote)
+    }
+
+    @Test("merge keeps local records when remote deletion is older")
+    func mergeKeepsLocalRecordsWhenRemoteDeletionIsOlder() {
+        let localUpdatedAt = Date(timeIntervalSince1970: 2_000)
+        let remoteUpdatedAt = Date(timeIntervalSince1970: 1_000)
+
+        let shouldDeleteLocal = CloudRecordMergeDecision.shouldApplyRemoteDeletion(
+            localUpdatedAt: localUpdatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+
+        #expect(!shouldDeleteLocal)
+    }
+
+    @Test("merge blocks remote records while local deletion is pending")
+    func mergeBlocksRemoteRecordsWhileLocalDeletionIsPending() {
+        let shouldApplyRemoteRecord = CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: nil,
+            remoteUpdatedAt: Date(timeIntervalSince1970: 2_000),
+            isPendingLocalDeletion: true,
+            remoteIsDeleted: false
+        )
+
+        let shouldApplyRemoteDeletion = CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: nil,
+            remoteUpdatedAt: Date(timeIntervalSince1970: 2_000),
+            isPendingLocalDeletion: true,
+            remoteIsDeleted: true
+        )
+
+        #expect(!shouldApplyRemoteRecord)
+        #expect(shouldApplyRemoteDeletion)
+    }
+
+    @Test("synced user defaults keep newer local language selections")
+    func syncedUserDefaultsKeepNewerLocalLanguageSelections() {
+        let localLanguageUpdatedAt = Date(timeIntervalSince1970: 2_000)
+        let remoteLanguageUpdatedAt = Date(timeIntervalSince1970: 1_000)
+
+        #expect(!SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: localLanguageUpdatedAt,
+            remoteUpdatedAt: remoteLanguageUpdatedAt
+        ))
+        #expect(SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: nil,
+            remoteUpdatedAt: remoteLanguageUpdatedAt
+        ))
+    }
+
+    @Test("synced user defaults keep newer local appearance selections")
+    func syncedUserDefaultsKeepNewerLocalAppearanceSelections() {
+        let localAppearanceUpdatedAt = Date(timeIntervalSince1970: 2_000)
+        let remoteAppearanceUpdatedAt = Date(timeIntervalSince1970: 1_000)
+
+        #expect(AppAppearancePreference.updatedAtStorageKey == "meowplanner.appearance.preference.updatedAt")
+        #expect(!SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: localAppearanceUpdatedAt,
+            remoteUpdatedAt: remoteAppearanceUpdatedAt
+        ))
+        #expect(SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: nil,
+            remoteUpdatedAt: remoteAppearanceUpdatedAt
+        ))
+    }
 }

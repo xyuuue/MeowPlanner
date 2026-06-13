@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasAccountAliasFields() {
+      return request.resource.data.keys().hasOnly([
+        'identifier',
+        'emailAddress',
+        'userID',
+        'createdAt',
+        'updatedAt'
+      ]) && request.resource.data.keys().hasAll([
+        'identifier',
+        'emailAddress',
+        'userID',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function isValidAccountAlias(aliasID) {
+      return hasAccountAliasFields()
+        && request.resource.data.identifier == aliasID
+        && request.resource.data.identifier is string
+        && request.resource.data.identifier.size() >= 3
+        && request.resource.data.identifier.size() <= 32
+        && request.resource.data.emailAddress is string
+        && request.resource.data.emailAddress.size() > 3
+        && request.resource.data.userID == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /users/{userID}/{document=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == userID;
+    }
+
+    match /accountAliases/{aliasID} {
+      allow get: if true;
+      allow list: if isSignedIn() && resource.data.userID == request.auth.uid;
+      allow create: if isSignedIn() && isValidAccountAlias(aliasID);
+      allow update: if isSignedIn()
+        && resource.data.userID == request.auth.uid
+        && isValidAccountAlias(aliasID);
+      allow delete: if isSignedIn() && resource.data.userID == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

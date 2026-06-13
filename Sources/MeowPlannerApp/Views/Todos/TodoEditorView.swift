@@ -45,10 +45,13 @@ struct TodoEditorView: View {
                         Text(group.name).tag(Optional(group.id))
                     }
                 }
+                .fufuControlTint()
 
                 Toggle(PlannerCopy.text(.dueDate, language: appLanguage), isOn: $hasDueDate)
+                    .fufuControlTint()
                 if hasDueDate {
                     DatePicker(PlannerCopy.text(.due, language: appLanguage), selection: $dueDate)
+                        .fufuControlTint()
                 }
                 TextField(PlannerCopy.text(.notes, language: appLanguage), text: $notes, axis: .vertical)
             }
@@ -110,7 +113,10 @@ struct TodoEditorView: View {
 
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
-        FirestoreAppDataSyncService.shared.scheduleSync(using: modelContext)
+        FirestoreAppDataSyncService.shared.scheduleSync(
+            for: AccountSessionStore.shared.currentProfile?.remoteUserID,
+            using: modelContext
+        )
         dismiss()
     }
 }

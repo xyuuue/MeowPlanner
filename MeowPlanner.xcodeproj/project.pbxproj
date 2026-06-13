@@ -64,6 +64,13 @@
 		fileRef = 4C89319678BA0EBFF93AE4C8;
 	};
 
+	077911CF831D31482C0E5BC3 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.swift;
+		path = Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift;
+		sourceTree = "<group>";
+	};
+
 	095BFAC1C1CCA5BBBA3D0723 = {
 		isa = PBXBuildFile;
 		fileRef = BF533C5A7D54E18C37C98089;
@@ -162,6 +169,7 @@
 		buildActionMask = 2147483647;
 		files = (
 			7EB8CA52586E7A58E1916579,
+			81CD3D30ABBE32DA4517598A,
 			FCA728FFE2D71BE926F8528E,
 			6829FA8A477BD2D09199C9EB,
 			C195057EFA88F54C498DCACD,
@@ -173,6 +181,8 @@
 			88F15A726917E2CD910233AE,
 			596B6D83A0C20FAC41C5F4D8,
 			36F202BCFF3F7773C868BFCC,
+			7859B50E888D9BA959C1BF3A,
+			B635C4FA90627088C740A29D,
 			50C10E819A66D0557B752C26,
 			9F5D31D4B87DAC2F67542B62,
 			B9F3A196ACBA4274A5989E23,
@@ -501,6 +511,13 @@
 		sourceTree = "<group>";
 	};
 
+	547C45178EDD46F7C2D621D9 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.swift;
+		path = Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift;
+		sourceTree = "<group>";
+	};
+
 	596B6D83A0C20FAC41C5F4D8 = {
 		isa = PBXBuildFile;
 		fileRef = 49829D67D0BF8A2C2FC83932;
@@ -576,6 +593,11 @@
 		lastKnownFileType = sourcecode.swift;
 		path = Sources/MeowPlannerCore/Services/FocusTimerState.swift;
 		sourceTree = "<group>";
+	};
+
+	7859B50E888D9BA959C1BF3A = {
+		isa = PBXBuildFile;
+		fileRef = 547C45178EDD46F7C2D621D9;
 	};
 
 	79AA44DEE589D8B8E96A0A8C = {
@@ -662,6 +684,11 @@
 		lastKnownFileType = sourcecode.swift;
 		path = Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift;
 		sourceTree = "<group>";
+	};
+
+	81CD3D30ABBE32DA4517598A = {
+		isa = PBXBuildFile;
+		fileRef = BEC6BEE8F448C35268B19E6E;
 	};
 
 	86ECC82404AC7ADBF8317F45 = {
@@ -1091,6 +1118,11 @@
 		sourceTree = "<group>";
 	};
 
+	B635C4FA90627088C740A29D = {
+		isa = PBXBuildFile;
+		fileRef = 077911CF831D31482C0E5BC3;
+	};
+
 	B69255CAB8D007CF6045AB72 = {
 		isa = PBXFileReference;
 		lastKnownFileType = text.plist.xml;
@@ -1169,6 +1201,13 @@
 		files = (
 		);
 		runOnlyForDeploymentPostprocessing = 0;
+	};
+
+	BEC6BEE8F448C35268B19E6E = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.swift;
+		path = Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift;
+		sourceTree = "<group>";
 	};
 
 	BF533C5A7D54E18C37C98089 = {
@@ -1314,6 +1353,7 @@
 		isa = PBXGroup;
 		children = (
 			CBDA3B6C730EE3E33B1C7F85,
+			BEC6BEE8F448C35268B19E6E,
 			18DBB8BE4C04D49695695A1A,
 			CCA63CB7527ABBF324CEFF38,
 			5B80C87A96566DBD71652C47,
@@ -1325,6 +1365,8 @@
 			7C40F8326F1BBC3FE53E3479,
 			49829D67D0BF8A2C2FC83932,
 			E858B06DEA1C8868C56E34B6,
+			547C45178EDD46F7C2D621D9,
+			077911CF831D31482C0E5BC3,
 			D315528429EBD4EC4D08CD4B,
 			9BD0F17E21CEFBA550AE1533,
 			0267AA73F45008C1962BF988,

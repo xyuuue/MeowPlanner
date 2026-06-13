@@ -154,6 +154,34 @@ struct WidgetPlannerSnapshotTests {
         #expect(restored.showChineseCalendar == false)
     }
 
+    @Test("snapshot store can be cleared on sign out")
+    func snapshotStoreCanBeClearedOnSignOut() throws {
+        let suiteName = "MeowPlannerWidgetSnapshotClearTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetSnapshotClear-\(UUID().uuidString).json")
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        let snapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Private account event", startDate: try date("2026-06-05 09:00"))],
+            todos: [TodoItem(title: "Private account todo", dueDate: try date("2026-06-05 10:00"))],
+            habitCount: 1,
+            weekStartPreference: .monday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-05 08:00")
+        )
+
+        WidgetPlannerSnapshotStore.save(snapshot, defaults: defaults, fileURL: fileURL)
+        #expect(WidgetPlannerSnapshotStore.load(defaults: defaults, fileURL: fileURL) != nil)
+
+        WidgetPlannerSnapshotStore.clear(defaults: defaults, fileURLs: [fileURL])
+
+        #expect(WidgetPlannerSnapshotStore.load(defaults: defaults, fileURL: fileURL) == nil)
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
     @Test("snapshot store searches multiple app group file candidates")
     func snapshotStoreSearchesMultipleAppGroupFileCandidates() throws {
         let suiteName = "MeowPlannerWidgetSnapshotCandidateTests-\(UUID().uuidString)"

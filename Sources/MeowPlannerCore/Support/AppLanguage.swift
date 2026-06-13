@@ -5,6 +5,7 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case chinese = "zh-Hans"
 
     public static let storageKey = "appLanguage"
+    public static let updatedAtStorageKey = "appLanguage.updatedAt"
 
     public var id: String { rawValue }
 
@@ -134,10 +135,35 @@ public enum PlannerTextKey: String, Sendable {
     case signedIn
     case notSignedIn
     case signIn
+    case signInExistingAccount
     case createAccount
+    case createNewAccount
     case signOut
+    case loginButton
+    case accountLogin
     case email
+    case phone
+    case wechat
     case password
+    case currentPassword
+    case newPassword
+    case confirmNewPassword
+    case passwordConfirmationMismatch
+    case sendResetLink
+    case passwordResetCodeSent
+    case passwordResetLinkSent
+    case passwordResetComplete
+    case forgotPassword
+    case changePassword
+    case linkAccount
+    case deleteAccount
+    case deleteAccountWarning
+    case deleteAccountConfirmationMessage
+    case verificationCode
+    case sendVerificationCode
+    case resetPassword
+    case accountIdentifier
+    case optionalEmail
     case provider
     case phoneComingSoon
     case wechatNeedsSetup
@@ -311,10 +337,35 @@ public enum PlannerCopy {
         .signedIn: "Signed in",
         .notSignedIn: "Not signed in",
         .signIn: "Sign In",
+        .signInExistingAccount: "Sign In",
         .createAccount: "Create Account",
+        .createNewAccount: "Create New Account",
         .signOut: "Sign Out",
+        .loginButton: "Log In",
+        .accountLogin: "Account",
         .email: "Email",
+        .phone: "Phone",
+        .wechat: "WeChat",
         .password: "Password",
+        .currentPassword: "Current Password",
+        .newPassword: "New Password",
+        .confirmNewPassword: "Confirm New Password",
+        .passwordConfirmationMismatch: "The two passwords do not match.",
+        .sendResetLink: "Send Link",
+        .passwordResetCodeSent: "A reset code has been sent to your email.",
+        .passwordResetLinkSent: "Check your email link. If you do not see it in inbox, check spam.",
+        .passwordResetComplete: "Password updated. Sign in with the new password.",
+        .forgotPassword: "Forgot Password",
+        .changePassword: "Change Password",
+        .linkAccount: "Link Account",
+        .deleteAccount: "Delete Account",
+        .deleteAccountWarning: "Deleting your account will permanently remove your cloud planner data and cannot be undone.",
+        .deleteAccountConfirmationMessage: "Confirm account deletion? Deleted accounts cannot be recovered.",
+        .verificationCode: "Verification Code",
+        .sendVerificationCode: "Send Code",
+        .resetPassword: "Reset Password",
+        .accountIdentifier: "Account",
+        .optionalEmail: "Email (Optional)",
         .provider: "Provider",
         .phoneComingSoon: "Coming soon",
         .wechatNeedsSetup: "Needs platform setup",
@@ -343,7 +394,7 @@ public enum PlannerCopy {
         .deleteColor: "Delete color",
         .sync: "Sync",
         .icloudSync: "Cloud account sync",
-        .icloudDescription: "Signed-in account todo items sync through Firebase Firestore. Calendar, habit, focus, and timetable sync will be added separately.",
+        .icloudDescription: "Signed-in account schedules, todos, habits, focus sessions, preferences, and timetables sync through Firebase Firestore.",
         .scope: "Scope",
         .scopeDescription: "System calendar sync, Google/Outlook sync, diary, countdown days, AI parsing, and a full widget suite are intentionally out of scope for this first version.",
         .openMeowPlanner: "Open MeowPlanner",
@@ -487,10 +538,35 @@ public enum PlannerCopy {
         .signedIn: "已登录",
         .notSignedIn: "未登录",
         .signIn: "登录",
+        .signInExistingAccount: "登录已有账号",
         .createAccount: "注册账号",
+        .createNewAccount: "新建账号",
         .signOut: "退出登录",
+        .loginButton: "登录",
+        .accountLogin: "账号",
         .email: "邮箱",
+        .phone: "手机号",
+        .wechat: "微信",
         .password: "密码",
+        .currentPassword: "当前密码",
+        .newPassword: "新密码",
+        .confirmNewPassword: "再次输入新密码",
+        .passwordConfirmationMismatch: "两次输入的密码不一样",
+        .sendResetLink: "发送链接",
+        .passwordResetCodeSent: "验证码已发送到你的邮箱。",
+        .passwordResetLinkSent: "查看邮箱链接，如果在 inbox 里面没有找到，请查看 spam",
+        .passwordResetComplete: "密码已更新，请使用新密码登录。",
+        .forgotPassword: "忘记密码",
+        .changePassword: "更改密码",
+        .linkAccount: "关联账号",
+        .deleteAccount: "删除账号",
+        .deleteAccountWarning: "删除账号会永久删除你的云端规划数据，且无法撤销。",
+        .deleteAccountConfirmationMessage: "是否确认删除账号，删除账号不可找回",
+        .verificationCode: "验证码",
+        .sendVerificationCode: "发送验证码",
+        .resetPassword: "重设密码",
+        .accountIdentifier: "账号",
+        .optionalEmail: "邮箱（可选）",
         .provider: "登录方式",
         .phoneComingSoon: "即将支持",
         .wechatNeedsSetup: "需要开放平台配置",
@@ -519,7 +595,7 @@ public enum PlannerCopy {
         .deleteColor: "删除颜色",
         .sync: "同步",
         .icloudSync: "云端账号同步",
-        .icloudDescription: "已登录账号的待办事项会通过 Firebase Firestore 同步。日历、习惯、专注和课程表同步会后续单独接入。",
+        .icloudDescription: "已登录账号的日程、待办、习惯、专注记录、偏好设置和课程表会通过 Firebase Firestore 同步。",
         .scope: "范围",
         .scopeDescription: "系统日历同步、Google/Outlook 同步、日记、倒数日、AI 解析和完整小组件套件不包含在第一版范围内。",
         .openMeowPlanner: "打开 MeowPlanner",

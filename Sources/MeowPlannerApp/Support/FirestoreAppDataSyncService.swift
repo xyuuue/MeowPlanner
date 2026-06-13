@@ -21,8 +21,12 @@ final class FirestoreAppDataSyncService {
         self.defaults = defaults
     }
 
-    func scheduleSync(using modelContext: ModelContext) {
-        guard currentUserID != nil else {
+    func scheduleSync(for userID: String?, using modelContext: ModelContext) {
+        guard let userID else {
+            stopSync()
+            return
+        }
+        guard currentUserID == userID else {
             stopSync()
             return
         }
@@ -33,7 +37,7 @@ final class FirestoreAppDataSyncService {
             guard !Task.isCancelled else {
                 return
             }
-            await syncNow(using: modelContext)
+            await syncNow(for: userID, using: modelContext)
         }
     }
 
@@ -47,9 +51,9 @@ final class FirestoreAppDataSyncService {
         Auth.auth().currentUser?.uid
     }
 
-    private func syncNow(using modelContext: ModelContext) async {
+    private func syncNow(for userID: String, using modelContext: ModelContext) async {
         guard !isSyncing,
-              let userID = currentUserID
+              currentUserID == userID
         else {
             return
         }
@@ -59,6 +63,7 @@ final class FirestoreAppDataSyncService {
             isSyncing = false
         }
 
+        stageLocalDeletions(for: userID, from: modelContext)
         await downloadAllCollections(for: userID, into: modelContext)
         uploadAllLocalData(for: userID, from: modelContext)
     }
@@ -71,9 +76,35 @@ final class FirestoreAppDataSyncService {
 
             do {
                 let snapshot = try await database.collection(collectionPath).getDocuments()
-                applyDocuments(snapshot.documents, collection: collection, to: modelContext)
+                applyDocuments(snapshot.documents, collection: collection, userID: userID, to: modelContext)
             } catch {
                 continue
+            }
+        }
+    }
+
+    private func stageLocalDeletions(for userID: String, from modelContext: ModelContext) {
+        let records = localRecords(from: modelContext)
+        let recordsByCollection = Dictionary(grouping: records, by: \.collection)
+
+        for collection in CloudDataCollection.allCases {
+            let collectionRecords = recordsByCollection[collection, default: []]
+            let currentIDs = Set(collectionRecords.map(\.documentID))
+            let previousIDs = uploadedDocumentIDs(userID: userID, collection: collection)
+            let newlyDeletedIDs = Set(CloudDeletionTracker.missingUploadedDocumentIDs(
+                previousUploadedIDs: previousIDs,
+                currentLocalIDs: currentIDs
+            ))
+            let pendingIDs = pendingDeletedDocumentIDs(userID: userID, collection: collection)
+            let deletedIDs = pendingIDs.union(newlyDeletedIDs)
+
+            guard !deletedIDs.isEmpty else {
+                continue
+            }
+
+            storePendingDeletedDocumentIDs(deletedIDs, userID: userID, collection: collection)
+            for documentID in deletedIDs.sorted() {
+                writeDeletedRecord(userID: userID, collection: collection, documentID: documentID)
             }
         }
     }
@@ -90,8 +121,14 @@ final class FirestoreAppDataSyncService {
                 previousUploadedIDs: previousIDs,
                 currentLocalIDs: currentIDs
             )
+            let pendingIDs = pendingDeletedDocumentIDs(userID: userID, collection: collection)
+            let allDeletedIDs = pendingIDs.union(deletedIDs)
 
-            for documentID in deletedIDs {
+            if !allDeletedIDs.isEmpty {
+                storePendingDeletedDocumentIDs(allDeletedIDs, userID: userID, collection: collection)
+            }
+
+            for documentID in allDeletedIDs.sorted() {
                 writeDeletedRecord(userID: userID, collection: collection, documentID: documentID)
             }
 
@@ -136,6 +173,29 @@ final class FirestoreAppDataSyncService {
 
     private func uploadedIDsStorageKey(userID: String, collection: CloudDataCollection) -> String {
         "meowplanner.firestore.uploadedIDs.\(userID).\(collection.rawValue)"
+    }
+
+    private func pendingDeletedDocumentIDs(userID: String, collection: CloudDataCollection) -> Set<String> {
+        let key = pendingDeletedIDsStorageKey(userID: userID, collection: collection)
+        guard let values = defaults.array(forKey: key) as? [String] else {
+            return []
+        }
+        return Set(values)
+    }
+
+    private func storePendingDeletedDocumentIDs(_ ids: Set<String>, userID: String, collection: CloudDataCollection) {
+        let key = pendingDeletedIDsStorageKey(userID: userID, collection: collection)
+        defaults.set(ids.sorted(), forKey: key)
+    }
+
+    private func clearPendingDeletedDocumentID(_ documentID: String, userID: String, collection: CloudDataCollection) {
+        var ids = pendingDeletedDocumentIDs(userID: userID, collection: collection)
+        ids.remove(documentID)
+        storePendingDeletedDocumentIDs(ids, userID: userID, collection: collection)
+    }
+
+    private func pendingDeletedIDsStorageKey(userID: String, collection: CloudDataCollection) -> String {
+        "meowplanner.firestore.pendingDeletedIDs.\(userID).\(collection.rawValue)"
     }
 }
 
@@ -316,7 +376,10 @@ private extension FirestoreAppDataSyncService {
 
     func records(for preferences: [PlannerPreference]) -> [FirestoreAppDataRecord] {
         preferences.map { preference in
-            baseRecord(
+            let languageUpdatedAt = languageUpdatedAtDate()
+            let appearanceUpdatedAt = appearanceUpdatedAtDate()
+
+            return baseRecord(
                 collection: .preferences,
                 id: preference.id,
                 updatedAt: Date(timeIntervalSince1970: 0),
@@ -339,7 +402,9 @@ private extension FirestoreAppDataSyncService {
                     "scheduleCollapsedEndHour": preference.scheduleCollapsedEndHour,
                     "timeDisplayRawValue": preference.timeDisplayRawValue,
                     "appLanguageID": defaults.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue,
+                    "appLanguageUpdatedAt": languageUpdatedAt,
                     "appearanceID": defaults.string(forKey: AppAppearancePreference.storageKey) ?? AppAppearancePreference.system.rawValue,
+                    "appearanceUpdatedAt": appearanceUpdatedAt,
                     "showDockIcon": defaults.object(forKey: AppDockIconController.storageKey) as? Bool ?? AppDockIconController.defaultShowDockIcon,
                     "sidebarSectionOrder": defaults.string(forKey: "meowplanner.sidebar.sectionOrder") ?? AppSection.defaultSidebarOrderStorageValue
                 ]
@@ -421,49 +486,67 @@ private extension FirestoreAppDataSyncService {
 }
 
 private extension FirestoreAppDataSyncService {
-    func applyDocuments(_ documents: [QueryDocumentSnapshot], collection: CloudDataCollection, to modelContext: ModelContext) {
+    func applyDocuments(
+        _ documents: [QueryDocumentSnapshot],
+        collection: CloudDataCollection,
+        userID: String,
+        to modelContext: ModelContext
+    ) {
         switch collection {
         case .events:
-            applyEvents(documents, to: modelContext)
+            applyEvents(documents, userID: userID, to: modelContext)
         case .todoGroups:
-            applyTodoGroups(documents, to: modelContext)
+            applyTodoGroups(documents, userID: userID, to: modelContext)
         case .todos:
-            applyTodos(documents, to: modelContext)
+            applyTodos(documents, userID: userID, to: modelContext)
         case .habits:
-            applyHabits(documents, to: modelContext)
+            applyHabits(documents, userID: userID, to: modelContext)
         case .habitCheckIns:
-            applyHabitCheckIns(documents, to: modelContext)
+            applyHabitCheckIns(documents, userID: userID, to: modelContext)
         case .focusTags:
-            applyFocusTags(documents, to: modelContext)
+            applyFocusTags(documents, userID: userID, to: modelContext)
         case .focusSessions:
-            applyFocusSessions(documents, to: modelContext)
+            applyFocusSessions(documents, userID: userID, to: modelContext)
         case .preferences:
-            applyPreferences(documents, to: modelContext)
+            applyPreferences(documents, userID: userID, to: modelContext)
         case .courseTimetables:
-            applyCourseTimetables(documents, to: modelContext)
+            applyCourseTimetables(documents, userID: userID, to: modelContext)
         case .coursePeriods:
-            applyCoursePeriods(documents, to: modelContext)
+            applyCoursePeriods(documents, userID: userID, to: modelContext)
         case .courses:
-            applyCourses(documents, to: modelContext)
+            applyCourses(documents, userID: userID, to: modelContext)
         case .courseSessions:
-            applyCourseSessions(documents, to: modelContext)
+            applyCourseSessions(documents, userID: userID, to: modelContext)
         }
     }
 
-    func applyEvents(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyEvents(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(PlannerEvent.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
             guard let id = data.uuid("id", fallback: document.documentID) else {
                 continue
             }
+            let existing = local[id]
             if data.bool("isDeleted") {
-                if let existing = local[id] {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .events)
+                if let existing,
+                   shouldApplyRemoteDeletion(existingUpdatedAt: existing.updatedAt, remoteData: data) {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
                 continue
             }
-            let event = local[id] ?? PlannerEvent(id: id, title: "", startDate: data.date("startDate") ?? Date())
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: existing?.updatedAt,
+                remoteData: data,
+                userID: userID,
+                collection: .events,
+                documentID: id.uuidString
+            ) else {
+                continue
+            }
+            let event = existing ?? PlannerEvent(id: id, title: "", startDate: data.date("startDate") ?? Date())
             event.title = data.string("title") ?? event.title
             event.startDate = data.date("startDate") ?? event.startDate
             event.endDate = data.date("endDate")
@@ -485,20 +568,33 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyTodoGroups(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyTodoGroups(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(TodoGroup.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
             guard let id = data.uuid("id", fallback: document.documentID) else {
                 continue
             }
+            let existing = local[id]
             if data.bool("isDeleted") {
-                if let existing = local[id] {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .todoGroups)
+                if let existing,
+                   shouldApplyRemoteDeletion(existingUpdatedAt: existing.updatedAt, remoteData: data) {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
                 continue
             }
-            let group = local[id] ?? TodoGroup(id: id, name: data.string("name") ?? "")
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: existing?.updatedAt,
+                remoteData: data,
+                userID: userID,
+                collection: .todoGroups,
+                documentID: id.uuidString
+            ) else {
+                continue
+            }
+            let group = existing ?? TodoGroup(id: id, name: data.string("name") ?? "")
             group.name = data.string("name") ?? group.name
             group.colorHex = data.string("colorHex") ?? TodoGroup.defaultColorHex
             group.createdAt = data.date("createdAt") ?? group.createdAt
@@ -511,20 +607,33 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyTodos(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyTodos(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(TodoItem.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
             guard let id = data.uuid("id", fallback: document.documentID) else {
                 continue
             }
+            let existing = local[id]
             if data.bool("isDeleted") {
-                if let existing = local[id] {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .todos)
+                if let existing,
+                   shouldApplyRemoteDeletion(existingUpdatedAt: existing.updatedAt, remoteData: data) {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
                 continue
             }
-            let todo = local[id] ?? TodoItem(id: id, title: data.string("title") ?? "")
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: existing?.updatedAt,
+                remoteData: data,
+                userID: userID,
+                collection: .todos,
+                documentID: id.uuidString
+            ) else {
+                continue
+            }
+            let todo = existing ?? TodoItem(id: id, title: data.string("title") ?? "")
             todo.title = data.string("title") ?? todo.title
             todo.notes = data.string("notes") ?? ""
             todo.dueDate = data.date("dueDate")
@@ -543,7 +652,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyHabits(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyHabits(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(Habit.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -551,9 +660,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .habits)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .habits,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let habit = local[id] ?? Habit(id: id, title: data.string("title") ?? "")
@@ -571,7 +691,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyHabitCheckIns(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyHabitCheckIns(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(HabitCheckIn.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -581,9 +701,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .habitCheckIns)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .habitCheckIns,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let checkIn = local[id] ?? HabitCheckIn(id: id, habitID: habitID, date: data.date("date") ?? Date())
@@ -599,7 +730,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyFocusTags(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyFocusTags(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(FocusTag.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -607,9 +738,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .focusTags)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .focusTags,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let tag = local[id] ?? FocusTag(id: id, name: data.string("name") ?? "")
@@ -625,7 +767,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyFocusSessions(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyFocusSessions(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(FocusSession.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -633,9 +775,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .focusSessions)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .focusSessions,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let session = local[id] ?? FocusSession(id: id, title: data.string("title") ?? "", startedAt: data.date("startedAt") ?? Date())
@@ -656,15 +809,26 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyPreferences(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyPreferences(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(PlannerPreference.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
             let id = data.string("id") ?? document.documentID
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id, userID: userID, collection: .preferences)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .preferences,
+                documentID: id
+            ) else {
                 continue
             }
             let preference = local[id] ?? PlannerPreference(id: id)
@@ -694,20 +858,33 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyCourseTimetables(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyCourseTimetables(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(CourseTimetable.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
             guard let id = data.uuid("id", fallback: document.documentID) else {
                 continue
             }
+            let existing = local[id]
             if data.bool("isDeleted") {
-                if let existing = local[id] {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .courseTimetables)
+                if let existing,
+                   shouldApplyRemoteDeletion(existingUpdatedAt: existing.updatedAt, remoteData: data) {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
                 continue
             }
-            let timetable = local[id] ?? CourseTimetable(id: id, name: data.string("name") ?? "", semesterStartDate: data.date("semesterStartDate") ?? Date())
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: existing?.updatedAt,
+                remoteData: data,
+                userID: userID,
+                collection: .courseTimetables,
+                documentID: id.uuidString
+            ) else {
+                continue
+            }
+            let timetable = existing ?? CourseTimetable(id: id, name: data.string("name") ?? "", semesterStartDate: data.date("semesterStartDate") ?? Date())
             timetable.name = data.string("name") ?? timetable.name
             timetable.semesterStartDate = data.date("semesterStartDate") ?? timetable.semesterStartDate
             timetable.semesterWeeks = data.int("semesterWeeks") ?? timetable.semesterWeeks
@@ -725,7 +902,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyCoursePeriods(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyCoursePeriods(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(CoursePeriod.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -735,9 +912,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .coursePeriods)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .coursePeriods,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let period = local[id] ?? CoursePeriod(
@@ -759,7 +947,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyCourses(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyCourses(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(Course.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -768,13 +956,26 @@ private extension FirestoreAppDataSyncService {
             else {
                 continue
             }
+            let existing = local[id]
             if data.bool("isDeleted") {
-                if let existing = local[id] {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .courses)
+                if let existing,
+                   shouldApplyRemoteDeletion(existingUpdatedAt: existing.updatedAt, remoteData: data) {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
                 continue
             }
-            let course = local[id] ?? Course(id: id, timetableID: timetableID, name: data.string("name") ?? "")
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: existing?.updatedAt,
+                remoteData: data,
+                userID: userID,
+                collection: .courses,
+                documentID: id.uuidString
+            ) else {
+                continue
+            }
+            let course = existing ?? Course(id: id, timetableID: timetableID, name: data.string("name") ?? "")
             course.timetableID = timetableID
             course.name = data.string("name") ?? course.name
             course.colorHex = data.string("colorHex") ?? PlannerPreference.defaultEventColorHexes[0]
@@ -790,7 +991,7 @@ private extension FirestoreAppDataSyncService {
         saveAfterApplyingCloudData(modelContext)
     }
 
-    func applyCourseSessions(_ documents: [QueryDocumentSnapshot], to modelContext: ModelContext) {
+    func applyCourseSessions(_ documents: [QueryDocumentSnapshot], userID: String, to modelContext: ModelContext) {
         var local = Dictionary(uniqueKeysWithValues: fetch(CourseSession.self, in: modelContext).map { ($0.id, $0) })
         for document in documents {
             let data = document.data()
@@ -800,9 +1001,20 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             if data.bool("isDeleted") {
+                clearPendingDeletedDocumentID(id.uuidString, userID: userID, collection: .courseSessions)
                 if let existing = local[id] {
                     modelContext.delete(existing)
+                    local.removeValue(forKey: id)
                 }
+                continue
+            }
+            guard shouldApplyRemoteRecord(
+                existingUpdatedAt: nil,
+                remoteData: data,
+                userID: userID,
+                collection: .courseSessions,
+                documentID: id.uuidString
+            ) else {
                 continue
             }
             let session = local[id] ?? CourseSession(
@@ -829,11 +1041,15 @@ private extension FirestoreAppDataSyncService {
     }
 
     func applySyncedUserDefaults(from data: [String: Any]) {
-        if let appLanguageID = data.string("appLanguageID") {
+        if let appLanguageID = data.string("appLanguageID"),
+           shouldApplyRemoteLanguagePreference(from: data) {
             defaults.set(appLanguageID, forKey: AppLanguage.storageKey)
+            storeLanguageUpdatedAt(data.date("appLanguageUpdatedAt"))
         }
-        if let appearanceID = data.string("appearanceID") {
+        if let appearanceID = data.string("appearanceID"),
+           shouldApplyRemoteAppearancePreference(from: data) {
             defaults.set(appearanceID, forKey: AppAppearancePreference.storageKey)
+            storeAppearanceUpdatedAt(data.date("appearanceUpdatedAt"))
         }
         if let showDockIcon = data.optionalBool("showDockIcon") {
             defaults.set(showDockIcon, forKey: AppDockIconController.storageKey)
@@ -844,9 +1060,95 @@ private extension FirestoreAppDataSyncService {
         }
     }
 
+    func shouldApplyRemoteAppearancePreference(from data: [String: Any]) -> Bool {
+        SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: appearanceUpdatedAtDateFromDefaults(),
+            remoteUpdatedAt: data.date("appearanceUpdatedAt")
+        )
+    }
+
+    func shouldApplyRemoteLanguagePreference(from data: [String: Any]) -> Bool {
+        SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: languageUpdatedAtDateFromDefaults(),
+            remoteUpdatedAt: data.date("appLanguageUpdatedAt")
+        )
+    }
+
+    func languageUpdatedAtDate() -> Date {
+        languageUpdatedAtDateFromDefaults() ?? Date(timeIntervalSince1970: 0)
+    }
+
+    func languageUpdatedAtDateFromDefaults() -> Date? {
+        if let date = defaults.object(forKey: AppLanguage.updatedAtStorageKey) as? Date {
+            return date
+        }
+        if let number = defaults.object(forKey: AppLanguage.updatedAtStorageKey) as? NSNumber {
+            return Date(timeIntervalSince1970: number.doubleValue)
+        }
+        if let timeInterval = defaults.object(forKey: AppLanguage.updatedAtStorageKey) as? TimeInterval {
+            return Date(timeIntervalSince1970: timeInterval)
+        }
+        if defaults.object(forKey: AppLanguage.storageKey) != nil {
+            return Date(timeIntervalSince1970: 0)
+        }
+        return nil
+    }
+
+    func appearanceUpdatedAtDate() -> Date {
+        appearanceUpdatedAtDateFromDefaults() ?? Date(timeIntervalSince1970: 0)
+    }
+
+    func appearanceUpdatedAtDateFromDefaults() -> Date? {
+        if let date = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? Date {
+            return date
+        }
+        if let number = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? NSNumber {
+            return Date(timeIntervalSince1970: number.doubleValue)
+        }
+        if let timeInterval = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? TimeInterval {
+            return Date(timeIntervalSince1970: timeInterval)
+        }
+        if defaults.object(forKey: AppAppearancePreference.storageKey) != nil {
+            return Date(timeIntervalSince1970: 0)
+        }
+        return nil
+    }
+
+    func storeLanguageUpdatedAt(_ date: Date?) {
+        let updatedAt = date ?? Date(timeIntervalSince1970: 0)
+        defaults.set(updatedAt.timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
+    }
+
+    func storeAppearanceUpdatedAt(_ date: Date?) {
+        let updatedAt = date ?? Date(timeIntervalSince1970: 0)
+        defaults.set(updatedAt.timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)
+    }
+
     func saveAfterApplyingCloudData(_ modelContext: ModelContext) {
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+    }
+
+    func shouldApplyRemoteRecord(
+        existingUpdatedAt: Date?,
+        remoteData: [String: Any],
+        userID: String,
+        collection: CloudDataCollection,
+        documentID: String
+    ) -> Bool {
+        CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: existingUpdatedAt,
+            remoteUpdatedAt: remoteData.date("updatedAt"),
+            isPendingLocalDeletion: pendingDeletedDocumentIDs(userID: userID, collection: collection).contains(documentID),
+            remoteIsDeleted: remoteData.bool("isDeleted")
+        )
+    }
+
+    func shouldApplyRemoteDeletion(existingUpdatedAt: Date?, remoteData: [String: Any]) -> Bool {
+        CloudRecordMergeDecision.shouldApplyRemoteDeletion(
+            localUpdatedAt: existingUpdatedAt,
+            remoteUpdatedAt: remoteData.date("updatedAt")
+        )
     }
 }
 

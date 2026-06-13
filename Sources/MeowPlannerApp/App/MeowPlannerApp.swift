@@ -9,6 +9,17 @@ import AppKit
 private let mainWindowDefaultContentSize = NSSize(width: 1240, height: 760)
 private let mainWindowCompactContentMinSize = NSSize(width: 240, height: 180)
 
+@MainActor
+enum MainWindowChromeConfigurator {
+    static func apply(to window: NSWindow) {
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.styleMask.insert(.fullSizeContentView)
+        window.backgroundColor = NSColor(MeowPlannerTheme.fufuPlannerBackground)
+        window.titlebarSeparatorStyle = .none
+    }
+}
+
 private final class MeowPlannerApplicationDelegate: NSObject, NSApplicationDelegate {
     override init() {
         UserDefaults.standard.set(true, forKey: "ApplePersistenceIgnoreState")
@@ -72,7 +83,7 @@ private final class MeowPlannerApplicationDelegate: NSObject, NSApplicationDeleg
 
 @main
 struct MeowPlannerApp: App {
-    private let modelContainer: ModelContainer
+    private let legacyModelContainer: ModelContainer
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
@@ -94,14 +105,14 @@ struct MeowPlannerApp: App {
         AppIconInstaller.apply(showDockIcon: initialShowDockIcon)
 
         do {
-            modelContainer = try ModelContainerFactory.make(cloudKitEnabled: false)
+            legacyModelContainer = try ModelContainerFactory.make(cloudKitEnabled: false)
         } catch {
             fatalError("Unable to create MeowPlanner model container: \(error)")
         }
 
         #if os(macOS)
         AppMainWindowPresenter.shared.configure(
-            modelContainer: modelContainer,
+            legacyModelContainer: legacyModelContainer,
             focusTimerStore: focusTimerStore
         )
         #endif
@@ -110,10 +121,12 @@ struct MeowPlannerApp: App {
     var body: some Scene {
         #if os(macOS)
         WindowGroup("MeowPlanner", id: "main") {
-            RootView()
+            AccountGatedRootView(
+                legacyModelContainer: legacyModelContainer,
+                focusTimerStore: focusTimerStore
+            )
                 .environment(\.appLanguage, appLanguage)
                 .environmentObject(focusTimerStore)
-                .modelContainer(modelContainer)
                 .preferredColorScheme(appAppearance.preferredColorScheme)
                 .onAppear {
                     AppAppearancePreferenceApplicator.apply(appAppearance)
@@ -129,20 +142,24 @@ struct MeowPlannerApp: App {
         .defaultSize(width: mainWindowDefaultContentSize.width, height: mainWindowDefaultContentSize.height)
         #else
         WindowGroup(id: "main") {
-            RootView()
+            AccountGatedRootView(
+                legacyModelContainer: legacyModelContainer,
+                focusTimerStore: focusTimerStore
+            )
                 .environment(\.appLanguage, appLanguage)
                 .environmentObject(focusTimerStore)
-                .modelContainer(modelContainer)
                 .preferredColorScheme(appAppearance.preferredColorScheme)
         }
         #endif
 
         #if os(macOS)
         MenuBarExtra {
-            MeowPlannerMenuBarView(openAppKitMainWindow: openAppKitMainWindow)
+            MeowPlannerMenuBarView(
+                legacyModelContainer: legacyModelContainer,
+                openAppKitMainWindow: openAppKitMainWindow
+            )
                 .environment(\.appLanguage, appLanguage)
                 .environmentObject(focusTimerStore)
-                .modelContainer(modelContainer)
         } label: {
             MeowPlannerMenuBarLabel(openAppKitMainWindow: openAppKitMainWindow)
                 .environment(\.appLanguage, appLanguage)
@@ -151,9 +168,8 @@ struct MeowPlannerApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView()
+            AccountGatedSettingsView(legacyModelContainer: legacyModelContainer)
                 .environment(\.appLanguage, appLanguage)
-                .modelContainer(modelContainer)
                 .preferredColorScheme(appAppearance.preferredColorScheme)
                 .onAppear {
                     AppAppearancePreferenceApplicator.apply(appAppearance)
@@ -177,7 +193,7 @@ struct MeowPlannerApp: App {
     @MainActor
     private func openAppKitMainWindow() {
         AppMainWindowPresenter.shared.open(
-            modelContainer: modelContainer,
+            legacyModelContainer: legacyModelContainer,
             focusTimerStore: focusTimerStore
         )
     }
@@ -190,33 +206,34 @@ private final class AppMainWindowPresenter {
     static let shared = AppMainWindowPresenter()
 
     private var window: NSWindow?
-    private var modelContainer: ModelContainer?
+    private var legacyModelContainer: ModelContainer?
     private var focusTimerStore: FocusTimerStore?
 
-    func configure(modelContainer: ModelContainer, focusTimerStore: FocusTimerStore) {
-        self.modelContainer = modelContainer
+    func configure(legacyModelContainer: ModelContainer, focusTimerStore: FocusTimerStore) {
+        self.legacyModelContainer = legacyModelContainer
         self.focusTimerStore = focusTimerStore
     }
 
     func openConfiguredMainWindow() {
-        guard let modelContainer,
+        guard let legacyModelContainer,
               let focusTimerStore
         else {
             return
         }
 
-        open(modelContainer: modelContainer, focusTimerStore: focusTimerStore)
+        open(legacyModelContainer: legacyModelContainer, focusTimerStore: focusTimerStore)
     }
 
-    func open(modelContainer: ModelContainer, focusTimerStore: FocusTimerStore) {
+    func open(legacyModelContainer: ModelContainer, focusTimerStore: FocusTimerStore) {
         if let existingWindow = window ?? existingMainWindow() {
             window = existingWindow
+            MainWindowChromeConfigurator.apply(to: existingWindow)
             show(existingWindow)
             return
         }
 
         let rootView = AppHostedMainWindowRoot(
-            modelContainer: modelContainer,
+            legacyModelContainer: legacyModelContainer,
             focusTimerStore: focusTimerStore
         )
         let hostingController = NSHostingController(rootView: rootView)
@@ -228,6 +245,7 @@ private final class AppMainWindowPresenter {
         window.setContentSize(mainWindowDefaultContentSize)
         window.setFrameAutosaveName("MeowPlanner.MainWindow")
         window.isReleasedWhenClosed = false
+        MainWindowChromeConfigurator.apply(to: window)
         window.center()
         self.window = window
         show(window)
@@ -255,16 +273,18 @@ private final class AppMainWindowPresenter {
 }
 
 private struct AppHostedMainWindowRoot: View {
-    let modelContainer: ModelContainer
+    let legacyModelContainer: ModelContainer
     @ObservedObject var focusTimerStore: FocusTimerStore
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
 
     var body: some View {
-        RootView()
+        AccountGatedRootView(
+            legacyModelContainer: legacyModelContainer,
+            focusTimerStore: focusTimerStore
+        )
             .environment(\.appLanguage, appLanguage)
             .environmentObject(focusTimerStore)
-            .modelContainer(modelContainer)
             .preferredColorScheme(appAppearance.preferredColorScheme)
             .onAppear {
                 AppAppearancePreferenceApplicator.apply(appAppearance)
