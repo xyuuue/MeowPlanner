@@ -61,6 +61,34 @@ struct WebsiteReleaseTests {
         #expect(!script.contains("即将开放"))
     }
 
+    @Test("website app icon matches bundled app icon")
+    func websiteAppIconMatchesBundledAppIcon() throws {
+        let root = try releasePackageRoot()
+        let htmlFile = root
+            .appendingPathComponent("website/index.html")
+        let infoPlistFile = root
+            .appendingPathComponent("Config/MeowPlanner-Info.plist")
+        let appIconFile = root
+            .appendingPathComponent("Resources/AppIcon/AppIcon.png")
+        let websiteIconFile = root
+            .appendingPathComponent("website/assets/meowplanner-icon.png")
+
+        let html = try String(contentsOf: htmlFile, encoding: .utf8)
+        let infoData = try Data(contentsOf: infoPlistFile)
+        let infoPlist = try #require(PropertyListSerialization.propertyList(from: infoData, format: nil) as? [String: Any])
+        let version = try #require(infoPlist["CFBundleShortVersionString"] as? String)
+        let appIconData = try Data(contentsOf: appIconFile)
+        let websiteIconData = try Data(contentsOf: websiteIconFile)
+        let cacheBustedIconPath = "/assets/meowplanner-icon.png?v=\(version)"
+        let iconsMatch = websiteIconData == appIconData
+
+        #expect(iconsMatch)
+        #expect(html.contains("href=\"\(cacheBustedIconPath)\""))
+        #expect(html.contains("src=\".\(cacheBustedIconPath)\""))
+        #expect(!html.contains("/assets/meowplanner-icon.png\""))
+        #expect(!html.contains("./assets/meowplanner-icon.png\""))
+    }
+
     private func releasePackageRoot() throws -> URL {
         let testFile = URL(fileURLWithPath: #filePath)
         return testFile
