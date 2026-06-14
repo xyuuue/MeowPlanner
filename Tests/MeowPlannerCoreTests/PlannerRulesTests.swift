@@ -151,6 +151,16 @@ struct PlannerRulesTests {
         #expect(preferences.showFuFuTheme)
     }
 
+    @Test("event tag options include tags already assigned to schedules")
+    func eventTagOptionsIncludeTagsAlreadyAssignedToSchedules() {
+        let options = PlannerPreference.eventTagOptions(
+            configuredTags: ["工作", "学习"],
+            assignedTagNames: [" Coursera ", "工作", ""]
+        )
+
+        #expect(options == ["工作", "学习", "Coursera"])
+    }
+
     @Test("course timetable generates default class periods")
     func courseTimetableGeneratesDefaultClassPeriods() throws {
         let timetable = CourseTimetable(

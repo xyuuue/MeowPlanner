@@ -211,8 +211,176 @@ struct WidgetPlannerSnapshotTests {
         #expect(restored.plannerEvents.first?.title == "Candidate file event")
     }
 
-    @Test("snapshot file candidates prefer widget sandbox when sandbox home differs")
-    func snapshotFileCandidatesPreferWidgetSandboxWhenSandboxHomeDiffers() throws {
+    @Test("snapshot refresh mirrors newest snapshot into every widget file candidate")
+    func snapshotRefreshMirrorsNewestSnapshotIntoEveryWidgetFileCandidate() throws {
+        let suiteName = "MeowPlannerWidgetSnapshotRefreshTests-\(UUID().uuidString)"
+        let standardSuiteName = "MeowPlannerWidgetSnapshotStandardRefreshTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let standardDefaults = try #require(UserDefaults(suiteName: standardSuiteName))
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetSnapshotRefresh-\(UUID().uuidString)")
+        let staleMirrorURL = temporaryRoot
+            .appendingPathComponent("WidgetSandbox")
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        let freshSharedURL = temporaryRoot
+            .appendingPathComponent("SharedAppGroup")
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            standardDefaults.removePersistentDomain(forName: standardSuiteName)
+            try? FileManager.default.removeItem(at: temporaryRoot)
+        }
+        let staleSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Old mirrored event", startDate: try date("2026-06-03 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .sunday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-03 13:00")
+        )
+        let freshSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Fresh mirrored event", startDate: try date("2026-06-14 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .monday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-14 13:00")
+        )
+
+        WidgetPlannerSnapshotStore.save(staleSnapshot, defaults: defaults, fileURL: staleMirrorURL)
+        WidgetPlannerSnapshotStore.save(freshSnapshot, defaults: defaults, fileURL: freshSharedURL)
+
+        let refreshed = try #require(WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension(
+            defaults: defaults,
+            standardDefaults: standardDefaults,
+            fileURLs: [staleMirrorURL, freshSharedURL]
+        ))
+        let mirrored = try #require(WidgetPlannerSnapshotStore.load(defaults: defaults, fileURL: staleMirrorURL))
+        let standardSnapshot = try #require(WidgetPlannerSnapshotStore.load(defaults: standardDefaults))
+
+        #expect(refreshed.plannerEvents.first?.title == "Fresh mirrored event")
+        #expect(mirrored.plannerEvents.first?.title == "Fresh mirrored event")
+        #expect(standardSnapshot.plannerEvents.first?.title == "Fresh mirrored event")
+    }
+
+    @Test("snapshot loading chooses newest snapshot when widget sandbox mirror is stale")
+    func snapshotLoadingChoosesNewestSnapshotWhenWidgetSandboxMirrorIsStale() throws {
+        let suiteName = "MeowPlannerWidgetSnapshotStaleSandboxTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetSnapshotStaleSandbox-\(UUID().uuidString)")
+        let accountHome = temporaryRoot.appendingPathComponent("AccountHome")
+        let widgetSandboxHome = accountHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Containers")
+            .appendingPathComponent("com.yuelingqiu.MeowPlanner.MeowPlannerWidget")
+            .appendingPathComponent("Data")
+        let sharedSnapshotURL = accountHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Group Containers")
+            .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        let staleWidgetSandboxSnapshotURL = widgetSandboxHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Group Containers")
+            .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: temporaryRoot)
+        }
+        let staleSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Stale widget sandbox event", startDate: try date("2026-06-03 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .sunday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-03 13:00")
+        )
+        let freshSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Fresh shared app group event", startDate: try date("2026-06-13 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .monday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-13 13:00")
+        )
+
+        WidgetPlannerSnapshotStore.save(staleSnapshot, defaults: defaults, fileURL: staleWidgetSandboxSnapshotURL)
+        WidgetPlannerSnapshotStore.save(freshSnapshot, defaults: defaults, fileURL: sharedSnapshotURL)
+
+        let urls = WidgetPlannerSnapshotStore.snapshotFileURLs(
+            appGroupContainerURL: nil,
+            homeDirectory: widgetSandboxHome,
+            accountHomeDirectory: accountHome
+        )
+        let restored = try #require(WidgetPlannerSnapshotStore.load(defaults: defaults, fileURLs: urls))
+
+        #expect(restored.plannerEvents.first?.title == "Fresh shared app group event")
+        #expect(urls.contains(staleWidgetSandboxSnapshotURL))
+    }
+
+    @Test("snapshot loading chooses newest snapshot when widget sandbox container is stale")
+    func snapshotLoadingChoosesNewestSnapshotWhenWidgetSandboxContainerIsStale() throws {
+        let suiteName = "MeowPlannerWidgetSnapshotSandboxContainerURLTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetSnapshotSandboxContainerURL-\(UUID().uuidString)")
+        let accountHome = temporaryRoot.appendingPathComponent("AccountHome")
+        let widgetSandboxHome = accountHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Containers")
+            .appendingPathComponent("com.yuelingqiu.MeowPlanner.MeowPlannerWidget")
+            .appendingPathComponent("Data")
+        let widgetSandboxContainerURL = widgetSandboxHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Group Containers")
+            .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+        let staleWidgetSandboxSnapshotURL = widgetSandboxContainerURL
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        let sharedSnapshotURL = accountHome
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Group Containers")
+            .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+            .appendingPathComponent(WidgetPlannerSnapshotStore.snapshotFilename)
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: temporaryRoot)
+        }
+        let staleSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Sandbox container stale event", startDate: try date("2026-06-03 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .sunday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-03 13:00")
+        )
+        let freshSnapshot = WidgetPlannerSnapshot(
+            events: [PlannerEvent(title: "Fresh account app group event", startDate: try date("2026-06-14 09:00"))],
+            todos: [],
+            habitCount: 0,
+            weekStartPreference: .monday,
+            showChineseCalendar: true,
+            updatedAt: try date("2026-06-14 13:00")
+        )
+
+        WidgetPlannerSnapshotStore.save(staleSnapshot, defaults: defaults, fileURL: staleWidgetSandboxSnapshotURL)
+        WidgetPlannerSnapshotStore.save(freshSnapshot, defaults: defaults, fileURL: sharedSnapshotURL)
+
+        let urls = WidgetPlannerSnapshotStore.snapshotFileURLs(
+            appGroupContainerURL: widgetSandboxContainerURL,
+            homeDirectory: widgetSandboxHome,
+            accountHomeDirectory: accountHome
+        )
+        let restored = try #require(WidgetPlannerSnapshotStore.load(defaults: defaults, fileURLs: urls))
+
+        #expect(restored.plannerEvents.first?.title == "Fresh account app group event")
+        #expect(urls.contains(sharedSnapshotURL))
+        #expect(urls.contains(staleWidgetSandboxSnapshotURL))
+    }
+
+    @Test("snapshot file candidates include shared app group and widget sandbox mirror")
+    func snapshotFileCandidatesIncludeSharedAppGroupAndWidgetSandboxMirror() throws {
         let sandboxHome = URL(fileURLWithPath: "/Users/xyue/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data")
         let accountHome = URL(fileURLWithPath: "/Users/xyue")
         let widgetSandboxSnapshotURL = URL(fileURLWithPath: "/Users/xyue/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data/Library/Group Containers/group.com.yuelingqiu.MeowPlanner/widget-planner-snapshot.json")
@@ -224,15 +392,15 @@ struct WidgetPlannerSnapshotTests {
             accountHomeDirectory: accountHome
         )
 
-        #expect(urls.first == widgetSandboxSnapshotURL)
         #expect(urls.contains(accountGroupSnapshotURL))
-        #expect(urls.firstIndex(of: widgetSandboxSnapshotURL)! < urls.firstIndex(of: accountGroupSnapshotURL)!)
+        #expect(urls.contains(widgetSandboxSnapshotURL))
     }
 
-    @Test("snapshot file candidates include widget sandbox when app home differs")
-    func snapshotFileCandidatesIncludeWidgetSandboxWhenAppHomeDiffers() throws {
+    @Test("snapshot file candidates include widget sandbox mirror when app home differs")
+    func snapshotFileCandidatesIncludeWidgetSandboxMirrorWhenAppHomeDiffers() throws {
         let appHome = URL(fileURLWithPath: "/Users/xyue/Library/Containers/com.yuelingqiu.MeowPlanner/Data")
         let accountHome = URL(fileURLWithPath: "/Users/xyue")
+        let widgetSandboxSnapshotURL = URL(fileURLWithPath: "/Users/xyue/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data/Library/Group Containers/group.com.yuelingqiu.MeowPlanner/widget-planner-snapshot.json")
 
         let urls = WidgetPlannerSnapshotStore.snapshotFileURLs(
             appGroupContainerURL: nil,
@@ -240,7 +408,7 @@ struct WidgetPlannerSnapshotTests {
             accountHomeDirectory: accountHome
         )
 
-        #expect(urls.contains(URL(fileURLWithPath: "/Users/xyue/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data/Library/Group Containers/group.com.yuelingqiu.MeowPlanner/widget-planner-snapshot.json")))
+        #expect(urls.contains(widgetSandboxSnapshotURL))
     }
 
     @Test("snapshot builder reads newly saved schedules from model context")

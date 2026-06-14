@@ -78,6 +78,7 @@ public final class PlannerPreference {
     public var scheduleCollapsedStartHour: Int = 0
     public var scheduleCollapsedEndHour: Int = 6
     public var timeDisplayRawValue: String = TimeDisplayPreference.twentyFourHour.rawValue
+    public var updatedAt: Date = PlannerPreference.baselineUpdatedAt
 
     public init(
         id: String = "default",
@@ -97,7 +98,8 @@ public final class PlannerPreference {
         scheduleTimeCollapseEnabled: Bool = true,
         scheduleCollapsedStartHour: Int = 0,
         scheduleCollapsedEndHour: Int = 6,
-        timeDisplayPreference: TimeDisplayPreference = .twentyFourHour
+        timeDisplayPreference: TimeDisplayPreference = .twentyFourHour,
+        updatedAt: Date = PlannerPreference.baselineUpdatedAt
     ) {
         self.id = id
         self.localeIdentifier = localeIdentifier
@@ -118,6 +120,7 @@ public final class PlannerPreference {
         self.scheduleCollapsedStartHour = collapsedRange.start
         self.scheduleCollapsedEndHour = collapsedRange.end
         self.timeDisplayRawValue = timeDisplayPreference.rawValue
+        self.updatedAt = updatedAt
     }
 
     public static let defaultEventColorHexes = [
@@ -138,6 +141,8 @@ public final class PlannerPreference {
         "学习",
         "作业"
     ]
+
+    public static let baselineUpdatedAt = Date(timeIntervalSince1970: 0)
 
     public static var defaults: PlannerPreference {
         PlannerPreference()
@@ -206,6 +211,14 @@ public final class PlannerPreference {
             result.append(normalized)
         }
         return tags.isEmpty ? defaultEventTagNames : tags
+    }
+
+    public static func eventTagOptions(configuredTags: [String], assignedTagNames: [String]) -> [String] {
+        normalizedEventTagNames(configuredTags + assignedTagNames)
+    }
+
+    public func markUpdated(at date: Date = Date()) {
+        updatedAt = date
     }
 
     public static func normalizedCollapsedHourRange(start: Int, end: Int) -> (start: Int, end: Int) {

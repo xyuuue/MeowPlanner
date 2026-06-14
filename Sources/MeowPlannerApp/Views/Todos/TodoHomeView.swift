@@ -656,6 +656,7 @@ private struct TodoGroupEditorView: View {
 
     private func persistPaletteColors(_ colors: [String]) {
         preference.eventColorHexes = colors
+        preference.markUpdated()
         try? modelContext.save()
     }
 

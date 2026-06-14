@@ -12,11 +12,12 @@ private let mainWindowCompactContentMinSize = NSSize(width: 240, height: 180)
 @MainActor
 enum MainWindowChromeConfigurator {
     static func apply(to window: NSWindow) {
+        window.styleMask.formUnion([.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView])
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.styleMask.insert(.fullSizeContentView)
         window.backgroundColor = NSColor(MeowPlannerTheme.fufuPlannerBackground)
         window.titlebarSeparatorStyle = .none
+        window.contentMinSize = mainWindowCompactContentMinSize
     }
 }
 
@@ -104,8 +105,10 @@ struct MeowPlannerApp: App {
             ?? AppDockIconController.defaultShowDockIcon
         AppIconInstaller.apply(showDockIcon: initialShowDockIcon)
 
+        let launchSnapshotModelContainer: ModelContainer
         do {
-            legacyModelContainer = try ModelContainerFactory.make(cloudKitEnabled: false)
+            launchSnapshotModelContainer = try ModelContainerFactory.make(cloudKitEnabled: false)
+            legacyModelContainer = launchSnapshotModelContainer
         } catch {
             fatalError("Unable to create MeowPlanner model container: \(error)")
         }
@@ -115,6 +118,7 @@ struct MeowPlannerApp: App {
             legacyModelContainer: legacyModelContainer,
             focusTimerStore: focusTimerStore
         )
+        AppLaunchWidgetSnapshotRefresher.schedule(legacyModelContainer: launchSnapshotModelContainer)
         #endif
     }
 
@@ -300,6 +304,50 @@ private struct AppHostedMainWindowRoot: View {
 
     private var appAppearance: AppAppearancePreference {
         AppAppearancePreference(storedValue: appearanceID)
+    }
+}
+
+@MainActor
+private enum AppLaunchWidgetSnapshotRefresher {
+    static func schedule(legacyModelContainer: ModelContainer) {
+        for delay in [350_000_000, 1_200_000_000, 2_400_000_000] as [UInt64] {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: delay)
+                publishSnapshot(legacyModelContainer: legacyModelContainer)
+            }
+        }
+    }
+
+    private static func publishSnapshot(legacyModelContainer: ModelContainer) {
+        let accountStore = AccountSessionStore.shared
+        let accountContainerStore = AccountScopedModelContainerStore.shared
+        let container: ModelContainer
+
+        if let currentProfile = accountStore.currentProfile {
+            accountContainerStore.prepareContainer(
+                for: currentProfile,
+                legacyModelContainer: legacyModelContainer
+            )
+
+            guard accountContainerStore.activeUserID == currentProfile.remoteUserID,
+                  let activeAccountContainer = accountContainerStore.modelContainer
+            else {
+                return
+            }
+
+            container = activeAccountContainer
+        } else {
+            accountContainerStore.prepareSignedOutContainer()
+
+            guard let signedOutModelContainer = accountContainerStore.signedOutModelContainer else {
+                return
+            }
+
+            container = signedOutModelContainer
+        }
+
+        let context = ModelContext(container)
+        WidgetTimelineSyncService.publishSnapshotAndReload(using: context)
     }
 }
 #endif

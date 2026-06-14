@@ -78,7 +78,13 @@ struct XcodeWidgetProjectTests {
         #expect(script.contains("/usr/bin/ditto \"$APP_BUNDLE\" \"$INSTALL_BUNDLE\""))
         #expect(script.contains("refresh_widget_registration()"))
         #expect(script.contains("WIDGET_BUNDLE=\"$INSTALL_BUNDLE/Contents/PlugIns/MeowPlannerWidgetExtension.appex\""))
-        #expect(script.contains("pkill -f \"$INSTALL_BUNDLE/Contents/PlugIns/MeowPlannerWidgetExtension.appex\""))
+        #expect(script.contains("pkill -f \"MeowPlannerWidgetExtension.appex/Contents/MacOS/MeowPlannerWidgetExtension\""))
+        #expect(script.contains("STALE_WIDGET_BUNDLES=("))
+        #expect(script.contains("$ROOT_DIR/build/XcodeRun/Build/Products/Debug/$APP_NAME.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"))
+        #expect(script.contains("$ROOT_DIR/build/XcodeRun/Build/Products/Release/$APP_NAME.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"))
+        #expect(script.contains("/private/tmp/MeowPlannerManualSign.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"))
+        #expect(script.contains("for stale_widget_bundle in \"${STALE_WIDGET_BUNDLES[@]}\""))
+        #expect(script.contains("/usr/bin/pluginkit -r \"$stale_widget_bundle\""))
         #expect(script.contains("/usr/bin/pluginkit -r \"$WIDGET_BUNDLE\""))
         #expect(script.contains("/usr/bin/pluginkit -a \"$WIDGET_BUNDLE\""))
         #expect(script.contains("/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R \"$INSTALL_BUNDLE\""))
@@ -127,6 +133,8 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains("FirebaseApp.configure()"))
         #expect(entitlements.contains("keychain-access-groups"))
         #expect(entitlements.contains("com.apple.security.network.client"))
+        #expect(entitlements.contains("com.apple.security.temporary-exception.files.home-relative-path.read-write"))
+        #expect(entitlements.contains("/Library/Containers/com.yuelingqiu.MeowPlanner.MeowPlannerWidget/Data/Library/Group Containers/group.com.yuelingqiu.MeowPlanner/"))
         #expect(!entitlements.contains("aps-environment"))
         #expect(!entitlements.contains("com.apple.developer.icloud-container-identifiers"))
         #expect(!entitlements.contains("com.apple.developer.icloud-services"))
@@ -480,8 +488,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.13")
-        #expect(plist["CFBundleVersion"] as? String == "14")
+        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.14")
+        #expect(plist["CFBundleVersion"] as? String == "16")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -588,6 +596,8 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
         let rootSyncFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift")
+        let appFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
         let coreFile = root
             .appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
         let coreIntentFile = root
@@ -595,6 +605,7 @@ struct XcodeWidgetProjectTests {
 
         let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
         let rootSyncSource = try String(contentsOf: rootSyncFile, encoding: .utf8)
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
         let coreSource = try String(contentsOf: coreFile, encoding: .utf8)
         let coreIntentSource = try String(contentsOf: coreIntentFile, encoding: .utf8)
 
@@ -606,6 +617,7 @@ struct XcodeWidgetProjectTests {
         #expect(coreSource.contains("save(snapshot, defaults: defaults, fileURLs: snapshotFileURLs)"))
         #expect(coreSource.contains("UserDefaults(suiteName: WidgetPlannerPreferenceStore.suiteName) ?? .standard"))
         #expect(coreSource.contains("Data(contentsOf: fileURL)"))
+        #expect(coreSource.contains("FileManager.default.removeItem(at: fileURL)"))
         #expect(coreSource.contains("data.write(to: fileURL, options: .atomic)"))
         #expect(widgetSource.contains("WidgetPlannerSnapshotStore.loadFromFiles()"))
         #expect(!widgetSource.contains("makeSnapshotFromPersistentStore()"))
@@ -618,9 +630,13 @@ struct XcodeWidgetProjectTests {
         #expect(!widgetSource.contains("WidgetPlannerSnapshotStore.save(liveSnapshot)"))
         #expect(!widgetSource.contains("let events = includeSamplePlans ? sampleEvents(anchor: visibleMonthDate) : []"))
         #expect(rootSyncSource.contains("WidgetPlannerSnapshotStore.save"))
-        #expect(rootSyncSource.contains("WidgetPlannerSnapshotBuilder.makeSnapshotFromPersistentStore()"))
-        #expect(rootSyncSource.contains("refreshSnapshotFromPersistentStore()"))
+        #expect(!rootSyncSource.contains("WidgetPlannerSnapshotBuilder.makeSnapshotFromPersistentStore()"))
+        #expect(!rootSyncSource.contains("refreshSnapshotFromPersistentStore()"))
+        #expect(!coreSource.contains("makeSnapshotFromPersistentStore()"))
         #expect(rootSyncSource.contains("WidgetCenter.shared.reloadTimelines"))
+        #expect(appSource.contains("AppLaunchWidgetSnapshotRefresher.schedule"))
+        #expect(appSource.contains("AccountScopedModelContainerStore.shared"))
+        #expect(appSource.contains("WidgetTimelineSyncService.publishSnapshotAndReload(using: context)"))
     }
 
     @Test("desktop widget event pills adapt text and background for non full color rendering")
@@ -1253,7 +1269,7 @@ struct XcodeWidgetProjectTests {
         #expect(rootViewSource.contains("SidebarToolbarOverflowCleaner(trigger: sidebarVisibility)"))
         #expect(rootViewSource.contains("var trigger: NavigationSplitViewVisibility"))
         #expect(rootViewSource.contains("_ = trigger"))
-        #expect(rootViewSource.contains("window.toolbar = nil"))
+        #expect(rootViewSource.contains("window.toolbar?.isVisible = false"))
         #expect(rootViewSource.contains("sidebarCollapseButton"))
         #expect(rootViewSource.contains("collapsedSidebarControlBar"))
         #expect(rootViewSource.contains("private var collapsedSidebarExpandButton: some View"))
@@ -1306,14 +1322,39 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains("MainWindowChromeConfigurator.apply(to: window)"))
         #expect(appSource.contains("window.titlebarAppearsTransparent = true"))
         #expect(appSource.contains("window.titleVisibility = .hidden"))
-        #expect(appSource.contains("window.styleMask.insert(.fullSizeContentView)"))
+        #expect(appSource.contains("window.styleMask.formUnion([.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView])"))
         #expect(appSource.contains("window.backgroundColor = NSColor(MeowPlannerTheme.fufuPlannerBackground)"))
         #expect(appSource.contains("window.titlebarSeparatorStyle = .none"))
         #expect(rootViewSource.contains(".toolbarBackground(.hidden, for: .windowToolbar)"))
         #expect(rootViewSource.contains("MainWindowChromeConfigurator.apply(to: window)"))
-        #expect(rootViewSource.contains("window.toolbar = nil"))
+        #expect(rootViewSource.contains("window.toolbar?.isVisible = false"))
+        #expect(!rootViewSource.contains("window.toolbar = nil"))
         #expect(!rootViewSource.contains(".navigationTitle(\"MeowPlanner\")"))
         #expect(!calendarHomeSource.contains(".navigationTitle(\"MeowPlanner\")"))
+    }
+
+    @Test("main window preserves resize affordance while using FuFu chrome")
+    func mainWindowPreservesResizeAffordanceWhileUsingFuFuChrome() throws {
+        let root = try packageRoot()
+        let appFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let rootViewFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+
+        #expect(appSource.contains("window.styleMask.formUnion([.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView])"))
+        #expect(rootViewSource.contains("MainWindowResizeAffordanceInstaller()"))
+        #expect(rootViewSource.contains("contentView.addSubview(resizeView, positioned: .above, relativeTo: nil)"))
+        #expect(rootViewSource.contains("resizeView.frame = contentView.bounds"))
+        #expect(rootViewSource.contains("resizeView.autoresizingMask = [.width, .height]"))
+        #expect(rootViewSource.contains("private let edgeThickness: CGFloat = 16"))
+        #expect(rootViewSource.contains("override func hitTest(_ point: NSPoint) -> NSView?"))
+        #expect(rootViewSource.contains("NSCursor.resizeLeftRight"))
+        #expect(rootViewSource.contains("window.setFrame(frame, display: true)"))
+        #expect(!rootViewSource.contains(".overlay {\n            MainWindowResizeAffordance()"))
+        #expect(!rootViewSource.contains("window.toolbar = nil"))
     }
 
     @Test("app navigation removes habits and adds schedule agenda")

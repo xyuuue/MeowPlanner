@@ -346,7 +346,7 @@ struct CalendarHomeView: View {
     private var eventFilterTagOptions: [String] {
         let configuredTags = preferences.first?.eventTagNames ?? PlannerPreference.defaultEventTagNames
         let eventTags = events.map(\.tagName)
-        return PlannerPreference.normalizedEventTagNames(configuredTags + eventTags)
+        return PlannerPreference.eventTagOptions(configuredTags: configuredTags, assignedTagNames: eventTags)
     }
 
     private func eventOccurs(_ event: PlannerEvent, on date: Date) -> Bool {
@@ -397,6 +397,7 @@ private struct EventEditorView: View {
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \PlannerEvent.startDate) private var events: [PlannerEvent]
     @Query private var preferences: [PlannerPreference]
 
     @State private var title = ""
@@ -636,7 +637,9 @@ private struct EventEditorView: View {
     }
 
     private var eventTagOptions: [String] {
-        preferences.first?.eventTagNames ?? PlannerPreference.defaultEventTagNames
+        let configuredTags = preferences.first?.eventTagNames ?? PlannerPreference.defaultEventTagNames
+        let eventTags = events.map(\.tagName)
+        return PlannerPreference.eventTagOptions(configuredTags: configuredTags, assignedTagNames: eventTags)
     }
 
     private var showChineseCalendar: Bool {
@@ -726,6 +729,7 @@ private struct EventEditorView: View {
 
     private func persistPaletteColors(_ colors: [String]) {
         preference.eventColorHexes = colors
+        preference.markUpdated()
         try? modelContext.save()
     }
 
@@ -739,6 +743,7 @@ private struct EventEditorView: View {
         if !tags.contains(normalized) {
             tags.append(normalized)
             preference.eventTagNames = tags
+            preference.markUpdated()
             try? modelContext.save()
         }
         tagName = normalized

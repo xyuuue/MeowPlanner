@@ -236,7 +236,8 @@ final class AccountScopedModelContainerStore: ObservableObject {
                 scheduleTimeCollapseEnabled: preference.scheduleTimeCollapseEnabled,
                 scheduleCollapsedStartHour: preference.scheduleCollapsedStartHour,
                 scheduleCollapsedEndHour: preference.scheduleCollapsedEndHour,
-                timeDisplayPreference: preference.timeDisplayPreference
+                timeDisplayPreference: preference.timeDisplayPreference,
+                updatedAt: preference.updatedAt
             ))
         }
 

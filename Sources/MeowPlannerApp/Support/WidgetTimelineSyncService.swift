@@ -22,12 +22,14 @@ enum WidgetTimelineSyncService {
                 reloadWidgetTimelines()
 
                 // Persist and reload can race with AppKit/WidgetKit state updates.
+                // Re-publish the same account-scoped snapshot so retries cannot fall back
+                // to the legacy default store and overwrite signed-in widget data.
                 Task {
                     let retryDelays: [UInt64] = [80_000_000, 180_000_000, 300_000_000, 500_000_000, 800_000_000, 1_200_000_000]
                     for delay in retryDelays {
                         try? await Task.sleep(nanoseconds: delay)
                         await MainActor.run {
-                            refreshSnapshotFromPersistentStore()
+                            publish(snapshot)
                             reloadWidgetTimelines()
                         }
                     }
@@ -44,16 +46,6 @@ enum WidgetTimelineSyncService {
         WidgetPlannerPreferenceStore.weekStartPreference = .sunday
         WidgetPlannerPreferenceStore.showChineseCalendar = true
         reloadWidgetTimelines()
-    }
-
-    @MainActor
-    private static func refreshSnapshotFromPersistentStore() {
-        do {
-            let snapshot = try WidgetPlannerSnapshotBuilder.makeSnapshotFromPersistentStore()
-            publish(snapshot)
-        } catch {
-            assertionFailure("Failed to refresh widget snapshot from persistent store: \(error)")
-        }
     }
 
     @MainActor

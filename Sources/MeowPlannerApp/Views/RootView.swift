@@ -283,6 +283,7 @@ struct RootView: View {
         .toolbar(removing: .sidebarToggle)
         .toolbarBackground(.hidden, for: .windowToolbar)
         .background(SidebarToolbarOverflowCleaner(trigger: sidebarVisibility).frame(width: 0, height: 0))
+        .background(MainWindowResizeAffordanceInstaller().frame(width: 0, height: 0))
         .onAppear {
             scheduleWidgetSnapshotRefresh(reload: true, delayNanoseconds: 0)
             scheduleCloudAppDataSync()
@@ -805,7 +806,8 @@ struct RootView: View {
             String(preference.scheduleTimeCollapseEnabled),
             String(preference.scheduleCollapsedStartHour),
             String(preference.scheduleCollapsedEndHour),
-            preference.timeDisplayRawValue
+            preference.timeDisplayRawValue,
+            dateToken(preference.updatedAt)
         ].joined(separator: "|")
     }
 
@@ -1689,11 +1691,302 @@ private struct SidebarToolbarOverflowCleaner: NSViewRepresentable {
                         return
                     }
 
-                    window.toolbar = nil
+                    window.toolbar?.isVisible = false
+                    window.toolbar?.showsBaselineSeparator = false
                     MainWindowChromeConfigurator.apply(to: window)
                 }
             }
         }
+    }
+}
+
+private struct MainWindowResizeAffordanceInstaller: NSViewRepresentable {
+    func makeNSView(context: Context) -> InstallerView {
+        InstallerView()
+    }
+
+    func updateNSView(_ nsView: InstallerView, context: Context) {
+        nsView.installResizeViewSoon()
+    }
+
+    final class InstallerView: NSView {
+        private weak var resizeView: ResizeView?
+
+        override var acceptsFirstResponder: Bool {
+            false
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            installResizeViewSoon()
+        }
+
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            if newWindow == nil {
+                resizeView?.removeFromSuperview()
+                resizeView = nil
+            }
+
+            super.viewWillMove(toWindow: newWindow)
+        }
+
+        func installResizeViewSoon() {
+            DispatchQueue.main.async { [weak self] in
+                self?.installResizeView()
+            }
+        }
+
+        private func installResizeView() {
+            guard let window,
+                  let contentView = window.contentView
+            else {
+                return
+            }
+
+            MainWindowChromeConfigurator.apply(to: window)
+
+            let existingResizeView = contentView.subviews.compactMap { $0 as? ResizeView }.first
+            let resizeView = self.resizeView ?? existingResizeView ?? ResizeView()
+            if resizeView.superview != nil {
+                resizeView.removeFromSuperview()
+            }
+
+            resizeView.frame = contentView.bounds
+            resizeView.autoresizingMask = [.width, .height]
+            contentView.addSubview(resizeView, positioned: .above, relativeTo: nil)
+            resizeView.refreshWindowChrome()
+            self.resizeView = resizeView
+        }
+    }
+
+    final class ResizeView: NSView {
+        private let edgeThickness: CGFloat = 16
+        private var activeRegion: ResizeRegion = []
+        private var dragStartFrame: NSRect = .zero
+        private var dragStartScreenPoint: NSPoint = .zero
+        private var trackingArea: NSTrackingArea?
+
+        override var acceptsFirstResponder: Bool {
+            false
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            refreshWindowChrome()
+        }
+
+        override func layout() {
+            super.layout()
+            window?.invalidateCursorRects(for: self)
+        }
+
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+
+            if let trackingArea {
+                removeTrackingArea(trackingArea)
+            }
+
+            let area = NSTrackingArea(
+                rect: bounds,
+                options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
+                owner: self,
+                userInfo: nil
+            )
+            addTrackingArea(area)
+            trackingArea = area
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard isResizable,
+                  !resizeRegion(at: point).isEmpty
+            else {
+                return nil
+            }
+
+            return self
+        }
+
+        override func resetCursorRects() {
+            super.resetCursorRects()
+            guard isResizable else {
+                return
+            }
+
+            let edge = edgeThickness
+            let horizontalWidth = max(0, bounds.width - edge * 2)
+            let verticalHeight = max(0, bounds.height - edge * 2)
+
+            addCursorRect(NSRect(x: edge, y: bounds.maxY - edge, width: horizontalWidth, height: edge), cursor: NSCursor.resizeUpDown)
+            addCursorRect(NSRect(x: edge, y: bounds.minY, width: horizontalWidth, height: edge), cursor: NSCursor.resizeUpDown)
+            addCursorRect(NSRect(x: bounds.minX, y: edge, width: edge, height: verticalHeight), cursor: NSCursor.resizeLeftRight)
+            addCursorRect(NSRect(x: bounds.maxX - edge, y: edge, width: edge, height: verticalHeight), cursor: NSCursor.resizeLeftRight)
+            addCursorRect(NSRect(x: bounds.minX, y: bounds.maxY - edge, width: edge, height: edge), cursor: Self.northwestSoutheastCursor)
+            addCursorRect(NSRect(x: bounds.maxX - edge, y: bounds.minY, width: edge, height: edge), cursor: Self.northwestSoutheastCursor)
+            addCursorRect(NSRect(x: bounds.maxX - edge, y: bounds.maxY - edge, width: edge, height: edge), cursor: Self.northeastSouthwestCursor)
+            addCursorRect(NSRect(x: bounds.minX, y: bounds.minY, width: edge, height: edge), cursor: Self.northeastSouthwestCursor)
+        }
+
+        override func mouseMoved(with event: NSEvent) {
+            let point = convert(event.locationInWindow, from: nil)
+            resizeCursor(for: resizeRegion(at: point))?.set()
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            guard let window else {
+                return
+            }
+
+            activeRegion = resizeRegion(at: convert(event.locationInWindow, from: nil))
+            guard !activeRegion.isEmpty else {
+                return
+            }
+
+            dragStartFrame = window.frame
+            dragStartScreenPoint = window.convertPoint(toScreen: event.locationInWindow)
+        }
+
+        override func mouseDragged(with event: NSEvent) {
+            guard let window,
+                  !activeRegion.isEmpty
+            else {
+                return
+            }
+
+            var frame = resizedFrame(for: event, in: window)
+            clamp(&frame, for: window)
+            window.setFrame(frame, display: true)
+        }
+
+        override func mouseUp(with event: NSEvent) {
+            activeRegion = []
+        }
+
+        @MainActor
+        func refreshWindowChrome() {
+            guard let window else {
+                return
+            }
+
+            window.acceptsMouseMovedEvents = true
+            MainWindowChromeConfigurator.apply(to: window)
+            window.invalidateCursorRects(for: self)
+        }
+
+        private var isResizable: Bool {
+            window?.styleMask.contains(.resizable) == true
+        }
+
+        private func resizeRegion(at point: NSPoint) -> ResizeRegion {
+            guard bounds.width > edgeThickness * 2,
+                  bounds.height > edgeThickness * 2
+            else {
+                return []
+            }
+
+            var region: ResizeRegion = []
+            if point.x <= bounds.minX + edgeThickness {
+                region.insert(.left)
+            }
+            if point.x >= bounds.maxX - edgeThickness {
+                region.insert(.right)
+            }
+            if point.y <= bounds.minY + edgeThickness {
+                region.insert(.bottom)
+            }
+            if point.y >= bounds.maxY - edgeThickness {
+                region.insert(.top)
+            }
+            return region
+        }
+
+        private func resizeCursor(for region: ResizeRegion) -> NSCursor? {
+            if region.contains([.top, .left]) || region.contains([.bottom, .right]) {
+                return Self.northwestSoutheastCursor
+            }
+            if region.contains([.top, .right]) || region.contains([.bottom, .left]) {
+                return Self.northeastSouthwestCursor
+            }
+            if region.contains(.left) || region.contains(.right) {
+                return NSCursor.resizeLeftRight
+            }
+            if region.contains(.top) || region.contains(.bottom) {
+                return NSCursor.resizeUpDown
+            }
+            return nil
+        }
+
+        private func resizedFrame(for event: NSEvent, in window: NSWindow) -> NSRect {
+            let currentPoint = window.convertPoint(toScreen: event.locationInWindow)
+            let deltaX = currentPoint.x - dragStartScreenPoint.x
+            let deltaY = currentPoint.y - dragStartScreenPoint.y
+            var frame = dragStartFrame
+
+            if activeRegion.contains(.left) {
+                frame.origin.x += deltaX
+                frame.size.width -= deltaX
+            }
+            if activeRegion.contains(.right) {
+                frame.size.width += deltaX
+            }
+            if activeRegion.contains(.bottom) {
+                frame.origin.y += deltaY
+                frame.size.height -= deltaY
+            }
+            if activeRegion.contains(.top) {
+                frame.size.height += deltaY
+            }
+
+            return frame
+        }
+
+        private func clamp(_ frame: inout NSRect, for window: NSWindow) {
+            let minimumContentSize = window.contentMinSize
+            let minimumFrameSize = window.frameRect(
+                forContentRect: NSRect(origin: .zero, size: minimumContentSize)
+            ).size
+
+            if frame.size.width < minimumFrameSize.width {
+                if activeRegion.contains(.left) {
+                    frame.origin.x = frame.maxX - minimumFrameSize.width
+                }
+                frame.size.width = minimumFrameSize.width
+            }
+
+            if frame.size.height < minimumFrameSize.height {
+                if activeRegion.contains(.bottom) {
+                    frame.origin.y = frame.maxY - minimumFrameSize.height
+                }
+                frame.size.height = minimumFrameSize.height
+            }
+        }
+
+        private static let northwestSoutheastCursor = diagonalCursor(
+            systemName: "arrow.up.left.and.arrow.down.right",
+            fallback: NSCursor.resizeLeftRight
+        )
+        private static let northeastSouthwestCursor = diagonalCursor(
+            systemName: "arrow.up.right.and.arrow.down.left",
+            fallback: NSCursor.resizeLeftRight
+        )
+
+        private static func diagonalCursor(systemName: String, fallback: NSCursor) -> NSCursor {
+            guard let image = NSImage(systemSymbolName: systemName, accessibilityDescription: nil) else {
+                return fallback
+            }
+
+            image.size = NSSize(width: 18, height: 18)
+            return NSCursor(image: image, hotSpot: NSPoint(x: 9, y: 9))
+        }
+    }
+
+    private struct ResizeRegion: OptionSet {
+        let rawValue: Int
+
+        static let left = ResizeRegion(rawValue: 1 << 0)
+        static let right = ResizeRegion(rawValue: 1 << 1)
+        static let bottom = ResizeRegion(rawValue: 1 << 2)
+        static let top = ResizeRegion(rawValue: 1 << 3)
     }
 }
 

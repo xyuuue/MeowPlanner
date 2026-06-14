@@ -283,14 +283,12 @@ public enum WidgetPlannerSnapshotStore {
     }
 
     public static func load(defaults: UserDefaults, fileURLs: [URL]) -> WidgetPlannerSnapshot? {
-        for fileURL in fileURLs {
-            guard let snapshot = load(fileURL: fileURL) else {
-                continue
-            }
-            return snapshot
+        var snapshots = fileURLs.compactMap { load(fileURL: $0) }
+        if let defaultsSnapshot = loadFromSharedDefaults(defaults: defaults) {
+            snapshots.append(defaultsSnapshot)
         }
 
-        return loadFromSharedDefaults(defaults: defaults)
+        return snapshots.max { $0.updatedAt < $1.updatedAt }
     }
 
     private static func loadFromSharedDefaults(defaults: UserDefaults = defaults) -> WidgetPlannerSnapshot? {
@@ -318,11 +316,25 @@ public enum WidgetPlannerSnapshotStore {
 
     @discardableResult
     public static func refreshSharedSnapshotForWidgetExtension() -> WidgetPlannerSnapshot? {
-        guard let snapshot = load(defaults: defaults, fileURLs: snapshotFileURLs) else {
+        refreshSharedSnapshotForWidgetExtension(
+            defaults: defaults,
+            standardDefaults: .standard,
+            fileURLs: snapshotFileURLs
+        )
+    }
+
+    @discardableResult
+    static func refreshSharedSnapshotForWidgetExtension(
+        defaults: UserDefaults,
+        standardDefaults: UserDefaults,
+        fileURLs: [URL]
+    ) -> WidgetPlannerSnapshot? {
+        guard let snapshot = load(defaults: defaults, fileURLs: fileURLs) else {
             return nil
         }
 
-        save(snapshot, defaults: .standard, fileURLs: [])
+        save(snapshot, defaults: defaults, fileURLs: fileURLs)
+        save(snapshot, defaults: standardDefaults, fileURLs: [])
         return snapshot
     }
 
@@ -355,6 +367,7 @@ public enum WidgetPlannerSnapshotStore {
                 at: fileURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
+            try? FileManager.default.removeItem(at: fileURL)
             try? data.write(to: fileURL, options: .atomic)
         }
 
@@ -399,6 +412,7 @@ public enum WidgetPlannerSnapshotStore {
         accountHomeDirectory: URL?
     ) -> [URL] {
         var urls: [URL] = []
+
         let homeSnapshotURL = homeDirectory
             .appendingPathComponent("Library")
             .appendingPathComponent("Group Containers")
@@ -417,31 +431,30 @@ public enum WidgetPlannerSnapshotStore {
         }
 
         if let accountHomeDirectory {
-            urls.append(
-                accountHomeDirectory
-                    .appendingPathComponent("Library")
-                    .appendingPathComponent("Group Containers")
-                    .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
-                    .appendingPathComponent(snapshotFilename)
-            )
-            urls.append(
-                accountHomeDirectory
-                    .appendingPathComponent("Library")
-                    .appendingPathComponent("Containers")
-                    .appendingPathComponent(widgetExtensionContainerIdentifier)
-                    .appendingPathComponent("Data")
-                    .appendingPathComponent("Library")
-                    .appendingPathComponent("Group Containers")
-                    .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
-                    .appendingPathComponent(snapshotFilename)
-            )
+            let accountGroupSnapshotURL = accountHomeDirectory
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Group Containers")
+                .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+                .appendingPathComponent(snapshotFilename)
+            let widgetSandboxMirrorSnapshotURL = accountHomeDirectory
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Containers")
+                .appendingPathComponent(widgetExtensionContainerIdentifier)
+                .appendingPathComponent("Data")
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Group Containers")
+                .appendingPathComponent(WidgetPlannerPreferenceStore.suiteName)
+                .appendingPathComponent(snapshotFilename)
+
+            urls.append(accountGroupSnapshotURL)
+            urls.append(widgetSandboxMirrorSnapshotURL)
         }
 
         if !isWidgetSandboxHome {
             urls.append(homeSnapshotURL)
         }
 
-        if let userHome = NSHomeDirectoryForUser(NSUserName()) {
+        if accountHomeDirectory == nil, let userHome = NSHomeDirectoryForUser(NSUserName()) {
             urls.append(
                 URL(fileURLWithPath: userHome)
                     .appendingPathComponent("Library")
@@ -506,11 +519,5 @@ public enum WidgetPlannerSnapshotBuilder {
             showCompletedSchedules: preference.showCompletedSchedules,
             completedSchedulesUseStrikethrough: preference.completedSchedulesUseStrikethrough
         )
-    }
-
-    public static func makeSnapshotFromPersistentStore() throws -> WidgetPlannerSnapshot {
-        let container = try ModelContainerFactory.make(cloudKitEnabled: false)
-        let context = ModelContext(container)
-        return try makeSnapshot(using: context)
     }
 }

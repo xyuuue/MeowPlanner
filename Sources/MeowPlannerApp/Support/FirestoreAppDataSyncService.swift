@@ -382,7 +382,7 @@ private extension FirestoreAppDataSyncService {
             return baseRecord(
                 collection: .preferences,
                 id: preference.id,
-                updatedAt: Date(timeIntervalSince1970: 0),
+                updatedAt: preference.updatedAt,
                 fields: [
                     "localeIdentifier": preference.localeIdentifier,
                     "defaultFocusMinutes": preference.defaultFocusMinutes,
@@ -823,7 +823,7 @@ private extension FirestoreAppDataSyncService {
                 continue
             }
             guard shouldApplyRemoteRecord(
-                existingUpdatedAt: nil,
+                existingUpdatedAt: local[id]?.updatedAt,
                 remoteData: data,
                 userID: userID,
                 collection: .preferences,
@@ -849,6 +849,7 @@ private extension FirestoreAppDataSyncService {
             preference.scheduleCollapsedStartHour = data.int("scheduleCollapsedStartHour") ?? preference.scheduleCollapsedStartHour
             preference.scheduleCollapsedEndHour = data.int("scheduleCollapsedEndHour") ?? preference.scheduleCollapsedEndHour
             preference.timeDisplayRawValue = data.string("timeDisplayRawValue") ?? preference.timeDisplayRawValue
+            preference.updatedAt = data.date("updatedAt") ?? preference.updatedAt
             applySyncedUserDefaults(from: data)
             if local[id] == nil {
                 modelContext.insert(preference)

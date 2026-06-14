@@ -303,7 +303,18 @@ install_app
 
 refresh_widget_registration() {
   WIDGET_BUNDLE="$INSTALL_BUNDLE/Contents/PlugIns/MeowPlannerWidgetExtension.appex"
-  pkill -f "$INSTALL_BUNDLE/Contents/PlugIns/MeowPlannerWidgetExtension.appex" >/dev/null 2>&1 || true
+  STALE_WIDGET_BUNDLES=(
+    "$ROOT_DIR/build/XcodeRun/Build/Products/Debug/$APP_NAME.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"
+    "$ROOT_DIR/build/XcodeRun/Build/Products/Release/$APP_NAME.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"
+    "/private/tmp/MeowPlannerManualSign.app/Contents/PlugIns/MeowPlannerWidgetExtension.appex"
+  )
+
+  pkill -f "MeowPlannerWidgetExtension.appex/Contents/MacOS/MeowPlannerWidgetExtension" >/dev/null 2>&1 || true
+  for stale_widget_bundle in "${STALE_WIDGET_BUNDLES[@]}"; do
+    if [[ -d "$stale_widget_bundle" ]]; then
+      /usr/bin/pluginkit -r "$stale_widget_bundle" >/dev/null 2>&1 || true
+    fi
+  done
   /usr/bin/pluginkit -r "$WIDGET_BUNDLE" >/dev/null 2>&1 || true
   /usr/bin/pluginkit -a "$WIDGET_BUNDLE" >/dev/null 2>&1 || true
   /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R "$INSTALL_BUNDLE" >/dev/null 2>&1 || true

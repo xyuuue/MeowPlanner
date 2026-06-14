@@ -85,6 +85,23 @@ struct CloudAppDataSyncTests {
         #expect(!shouldDeleteLocal)
     }
 
+    @Test("merge keeps local preference tags when the local preference is newer")
+    func mergeKeepsLocalPreferenceTagsWhenTheLocalPreferenceIsNewer() {
+        let preference = PlannerPreference(
+            eventTagNames: ["工作", "Coursera"],
+            updatedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let remoteUpdatedAt = Date(timeIntervalSince1970: 1_000)
+
+        let shouldApplyRemote = CloudRecordMergeDecision.shouldApplyRemoteRecord(
+            localUpdatedAt: preference.updatedAt,
+            remoteUpdatedAt: remoteUpdatedAt
+        )
+
+        #expect(!shouldApplyRemote)
+        #expect(preference.eventTagNames == ["工作", "Coursera"])
+    }
+
     @Test("merge blocks remote records while local deletion is pending")
     func mergeBlocksRemoteRecordsWhileLocalDeletionIsPending() {
         let shouldApplyRemoteRecord = CloudRecordMergeDecision.shouldApplyRemoteRecord(

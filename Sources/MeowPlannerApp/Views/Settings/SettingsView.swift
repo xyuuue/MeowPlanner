@@ -79,36 +79,36 @@ struct SettingsView: View {
         }
         .onChange(of: focusMinutes) { _, newValue in
             preference.defaultFocusMinutes = newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: weekStartPreference) { _, newValue in
             preference.weekStartPreference = newValue
             WidgetPlannerPreferenceStore.weekStartPreference = newValue
             WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: notificationsEnabled) { _, newValue in
             preference.localRemindersEnabled = newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: defaultEventIsAllDay) { _, newValue in
             preference.defaultEventIsAllDay = newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: hideCompletedSchedules) { _, newValue in
             showCompletedSchedules = !newValue
             preference.showCompletedSchedules = !newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: completedSchedulesUseStrikethrough) { _, newValue in
             preference.completedSchedulesUseStrikethrough = newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: showChineseCalendar) { _, newValue in
             preference.showChineseCalendar = newValue
             WidgetPlannerPreferenceStore.showChineseCalendar = newValue
             WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: scheduleTimeCollapseEnabled) { _, newValue in
             preference.scheduleTimeCollapseEnabled = newValue
@@ -117,7 +117,7 @@ struct SettingsView: View {
             } else {
                 showingTimeCollapsePanel = false
             }
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: scheduleCollapsedStartHour) { _, _ in
             persistCollapsedHourRange()
@@ -127,7 +127,7 @@ struct SettingsView: View {
         }
         .onChange(of: timeDisplayPreference) { _, newValue in
             preference.timeDisplayPreference = newValue
-            try? modelContext.save()
+            savePreferenceUpdate()
         }
         .onChange(of: showDockIcon) { _, newValue in
             AppDockIconController.apply(showDockIcon: newValue, relaunchIfNeeded: true)
@@ -447,6 +447,11 @@ struct SettingsView: View {
         WidgetPlannerPreferenceStore.showChineseCalendar = preference.showChineseCalendar
     }
 
+    private func savePreferenceUpdate() {
+        preference.markUpdated()
+        try? modelContext.save()
+    }
+
     private var timeCollapseSettingsButton: some View {
         Button {
             showingTimeCollapsePanel.toggle()
@@ -509,7 +514,7 @@ struct SettingsView: View {
         }
         preference.scheduleCollapsedStartHour = normalized.start
         preference.scheduleCollapsedEndHour = normalized.end
-        try? modelContext.save()
+        savePreferenceUpdate()
     }
 
     private func hourLabel(_ hour: Int) -> String {
@@ -610,7 +615,7 @@ struct SettingsView: View {
 
         eventColorHexes.append(normalized)
         preference.eventColorHexes = eventColorHexes
-        try? modelContext.save()
+        savePreferenceUpdate()
     }
 
     private func updateEventColor(from originalColorHex: String, to newColorHex: String) {
@@ -627,7 +632,7 @@ struct SettingsView: View {
         }
         eventColorHexes = PlannerPreference.normalizedEventColorHexes(colors)
         preference.eventColorHexes = eventColorHexes
-        try? modelContext.save()
+        savePreferenceUpdate()
     }
 
     private func deleteEventColor(_ colorHex: String) {
@@ -637,7 +642,7 @@ struct SettingsView: View {
 
         eventColorHexes.removeAll { $0 == colorHex }
         preference.eventColorHexes = eventColorHexes
-        try? modelContext.save()
+        savePreferenceUpdate()
     }
 }
 

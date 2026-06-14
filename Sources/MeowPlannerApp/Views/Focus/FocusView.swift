@@ -1501,6 +1501,7 @@ private struct FocusTagEditorView: View {
 
     private func persistPaletteColors(_ colors: [String]) {
         preference.eventColorHexes = colors
+        preference.markUpdated()
         try? modelContext.save()
     }
 
