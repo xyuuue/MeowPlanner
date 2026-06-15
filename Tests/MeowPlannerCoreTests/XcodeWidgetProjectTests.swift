@@ -140,6 +140,43 @@ struct XcodeWidgetProjectTests {
         #expect(!entitlements.contains("com.apple.developer.icloud-services"))
     }
 
+    @Test("macOS app exits duplicate launches before Firebase starts")
+    func macOSAppExitsDuplicateLaunchesBeforeFirebaseStarts() throws {
+        let root = try packageRoot()
+        let appFile = root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let appStructStart = try #require(appSource.range(of: "struct MeowPlannerApp: App"))
+        let appStructSource = String(appSource[appStructStart.lowerBound...])
+        let initSource = try sourceWindow(in: appStructSource, from: "init() {", length: 900)
+        let singleInstanceGuardRange = try #require(
+            initSource.range(of: "MeowPlannerSingleInstanceGuard.exitIfAnotherInstanceIsRunning()")
+        )
+        let firebaseConfigureRange = try #require(initSource.range(of: "FirebaseApp.configure()"))
+
+        #expect(appSource.contains("private enum MeowPlannerSingleInstanceGuard"))
+        #expect(appSource.contains(".runningApplications(withBundleIdentifier:"))
+        #expect(appSource.contains("activate(options:"))
+        #expect(appSource.contains("exit(0)"))
+        #expect(singleInstanceGuardRange.lowerBound < firebaseConfigureRange.lowerBound)
+    }
+
+    @Test("Firebase Firestore clients create databases lazily")
+    func firebaseFirestoreClientsCreateDatabasesLazily() throws {
+        let root = try packageRoot()
+        let syncServiceFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift")
+        let authClientFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift")
+
+        let syncServiceSource = try String(contentsOf: syncServiceFile, encoding: .utf8)
+        let authClientSource = try String(contentsOf: authClientFile, encoding: .utf8)
+
+        #expect(syncServiceSource.contains("private var database: Firestore {"))
+        #expect(authClientSource.contains("private var database: Firestore {"))
+        #expect(!syncServiceSource.contains("database: Firestore = Firestore.firestore()"))
+        #expect(!syncServiceSource.contains("private let database: Firestore"))
+        #expect(!authClientSource.contains("private let database = Firestore.firestore()"))
+    }
+
     @Test("project declares a separate iOS app target and scheme")
     func projectDeclaresSeparateIOSAppTargetAndScheme() throws {
         let root = try packageRoot()

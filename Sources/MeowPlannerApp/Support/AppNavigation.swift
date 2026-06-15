@@ -76,6 +76,7 @@ extension Notification.Name {
     static let meowPlannerOpenSection = Notification.Name("meowplanner.openSection")
     static let meowPlannerRestoreMainWindow = Notification.Name("meowplanner.restoreMainWindow")
     static let meowPlannerExternalOpenURL = Notification.Name("meowplanner.externalOpenURL")
+    static let meowPlannerDuplicateLaunchRequested = Notification.Name("meowplanner.duplicateLaunchRequested")
 }
 
 enum AppNavigationRequest {

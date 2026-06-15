@@ -5,9 +5,35 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+import Darwin
 
 private let mainWindowDefaultContentSize = NSSize(width: 1240, height: 760)
 private let mainWindowCompactContentMinSize = NSSize(width: 240, height: 180)
+
+private enum MeowPlannerSingleInstanceGuard {
+    static func exitIfAnotherInstanceIsRunning() {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.yuelingqiu.MeowPlanner"
+        let currentProcessIdentifier = ProcessInfo.processInfo.processIdentifier
+        let existingApplication = NSRunningApplication
+            .runningApplications(withBundleIdentifier: bundleIdentifier)
+            .first { application in
+                application.processIdentifier != currentProcessIdentifier && !application.isTerminated
+            }
+
+        guard let existingApplication else {
+            return
+        }
+
+        DistributedNotificationCenter.default().postNotificationName(
+            .meowPlannerDuplicateLaunchRequested,
+            object: bundleIdentifier,
+            userInfo: nil,
+            deliverImmediately: true
+        )
+        existingApplication.activate(options: [.activateAllWindows])
+        exit(0)
+    }
+}
 
 @MainActor
 enum MainWindowChromeConfigurator {
@@ -25,6 +51,17 @@ private final class MeowPlannerApplicationDelegate: NSObject, NSApplicationDeleg
     override init() {
         UserDefaults.standard.set(true, forKey: "ApplePersistenceIgnoreState")
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        super.init()
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(handleDuplicateLaunchRequest(_:)),
+            name: .meowPlannerDuplicateLaunchRequested,
+            object: Bundle.main.bundleIdentifier ?? "com.yuelingqiu.MeowPlanner"
+        )
+    }
+
+    deinit {
+        DistributedNotificationCenter.default().removeObserver(self)
     }
 
     func applicationShouldRestoreApplicationState(_ app: NSApplication) -> Bool {
@@ -41,6 +78,10 @@ private final class MeowPlannerApplicationDelegate: NSObject, NSApplicationDeleg
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         false
+    }
+
+    @objc private func handleDuplicateLaunchRequest(_ notification: Notification) {
+        requestMainWindowRestore()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -94,6 +135,10 @@ struct MeowPlannerApp: App {
     #endif
 
     init() {
+        #if os(macOS)
+        MeowPlannerSingleInstanceGuard.exitIfAnotherInstanceIsRunning()
+        #endif
+
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }

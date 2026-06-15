@@ -8,17 +8,18 @@ import SwiftData
 final class FirestoreAppDataSyncService {
     static let shared = FirestoreAppDataSyncService()
 
-    private let database: Firestore
     private let defaults: UserDefaults
     private var syncTask: Task<Void, Never>?
     private var isSyncing = false
 
     init(
-        database: Firestore = Firestore.firestore(),
         defaults: UserDefaults = .standard
     ) {
-        self.database = database
         self.defaults = defaults
+    }
+
+    private var database: Firestore {
+        Firestore.firestore()
     }
 
     func scheduleSync(for userID: String?, using modelContext: ModelContext) {

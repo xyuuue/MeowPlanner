@@ -23,7 +23,9 @@ protocol AccountAuthenticationClient {
 }
 
 struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
-    private let database = Firestore.firestore()
+    private var database: Firestore {
+        Firestore.firestore()
+    }
 
     func currentProfile() -> AccountProfile? {
         Auth.auth().currentUser.map { Self.profile(from: $0) }
