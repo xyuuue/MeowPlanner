@@ -566,8 +566,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.14")
-        #expect(plist["CFBundleVersion"] as? String == "16")
+        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.15")
+        #expect(plist["CFBundleVersion"] as? String == "17")
     }
 
     @Test("month widget has interactive FuFu navigation")
