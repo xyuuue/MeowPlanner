@@ -2496,6 +2496,44 @@ struct XcodeWidgetProjectTests {
         #expect(languageSource.contains("截止日期"))
     }
 
+    @Test("event editor can delete an existing schedule from the bottom of the form")
+    func eventEditorCanDeleteExistingScheduleFromBottomOfForm() throws {
+        let root = try packageRoot()
+        let homeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+        let languageFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+
+        let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+        let languageSource = try String(contentsOf: languageFile, encoding: .utf8)
+        let editorSource = try #require(sourceBlock(
+            in: homeSource,
+            from: "private struct EventEditorView",
+            to: "private struct FuFuDatePickerRow"
+        ))
+        let formSource = sourceBlock(
+            in: editorSource,
+            from: "Form {",
+            to: ".formStyle(.grouped)"
+        ) ?? editorSource
+        let notesRange = try #require(formSource.range(of: "TextField(PlannerCopy.text(.notes"))
+        let deleteButtonRange = try #require(formSource.range(of: "deleteEventButton"))
+
+        #expect(notesRange.lowerBound < deleteButtonRange.lowerBound)
+        #expect(editorSource.contains("@State private var showingDeleteEventConfirmation = false"))
+        #expect(editorSource.contains("if event != nil {"))
+        #expect(editorSource.contains("deleteEventButton"))
+        #expect(editorSource.contains("Label(PlannerCopy.text(.deleteSchedule"))
+        #expect(editorSource.contains(".confirmationDialog(PlannerCopy.text(.deleteSchedule"))
+        #expect(editorSource.contains("Button(PlannerCopy.text(.deleteSchedule, language: appLanguage), role: .destructive)"))
+        #expect(editorSource.contains("private func deleteEvent()"))
+        #expect(editorSource.contains("modelContext.delete(event)"))
+        #expect(editorSource.contains("WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)"))
+        #expect(languageSource.contains("case deleteSchedule"))
+        #expect(languageSource.contains(".deleteSchedule: \"Delete Schedule\""))
+        #expect(languageSource.contains(".deleteSchedule: \"删除日程\""))
+    }
+
     @Test("primary app surfaces use the unified FuFu warm background")
     func primaryAppSurfacesUseUnifiedFuFuWarmBackground() throws {
         let root = try packageRoot()
@@ -3103,6 +3141,9 @@ struct XcodeWidgetProjectTests {
         #expect(!singleDayTitleSource.contains(".minimumScaleFactor"))
         #expect(!multiDayTitleSource.contains(".allowsTightening"))
         #expect(!singleDayTitleSource.contains(".allowsTightening"))
+        #expect(!multiDayTitleSource.contains(".opacity(item.isCompleted"))
+        #expect(!singleDayTitleSource.contains(".opacity(item.isCompleted"))
+        #expect(monthGridSource.contains("private func itemBackgroundOpacity"))
     }
 
     @Test("iOS app target uses the MeowPlanner AppIcon asset catalog")

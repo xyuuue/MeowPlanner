@@ -612,7 +612,7 @@ struct MonthGridView: View {
         .frame(height: multiDaySegmentHeight, alignment: plannerItemContentAlignment)
         .frame(maxWidth: .infinity, alignment: plannerItemContentAlignment)
         .background(
-            MeowPlannerTheme.color(hex: item.colorHex).opacity(0.88),
+            MeowPlannerTheme.color(hex: item.colorHex).opacity(itemBackgroundOpacity(item)),
             in: UnevenRoundedRectangle(
                 topLeadingRadius: position.leadingRadius,
                 bottomLeadingRadius: position.leadingRadius,
@@ -620,7 +620,6 @@ struct MonthGridView: View {
                 topTrailingRadius: position.trailingRadius
             )
         )
-        .opacity(item.isCompleted ? 0.52 : 1)
     }
 
     private var segmentPlaceholder: some View {
@@ -662,7 +661,6 @@ struct MonthGridView: View {
         .frame(height: plannerItemRowHeight, alignment: plannerItemContentAlignment)
         .frame(maxWidth: .infinity, alignment: plannerItemContentAlignment)
         .background(itemBackground(item), in: RoundedRectangle(cornerRadius: 4))
-        .opacity(item.isCompleted ? 0.52 : 1)
         .accessibilityLabel(item.title)
         .highPriorityGesture(eventDoubleClickGesture(for: item))
     }
@@ -753,9 +751,18 @@ struct MonthGridView: View {
     private func itemBackground(_ item: MonthPlannerItem) -> some ShapeStyle {
         switch item.kind {
         case .event:
-            return AnyShapeStyle(MeowPlannerTheme.color(hex: item.colorHex).opacity(0.88))
+            return AnyShapeStyle(MeowPlannerTheme.color(hex: item.colorHex).opacity(itemBackgroundOpacity(item)))
         case .todo:
-            return AnyShapeStyle(MeowPlannerTheme.caramel.opacity(0.78))
+            return AnyShapeStyle(MeowPlannerTheme.caramel.opacity(itemBackgroundOpacity(item)))
+        }
+    }
+
+    private func itemBackgroundOpacity(_ item: MonthPlannerItem) -> Double {
+        switch item.kind {
+        case .event:
+            return item.isCompleted ? 0.66 : 0.88
+        case .todo:
+            return item.isCompleted ? 0.58 : 0.78
         }
     }
 

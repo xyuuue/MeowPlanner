@@ -111,6 +111,31 @@ struct WebsiteReleaseTests {
             #expect(imageInfo.cornerAlphaValues.allSatisfy { $0 <= 0.02 })
         }
     }
+
+    @Test("iOS app icon assets are opaque for the home screen")
+    func iosAppIconAssetsAreOpaqueForTheHomeScreen() throws {
+        let root = try releasePackageRoot()
+        let appIconDirectory = root
+            .appendingPathComponent("Resources/iOSAssets.xcassets")
+            .appendingPathComponent("AppIcon.appiconset")
+        let contentsFile = appIconDirectory.appendingPathComponent("Contents.json")
+        let contentsData = try Data(contentsOf: contentsFile)
+        let contents = try #require(
+            JSONSerialization.jsonObject(with: contentsData) as? [String: Any]
+        )
+        let images = try #require(contents["images"] as? [[String: Any]])
+        let filenames = Set(images.compactMap { $0["filename"] as? String })
+
+        #expect(filenames.contains("AppIcon-180.png"))
+        #expect(filenames.contains("AppIcon-1024.png"))
+
+        for filename in filenames {
+            let imageInfo = try bitmapInfo(for: appIconDirectory.appendingPathComponent(filename))
+
+            #expect(imageInfo.width == imageInfo.height)
+            #expect(!imageInfo.hasAlpha)
+        }
+    }
     #endif
 
     private func releasePackageRoot() throws -> URL {
@@ -122,7 +147,7 @@ struct WebsiteReleaseTests {
     }
 
     #if os(macOS)
-    private func bitmapInfo(for imageURL: URL) throws -> (width: Int, height: Int, cornerAlphaValues: [CGFloat]) {
+    private func bitmapInfo(for imageURL: URL) throws -> (width: Int, height: Int, cornerAlphaValues: [CGFloat], hasAlpha: Bool) {
         let data = try Data(contentsOf: imageURL)
         let imageRep = try #require(NSBitmapImageRep(data: data))
         let width = imageRep.pixelsWide
@@ -137,7 +162,7 @@ struct WebsiteReleaseTests {
             imageRep.colorAt(x: Int(point.x), y: Int(point.y))?.alphaComponent ?? 1
         }
 
-        return (width, height, alphas)
+        return (width, height, alphas, imageRep.hasAlpha)
     }
     #endif
 }

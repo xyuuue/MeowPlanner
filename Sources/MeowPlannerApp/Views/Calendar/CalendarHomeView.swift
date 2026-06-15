@@ -973,6 +973,7 @@ private struct EventEditorView: View {
     @State private var showingPaletteColorEditor = false
     @State private var paletteEditorColorHex = PlannerPreference.defaultEventColorHexes[0]
     @State private var paletteEditorOriginalColorHex: String?
+    @State private var showingDeleteEventConfirmation = false
     @State private var notes = ""
     private let localRemindersEnabled: Bool
     private var event: PlannerEvent?
@@ -1047,6 +1048,9 @@ private struct EventEditorView: View {
                 .buttonStyle(.plain)
                 paletteColorControls
                 TextField(PlannerCopy.text(.notes, language: appLanguage), text: $notes, axis: .vertical)
+                if event != nil {
+                    deleteEventButton
+                }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -1096,6 +1100,12 @@ private struct EventEditorView: View {
                     addEventTag(newTagName)
                 }
             }
+            .confirmationDialog(PlannerCopy.text(.deleteSchedule, language: appLanguage), isPresented: $showingDeleteEventConfirmation) {
+                Button(PlannerCopy.text(.deleteSchedule, language: appLanguage), role: .destructive) {
+                    deleteEvent()
+                }
+                Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
+            }
             .navigationTitle(event == nil ? PlannerCopy.text(.newSchedule, language: appLanguage) : PlannerCopy.text(.editSchedule, language: appLanguage))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1113,6 +1123,19 @@ private struct EventEditorView: View {
             .padding()
         }
         .frame(minWidth: 420, minHeight: 360)
+    }
+
+    private var deleteEventButton: some View {
+        Button(role: .destructive) {
+            showingDeleteEventConfirmation = true
+        } label: {
+            Label(PlannerCopy.text(.deleteSchedule, language: appLanguage), systemImage: "trash")
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.red)
+        .padding(.vertical, 8)
     }
 
     private var datePickerRows: some View {
@@ -1332,6 +1355,17 @@ private struct EventEditorView: View {
             )
             modelContext.insert(event)
         }
+        try? modelContext.save()
+        WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+        dismiss()
+    }
+
+    private func deleteEvent() {
+        guard let event else {
+            return
+        }
+
+        modelContext.delete(event)
         try? modelContext.save()
         WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
         dismiss()

@@ -110,6 +110,7 @@ public enum PlannerTextKey: String, Sendable {
     case noTag
     case notes
     case editSchedule
+    case deleteSchedule
     case clearDay
     case clearDayMessage
     case addSchedule
@@ -311,6 +312,7 @@ public enum PlannerCopy {
         .noTag: "No tag",
         .notes: "Notes",
         .editSchedule: "Edit Schedule",
+        .deleteSchedule: "Delete Schedule",
         .clearDay: "A clear FuFu day",
         .clearDayMessage: "Add a schedule or todo when you are ready.",
         .addSchedule: "Add Schedule",
@@ -511,6 +513,7 @@ public enum PlannerCopy {
         .noTag: "无标签",
         .notes: "备注",
         .editSchedule: "编辑日程",
+        .deleteSchedule: "删除日程",
         .clearDay: "FuFu 今天很清爽",
         .clearDayMessage: "准备好后添加一个日程或待办。",
         .addSchedule: "添加日程",
