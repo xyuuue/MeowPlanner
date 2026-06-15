@@ -599,8 +599,7 @@ struct MonthGridView: View {
                     Text(item.title)
                         .font(plannerItemTextFont)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.70)
-                        .allowsTightening(true)
+                        .truncationMode(.tail)
                         .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
                 }
             } else {
@@ -653,8 +652,7 @@ struct MonthGridView: View {
                 Text(item.title)
                     .font(plannerItemTextFont)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.70)
-                    .allowsTightening(true)
+                    .truncationMode(.tail)
                     .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
             }
         }

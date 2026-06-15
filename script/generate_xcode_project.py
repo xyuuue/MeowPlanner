@@ -58,6 +58,8 @@ def add_object(objects: dict[str, str], object_id: str, body: str) -> None:
 
 
 def file_type(path: str) -> str:
+    if path.endswith(".xcassets"):
+        return "folder.assetcatalog"
     if path.endswith(".swift"):
         return "sourcecode.swift"
     if path.endswith(".plist") or path.endswith(".entitlements"):
@@ -175,8 +177,13 @@ APP_RESOURCE_FILES = RESOURCE_FILES + [
     "Config/GoogleService-Info.plist",
 ]
 
+IOS_ASSET_CATALOGS = [
+    "Resources/iOSAssets.xcassets",
+]
+
 IOS_APP_RESOURCE_FILES = [
     "Config/GoogleService-Info.plist",
+    *IOS_ASSET_CATALOGS,
 ]
 
 RESOURCE_FOLDERS = [
@@ -216,7 +223,7 @@ def main() -> None:
                 "Config/MeowPlanner-iOS.entitlements",
             ]
         )
-    active_resource_files = RESOURCE_FILES if INCLUDE_MACOS else []
+    active_resource_files = (RESOURCE_FILES if INCLUDE_MACOS else []) + (IOS_ASSET_CATALOGS if INCLUDE_IOS else [])
     active_source_files = CORE_SOURCES + APP_SOURCES + (WIDGET_SOURCES if INCLUDE_MACOS else [])
 
     project = oid("project")
@@ -850,6 +857,7 @@ def main() -> None:
     ios_app_settings.update(
         {
             "CODE_SIGN_ENTITLEMENTS": "Config/MeowPlanner-iOS.entitlements",
+            "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
             "INFOPLIST_FILE": "Config/MeowPlanner-iOS-Info.plist",
             "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks"],
             "PRODUCT_BUNDLE_IDENTIFIER": "com.yuelingqiu.MeowPlanner",

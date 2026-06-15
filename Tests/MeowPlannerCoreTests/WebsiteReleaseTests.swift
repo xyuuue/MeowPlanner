@@ -1,6 +1,10 @@
 import Foundation
 import Testing
 
+#if os(macOS)
+import AppKit
+#endif
+
 @Suite("Website release downloads")
 struct WebsiteReleaseTests {
     @Test("package script creates and syncs website DMG artifacts")
@@ -89,6 +93,26 @@ struct WebsiteReleaseTests {
         #expect(!html.contains("./assets/meowplanner-icon.png\""))
     }
 
+    #if os(macOS)
+    @Test("app icon assets keep transparent clipped corners")
+    func appIconAssetsKeepTransparentClippedCorners() throws {
+        let root = try releasePackageRoot()
+        let iconFiles = [
+            root.appendingPathComponent("Resources/AppIcon/AppIcon.png"),
+            root.appendingPathComponent("Resources/AppIcon/AppIcon.appiconset/AppIcon-1024.png"),
+            root.appendingPathComponent("Resources/AppIcon/AppIcon.iconset/icon_512x512@2x.png"),
+            root.appendingPathComponent("website/assets/meowplanner-icon.png")
+        ]
+
+        for iconFile in iconFiles {
+            let imageInfo = try bitmapInfo(for: iconFile)
+
+            #expect(imageInfo.width == imageInfo.height)
+            #expect(imageInfo.cornerAlphaValues.allSatisfy { $0 <= 0.02 })
+        }
+    }
+    #endif
+
     private func releasePackageRoot() throws -> URL {
         let testFile = URL(fileURLWithPath: #filePath)
         return testFile
@@ -96,4 +120,24 @@ struct WebsiteReleaseTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
     }
+
+    #if os(macOS)
+    private func bitmapInfo(for imageURL: URL) throws -> (width: Int, height: Int, cornerAlphaValues: [CGFloat]) {
+        let data = try Data(contentsOf: imageURL)
+        let imageRep = try #require(NSBitmapImageRep(data: data))
+        let width = imageRep.pixelsWide
+        let height = imageRep.pixelsHigh
+        let corners = [
+            NSPoint(x: 0, y: 0),
+            NSPoint(x: max(0, width - 1), y: 0),
+            NSPoint(x: 0, y: max(0, height - 1)),
+            NSPoint(x: max(0, width - 1), y: max(0, height - 1))
+        ]
+        let alphas = corners.map { point in
+            imageRep.colorAt(x: Int(point.x), y: Int(point.y))?.alphaComponent ?? 1
+        }
+
+        return (width, height, alphas)
+    }
+    #endif
 }

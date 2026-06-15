@@ -665,8 +665,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "1.0.17")
-        #expect(plist["CFBundleVersion"] as? String == "19")
+        #expect(plist["CFBundleShortVersionString"] as? String == "2.0.0")
+        #expect(plist["CFBundleVersion"] as? String == "20")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -2873,6 +2873,40 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains("Text(item.title)"))
     }
 
+    @Test("month calendar schedule pill text keeps one size and truncates overflowing titles")
+    func monthCalendarSchedulePillTextKeepsOneSizeAndTruncatesOverflowingTitles() throws {
+        let root = try packageRoot()
+        let monthGridFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
+
+        let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
+        let plannerFontSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private var plannerItemTextFont",
+            length: 280
+        )
+        let multiDayTitleSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private func multiDayEventSegmentContent",
+            length: 900
+        )
+        let singleDayTitleSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private func plannerItemRow",
+            length: 900
+        )
+
+        #expect(plannerFontSource.contains("return .caption.weight(.semibold)"))
+        #expect(multiDayTitleSource.contains(".font(plannerItemTextFont)"))
+        #expect(singleDayTitleSource.contains(".font(plannerItemTextFont)"))
+        #expect(multiDayTitleSource.contains(".truncationMode(.tail)"))
+        #expect(singleDayTitleSource.contains(".truncationMode(.tail)"))
+        #expect(!multiDayTitleSource.contains(".minimumScaleFactor"))
+        #expect(!singleDayTitleSource.contains(".minimumScaleFactor"))
+        #expect(!multiDayTitleSource.contains(".allowsTightening"))
+        #expect(!singleDayTitleSource.contains(".allowsTightening"))
+    }
+
     @Test("month calendar opens on today and only click selection changes the highlighted day")
     func monthCalendarOpensOnTodayAndOnlyClickSelectionChangesTheHighlightedDay() throws {
         let root = try packageRoot()
@@ -2998,6 +3032,68 @@ struct XcodeWidgetProjectTests {
         #expect(inlinePanelSource.contains(".simultaneousGesture(timeEditingCommitGesture)"))
         #expect(inlinePanelSource.contains("binding.wrappedValue = normalizedEndTime(for: newValue)"))
         #expect(inlinePanelSource.contains("calendar.date(byAdding: .hour, value: 1, to: selection)"))
+    }
+
+    @Test("month grid schedule titles keep one uniform font size and truncate overflowing text")
+    func monthGridPlannerItemsUseUniformTruncatedTitleText() throws {
+        let root = try packageRoot()
+        let monthGridFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
+
+        let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
+        let plannerFontSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private var plannerItemTextFont",
+            length: 220
+        )
+        let multiDayTitleSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private func multiDayEventSegmentContent",
+            length: 1_200
+        )
+        let singleDayTitleSource = try sourceWindow(
+            in: monthGridSource,
+            from: "private func plannerItemRow",
+            length: 900
+        )
+
+        #expect(plannerFontSource.contains("return .system(size: 8, weight: .semibold)"))
+        #expect(multiDayTitleSource.contains(".font(plannerItemTextFont)"))
+        #expect(singleDayTitleSource.contains(".font(plannerItemTextFont)"))
+        #expect(multiDayTitleSource.contains(".truncationMode(.tail)"))
+        #expect(singleDayTitleSource.contains(".truncationMode(.tail)"))
+        #expect(!multiDayTitleSource.contains(".minimumScaleFactor"))
+        #expect(!singleDayTitleSource.contains(".minimumScaleFactor"))
+        #expect(!multiDayTitleSource.contains(".allowsTightening"))
+        #expect(!singleDayTitleSource.contains(".allowsTightening"))
+    }
+
+    @Test("iOS app target uses the MeowPlanner AppIcon asset catalog")
+    func iosAppTargetUsesMeowPlannerAppIconAssetCatalog() throws {
+        let root = try packageRoot()
+        let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
+        let projectFile = root
+            .appendingPathComponent("MeowPlanner.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+        let appIconContentsFile = root
+            .appendingPathComponent("Resources/iOSAssets.xcassets")
+            .appendingPathComponent("AppIcon.appiconset")
+            .appendingPathComponent("Contents.json")
+
+        let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
+        let project = try String(contentsOf: projectFile, encoding: .utf8)
+        let appIconContents = sourceIfPresent(appIconContentsFile)
+
+        #expect(FileManager.default.fileExists(atPath: appIconContentsFile.path))
+        #expect(appIconContents.contains("\"idiom\" : \"iphone\""))
+        #expect(appIconContents.contains("\"idiom\" : \"ipad\""))
+        #expect(appIconContents.contains("\"idiom\" : \"ios-marketing\""))
+        #expect(appIconContents.contains("\"filename\" : \"AppIcon-1024.png\""))
+        #expect(generatorSource.contains("\"Resources/iOSAssets.xcassets\""))
+        #expect(generatorSource.contains("\"ASSETCATALOG_COMPILER_APPICON_NAME\": \"AppIcon\""))
+        #expect(project.contains("Resources/iOSAssets.xcassets"))
+        #expect(project.contains("lastKnownFileType = folder.assetcatalog"))
+        #expect(project.contains("ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon"))
     }
 
     private func packageRoot() throws -> URL {
