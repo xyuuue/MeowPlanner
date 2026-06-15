@@ -7,6 +7,7 @@ struct MonthGridView: View {
 
     @Binding var selectedDate: Date
     @Binding var displayedMonth: Date
+    @Binding var monthTransitionDirection: Int
     var events: [PlannerEvent]
     var todos: [TodoItem]
     var completedSchedulesUseStrikethrough: Bool = true
@@ -17,11 +18,12 @@ struct MonthGridView: View {
     var onEventDoubleClick: (PlannerEvent) -> Void = { _ in }
 
     @State private var suppressNextDayDoubleClick = false
+    @GestureState private var monthDragTranslation: CGFloat = 0
 
     @Query private var preferences: [PlannerPreference]
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
-    private let desktopMultiDaySegmentHeight: CGFloat = 18
+    private let desktopMultiDaySegmentHeight: CGFloat = 20
     private let desktopDayCellHorizontalPadding: CGFloat = 8
     private let desktopMonthGridContentPadding: CGFloat = 16
     private let desktopMonthGridHeaderHeight: CGFloat = 34
@@ -30,7 +32,7 @@ struct MonthGridView: View {
     private let desktopDayCellVerticalPadding: CGFloat = 8
     private let desktopDayDateHeaderHeight: CGFloat = 24
     private let desktopDayContentSpacing: CGFloat = 2
-    private let desktopPlannerItemRowHeight: CGFloat = 18
+    private let desktopPlannerItemRowHeight: CGFloat = 20
     private let desktopPlannerItemListSpacing: CGFloat = 4
     private let iosMultiDaySegmentHeight: CGFloat = 14
     private let iosDayCellHorizontalPadding: CGFloat = 3
@@ -175,29 +177,21 @@ struct MonthGridView: View {
 
     private var plannerItemShowsTitle: Bool {
         #if os(iOS)
-        return false
+        return true
         #else
         return true
         #endif
     }
 
     private var plannerItemSpacing: CGFloat {
-        plannerItemShowsTitle ? 4 : 0
-    }
-
-    private var plannerItemIconFont: Font {
-        #if os(iOS)
-        return .system(size: 8, weight: .bold)
-        #else
-        return .system(size: 9, weight: .bold)
-        #endif
+        0
     }
 
     private var plannerItemTextFont: Font {
         #if os(iOS)
         return .system(size: 8, weight: .semibold)
         #else
-        return .caption2.weight(.semibold)
+        return .caption.weight(.semibold)
         #endif
     }
 
@@ -347,6 +341,9 @@ struct MonthGridView: View {
                             )
                         }
                     }
+                    .id(displayedMonth)
+                    .offset(x: monthDragTranslation)
+                    .transition(monthGridTransition)
                     .frame(height: layoutMetrics.gridHeight, alignment: .top)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay {
@@ -383,6 +380,7 @@ struct MonthGridView: View {
         .simultaneousGesture(monthSwipeGesture)
         #endif
         .animation(.snappy(duration: 0.22), value: displayedMonth)
+        .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.86), value: monthDragTranslation)
         .onAppear {
             displayedMonth = monthStart(for: selectedDate)
         }
@@ -417,6 +415,19 @@ struct MonthGridView: View {
 
     private func plannerItemListHeight(for visibleRows: CGFloat) -> CGFloat {
         plannerItemRowHeight * visibleRows + plannerItemListSpacing * max(0, visibleRows - 1)
+    }
+
+    private var monthGridTransition: AnyTransition {
+        #if os(iOS)
+        let insertionEdge: Edge = monthTransitionDirection >= 0 ? .trailing : .leading
+        let removalEdge: Edge = monthTransitionDirection >= 0 ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: insertionEdge).combined(with: .opacity),
+            removal: .move(edge: removalEdge).combined(with: .opacity)
+        )
+        #else
+        return .identity
+        #endif
     }
 
     private var monthTitle: String {
@@ -584,9 +595,6 @@ struct MonthGridView: View {
     private func multiDayEventSegmentContent(_ item: MonthPlannerItem, position: MultiDaySegmentPosition) -> some View {
         HStack(spacing: plannerItemSpacing) {
             if position.showsTitle {
-                Image(systemName: "calendar")
-                    .font(plannerItemIconFont)
-
                 if plannerItemShowsTitle {
                     Text(item.title)
                         .font(plannerItemTextFont)
@@ -641,9 +649,6 @@ struct MonthGridView: View {
 
     private func plannerItemRow(_ item: MonthPlannerItem) -> some View {
         HStack(spacing: plannerItemSpacing) {
-            Image(systemName: item.kind == .event ? "calendar" : "checkmark.circle")
-                .font(plannerItemIconFont)
-
             if plannerItemShowsTitle {
                 Text(item.title)
                     .font(plannerItemTextFont)
@@ -721,7 +726,7 @@ struct MonthGridView: View {
     }
 
     private func dayBackground(isSelected: Bool, isToday: Bool, isInSelectedMonth: Bool) -> some ShapeStyle {
-        if isSelected && !isToday {
+        if isSelected {
             return AnyShapeStyle(MeowPlannerTheme.monthGridSelectedDayBackground)
         }
         if isInSelectedMonth {
@@ -880,24 +885,41 @@ struct MonthGridView: View {
 
     private func moveMonth(by value: Int) {
         let targetMonth = calendar.date(byAdding: .month, value: value, to: displayedMonth) ?? displayedMonth
-        displayedMonth = monthStart(for: targetMonth)
+        monthTransitionDirection = value < 0 ? -1 : 1
+        withAnimation(.snappy(duration: 0.26)) {
+            displayedMonth = monthStart(for: targetMonth)
+        }
     }
 
     private func selectDate(_ date: Date) {
         selectedDate = date
-        displayedMonth = monthStart(for: date)
+        let targetMonth = monthStart(for: date)
+        if !calendar.isDate(targetMonth, equalTo: displayedMonth, toGranularity: .month) {
+            monthTransitionDirection = targetMonth < displayedMonth ? -1 : 1
+        }
+        displayedMonth = targetMonth
         onDayTap(date)
     }
 
     private func resetToToday() {
         let today = Date()
         selectedDate = today
-        displayedMonth = monthStart(for: today)
+        let targetMonth = monthStart(for: today)
+        monthTransitionDirection = targetMonth < displayedMonth ? -1 : 1
+        withAnimation(.snappy(duration: 0.26)) {
+            displayedMonth = targetMonth
+        }
     }
 
     #if os(iOS)
     private var monthSwipeGesture: some Gesture {
         DragGesture(minimumDistance: 24, coordinateSpace: .local)
+            .updating($monthDragTranslation) { value, state, _ in
+                guard abs(value.translation.width) > abs(value.translation.height) else {
+                    return
+                }
+                state = value.translation.width
+            }
             .onEnded { value in
                 handleMonthSwipe(value)
             }

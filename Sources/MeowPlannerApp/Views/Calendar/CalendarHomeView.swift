@@ -2,6 +2,9 @@ import MeowPlannerCore
 #if os(macOS)
 import AppKit
 #endif
+#if os(iOS)
+import UIKit
+#endif
 import SwiftData
 import SwiftUI
 struct CalendarHomeView: View {
@@ -15,12 +18,14 @@ struct CalendarHomeView: View {
 
     @State private var selectedDate = Date()
     @State private var displayedMonth = Date()
+    @State private var monthTransitionDirection = 1
     @State private var selectedEventTagName: String?
     @State private var showingEventEditor = false
     @State private var editingEvent: PlannerEvent?
     @State private var floatingButtonDragOffset = CGSize.zero
     @State private var agendaCardDate: Date?
     @State private var agendaCardScrollAnchorDate = Date()
+    @State private var showingIOSDatePicker = false
 
     private let compactMonthGridMinHeight: CGFloat = 520
     private let regularMonthGridHeight: CGFloat = 760
@@ -30,6 +35,7 @@ struct CalendarHomeView: View {
     private let iosMonthGridMinHeight: CGFloat = 620
     private let agendaCardSpacing: CGFloat = 14
     private let agendaCardSidePeek: CGFloat = 30
+    private let iosDatePickerYearRange = 1901...2099
 
     private var displayedEvents: [PlannerEvent] {
         events.filter { event in
@@ -149,6 +155,18 @@ struct CalendarHomeView: View {
                 EventEditorView(defaultDate: selectedDate, event: editingEvent, localRemindersEnabled: localRemindersEnabled, defaultEventIsAllDay: defaultEventIsAllDay)
             }
         }
+        #if os(iOS)
+        .sheet(isPresented: $showingIOSDatePicker) {
+            IOSCalendarWheelDatePickerSheet(
+                selection: iosDatePickerSelection,
+                yearRange: iosDatePickerYearRange,
+                language: appLanguage,
+                calendar: calendar
+            )
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.hidden)
+        }
+        #endif
     }
 
     #if os(iOS)
@@ -161,6 +179,7 @@ struct CalendarHomeView: View {
             MonthGridView(
                 selectedDate: $selectedDate,
                 displayedMonth: $displayedMonth,
+                monthTransitionDirection: $monthTransitionDirection,
                 events: displayedEvents,
                 todos: [],
                 completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
@@ -191,7 +210,7 @@ struct CalendarHomeView: View {
 
             Spacer(minLength: 0)
 
-            iosMonthYearMenu
+            iosDateToolbarTitle
 
             Spacer(minLength: 0)
 
@@ -202,45 +221,48 @@ struct CalendarHomeView: View {
         .frame(height: iosCalendarToolbarHeight)
     }
 
-    private var iosMonthYearMenu: some View {
-        Menu {
-            Picker("Year", selection: iosDisplayedYearBinding) {
-                ForEach(iosDisplayedYearOptions, id: \.self) { year in
-                    Text("\(year)").tag(year)
-                }
-            }
-
-            Picker("Month", selection: iosDisplayedMonthBinding) {
-                ForEach(1...12, id: \.self) { month in
-                    Text(iosMonthName(for: month)).tag(month)
-                }
-            }
-
-            Divider()
-
+    private var iosDateToolbarTitle: some View {
+        HStack(spacing: 7) {
             Button {
                 resetDisplayedMonthToToday()
             } label: {
-                Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "calendar.badge.clock")
-            }
-        } label: {
-            HStack(spacing: 7) {
                 FuFuAssetImage(size: 30)
-
-                Text(iosDisplayedMonthTitle)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(MeowPlannerTheme.cocoa)
-                    .lineLimit(1)
-                    .monospacedDigit()
-
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(MeowPlannerTheme.caramel)
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityLabel(PlannerCopy.text(.today, language: appLanguage))
+
+            Button {
+                presentIOSDatePicker()
+            } label: {
+                HStack(spacing: 5) {
+                    Text(iosDisplayedMonthTitle)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .lineLimit(1)
+                        .monospacedDigit()
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(iosDisplayedMonthTitle)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(iosDisplayedMonthTitle)
+        .contentShape(Rectangle())
+    }
+
+    private var iosDatePickerSelection: Binding<Date> {
+        Binding(
+            get: { selectedDate },
+            set: { newValue in
+                setCalendarSelection(to: newValue)
+            }
+        )
+    }
+
+    private func presentIOSDatePicker() {
+        showingIOSDatePicker = true
     }
 
     private var iosDisplayedMonthTitle: String {
@@ -251,63 +273,8 @@ struct CalendarHomeView: View {
         return "\(year).\(monthText)"
     }
 
-    private var iosDisplayedYearOptions: [Int] {
-        let year = calendar.component(.year, from: displayedMonth)
-        return Array((year - 10)...(year + 10))
-    }
-
-    private var iosDisplayedYearBinding: Binding<Int> {
-        Binding(
-            get: { calendar.component(.year, from: displayedMonth) },
-            set: { updateDisplayedMonth(year: $0) }
-        )
-    }
-
-    private var iosDisplayedMonthBinding: Binding<Int> {
-        Binding(
-            get: { calendar.component(.month, from: displayedMonth) },
-            set: { updateDisplayedMonth(month: $0) }
-        )
-    }
-
-    private func iosMonthName(for month: Int) -> String {
-        switch appLanguage {
-        case .english:
-            var components = DateComponents()
-            components.calendar = calendar
-            components.year = 2026
-            components.month = month
-            components.day = 1
-            guard let date = components.date else {
-                return "\(month)"
-            }
-            return date.formatted(.dateTime.month(.wide))
-        case .chinese:
-            return "\(month) 月"
-        }
-    }
-
-    private func updateDisplayedMonth(year: Int? = nil, month: Int? = nil) {
-        var components = calendar.dateComponents([.year, .month], from: displayedMonth)
-        components.year = year ?? components.year
-        components.month = month ?? components.month
-        components.day = 1
-
-        guard let updatedMonth = components.date else {
-            return
-        }
-
-        let normalizedMonth = monthStart(for: updatedMonth)
-        displayedMonth = normalizedMonth
-        if !calendar.isDate(selectedDate, equalTo: normalizedMonth, toGranularity: .month) {
-            selectedDate = normalizedMonth
-        }
-    }
-
     private func resetDisplayedMonthToToday() {
-        let today = Date()
-        selectedDate = today
-        displayedMonth = monthStart(for: today)
+        setCalendarSelection(to: Date())
     }
 
     private func iosMonthGridHeight(for availableSize: CGSize, safeAreaInsets: EdgeInsets) -> CGFloat {
@@ -379,9 +346,7 @@ struct CalendarHomeView: View {
                                 guard let newValue else {
                                     return
                                 }
-                                let normalizedDate = calendar.startOfDay(for: newValue)
-                                selectedDate = normalizedDate
-                                displayedMonth = monthStart(for: normalizedDate)
+                                setCalendarSelection(to: newValue)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -396,7 +361,11 @@ struct CalendarHomeView: View {
     }
 
     private func iosAgendaCard(for date: Date) -> some View {
-        ZStack(alignment: .bottomTrailing) {
+        let addButtonSize = floatingAddButtonSize(for: UIScreen.main.bounds.size)
+        let addButtonIconSize = addButtonSize * 24 / 62
+        let addButtonRingWidth = addButtonSize * 3 / 62
+
+        return ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(PlannerCopy.text(.schedule, language: appLanguage))
@@ -448,17 +417,17 @@ struct CalendarHomeView: View {
                 openEventEditor(on: date)
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 42, weight: .regular))
+                    .font(.system(size: addButtonIconSize, weight: .regular))
                     .foregroundStyle(.white)
-                    .frame(width: 78, height: 78)
+                    .frame(width: addButtonSize, height: addButtonSize)
                     .background(MeowPlannerTheme.pawButtonBrown, in: Circle())
                     .overlay {
                         Circle()
-                            .stroke(MeowPlannerTheme.coffee.opacity(0.34), lineWidth: 4)
+                            .stroke(MeowPlannerTheme.coffee.opacity(0.34), lineWidth: addButtonRingWidth)
                     }
             }
             .buttonStyle(.plain)
-            .padding(28)
+            .padding(24)
             .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
         }
     }
@@ -536,8 +505,7 @@ struct CalendarHomeView: View {
 
     private func presentAgendaCard(for date: Date) {
         let normalizedDate = calendar.startOfDay(for: date)
-        selectedDate = normalizedDate
-        displayedMonth = monthStart(for: normalizedDate)
+        setCalendarSelection(to: normalizedDate)
         agendaCardDate = normalizedDate
         agendaCardScrollAnchorDate = normalizedDate
     }
@@ -555,6 +523,7 @@ struct CalendarHomeView: View {
                 MonthGridView(
                     selectedDate: $selectedDate,
                     displayedMonth: $displayedMonth,
+                    monthTransitionDirection: $monthTransitionDirection,
                     events: displayedEvents,
                     todos: [],
                     completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
@@ -824,16 +793,161 @@ struct CalendarHomeView: View {
         guard editingEvent == nil else {
             return
         }
-        selectedDate = date
-        displayedMonth = monthStart(for: date)
+        setCalendarSelection(to: date)
         agendaCardDate = nil
         showingEventEditor = true
+    }
+
+    private func setCalendarSelection(to date: Date) {
+        let normalizedDate = calendar.startOfDay(for: date)
+        let targetMonth = monthStart(for: normalizedDate)
+        monthTransitionDirection = targetMonth < displayedMonth ? -1 : 1
+        withAnimation(.snappy(duration: 0.26)) {
+            selectedDate = normalizedDate
+            displayedMonth = targetMonth
+        }
     }
 
     private func monthStart(for date: Date) -> Date {
         calendar.dateInterval(of: .month, for: date)?.start ?? date
     }
 }
+
+#if os(iOS)
+private struct IOSCalendarWheelDatePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var selection: Date
+    var yearRange: ClosedRange<Int>
+    var language: AppLanguage
+    var calendar: Calendar
+
+    @State private var selectedYear: Int
+    @State private var selectedMonth: Int
+
+    init(selection: Binding<Date>, yearRange: ClosedRange<Int>, language: AppLanguage, calendar: Calendar) {
+        _selection = selection
+        self.yearRange = yearRange
+        self.language = language
+        self.calendar = calendar
+
+        let components = calendar.dateComponents([.year, .month], from: selection.wrappedValue)
+        let year = components.year ?? yearRange.lowerBound
+        let month = components.month ?? 1
+        _selectedYear = State(initialValue: min(max(year, yearRange.lowerBound), yearRange.upperBound))
+        _selectedMonth = State(initialValue: min(max(month, 1), 12))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text(PlannerCopy.text(.cancel, language: language))
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                Button {
+                    selection = selectedDate
+                    dismiss()
+                } label: {
+                    Text(confirmTitle)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                }
+                .buttonStyle(.plain)
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(MeowPlannerTheme.caramel.opacity(0.12))
+                    .frame(height: 1)
+            }
+
+            HStack(spacing: 0) {
+                Picker("Year", selection: $selectedYear) {
+                    ForEach(Array(yearRange), id: \.self) { year in
+                        Text(yearText(for: year)).tag(year)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+                Picker("Month", selection: $selectedMonth) {
+                    ForEach(1...12, id: \.self) { month in
+                        Text(monthText(for: month)).tag(month)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+            }
+            .frame(height: 224)
+            .background(MeowPlannerTheme.fufuPlannerBackground)
+        }
+        .background(MeowPlannerTheme.fufuPlannerBackground)
+    }
+
+    private var confirmTitle: String {
+        switch language {
+        case .english:
+            return "Confirm"
+        case .chinese:
+            return "确认"
+        }
+    }
+
+    private var selectedDate: Date {
+        let time = calendar.dateComponents([.hour, .minute, .second], from: selection)
+        var components = DateComponents()
+        components.calendar = calendar
+        components.year = selectedYear
+        components.month = selectedMonth
+        components.day = 1
+        components.hour = time.hour
+        components.minute = time.minute
+        components.second = time.second
+        return calendar.date(from: components) ?? selection
+    }
+
+    private func yearText(for year: Int) -> String {
+        switch language {
+        case .english:
+            return "\(year)"
+        case .chinese:
+            return "\(year) 年"
+        }
+    }
+
+    private func monthText(for month: Int) -> String {
+        switch language {
+        case .english:
+            var components = DateComponents()
+            components.calendar = calendar
+            components.year = 2026
+            components.month = month
+            components.day = 1
+            guard let date = calendar.date(from: components) else {
+                return "\(month)"
+            }
+            return date.formatted(.dateTime.month(.twoDigits))
+        case .chinese:
+            return month < 10 ? "0\(month) 月" : "\(month) 月"
+        }
+    }
+
+}
+#endif
 
 private struct EventEditorView: View {
     @Environment(\.appLanguage) private var appLanguage
