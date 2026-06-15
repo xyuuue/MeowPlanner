@@ -4,7 +4,6 @@ import Foundation
 public enum AccountProvider: String, CaseIterable, Codable, Identifiable, Sendable {
     case apple
     case email
-    case phone
     case wechat
 
     public var id: String { rawValue }
@@ -15,8 +14,6 @@ public enum AccountProvider: String, CaseIterable, Codable, Identifiable, Sendab
         case (.apple, .chinese): "Apple"
         case (.email, .english): "Email"
         case (.email, .chinese): "邮箱"
-        case (.phone, .english): "Phone"
-        case (.phone, .chinese): "手机号"
         case (.wechat, .english): "WeChat"
         case (.wechat, .chinese): "微信"
         }
@@ -28,7 +25,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
     public var provider: AccountProvider
     public var remoteUserID: String?
     public var emailAddress: String?
-    public var phoneNumber: String?
     public var accountIdentifier: String?
     public var displayName: String?
     public var createdAt: Date
@@ -39,7 +35,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         provider: AccountProvider,
         remoteUserID: String? = nil,
         emailAddress: String?,
-        phoneNumber: String? = nil,
         accountIdentifier: String? = nil,
         displayName: String?,
         createdAt: Date,
@@ -49,7 +44,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         self.provider = provider
         self.remoteUserID = remoteUserID
         self.emailAddress = emailAddress
-        self.phoneNumber = Self.normalizedOptionalPhoneNumber(phoneNumber)
         self.accountIdentifier = Self.normalizedOptionalAccountIdentifier(accountIdentifier)
         self.displayName = displayName
         self.createdAt = createdAt
@@ -108,26 +102,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
         )
     }
 
-    public static func firebasePhone(
-        userID: String,
-        phoneNumber: String?,
-        displayName: String?,
-        accountIdentifier: String? = nil,
-        now: Date = Date()
-    ) -> AccountProfile {
-        AccountProfile(
-            id: "firebase:\(userID)",
-            provider: .phone,
-            remoteUserID: userID,
-            emailAddress: nil,
-            phoneNumber: phoneNumber,
-            accountIdentifier: accountIdentifier,
-            displayName: normalizedOptionalDisplayName(displayName),
-            createdAt: now,
-            lastSignedInAt: now
-        )
-    }
-
     private static func normalizedOptionalEmail(_ value: String?) -> String? {
         guard let value else {
             return nil
@@ -136,15 +110,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
     }
 
     private static func normalizedOptionalDisplayName(_ value: String?) -> String? {
-        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !trimmed.isEmpty
-        else {
-            return nil
-        }
-        return trimmed
-    }
-
-    private static func normalizedOptionalPhoneNumber(_ value: String?) -> String? {
         guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty
         else {
@@ -164,7 +129,6 @@ public struct AccountProfile: Codable, Equatable, Identifiable, Sendable {
 public enum AccountAuthenticationError: Error, Equatable, Sendable {
     case invalidEmail
     case invalidAccountIdentifier
-    case invalidPhoneNumber
     case weakPassword(minimumCharacters: Int)
     case accountAlreadyExists
     case accountNotFound

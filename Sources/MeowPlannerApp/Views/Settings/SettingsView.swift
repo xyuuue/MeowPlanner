@@ -11,6 +11,7 @@ enum SettingsDestination: Hashable {
 private enum SettingsSheet: String, Identifiable {
     case eventColorEditor
     case linkAccount
+    case linkEmail
     case changePassword
     case deleteAccount
 
@@ -163,7 +164,15 @@ struct SettingsView: View {
 
     private var accountSettingsPage: some View {
         settingsForm {
-            AccountSettingsSection(accountStore: accountStore)
+            AccountSettingsSection(
+                accountStore: accountStore,
+                onLinkAccount: {
+                    activeSettingsSheet = .linkAccount
+                },
+                onLinkEmail: {
+                    activeSettingsSheet = .linkEmail
+                }
+            )
 
             syncSection
 
@@ -224,6 +233,11 @@ struct SettingsView: View {
             AccountAuthenticationModalView(
                 accountStore: accountStore,
                 initialMode: .linkAccount
+            )
+        case .linkEmail:
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .linkEmail
             )
         case .deleteAccount:
             AccountAuthenticationModalView(
@@ -527,12 +541,6 @@ struct SettingsView: View {
 
     private var accountActionsSection: some View {
         Section {
-            Button {
-                activeSettingsSheet = .linkAccount
-            } label: {
-                Label(PlannerCopy.text(.linkAccount, language: appLanguage), systemImage: "person.crop.circle.badge.plus")
-            }
-
             Button {
                 activeSettingsSheet = .changePassword
             } label: {

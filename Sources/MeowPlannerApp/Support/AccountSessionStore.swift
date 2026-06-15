@@ -20,7 +20,6 @@ final class AccountSessionStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let authenticationClient: any AccountAuthenticationClient
-    private var pendingPhoneVerificationID: String?
 
     init(
         defaults: UserDefaults = .standard,
@@ -94,6 +93,12 @@ final class AccountSessionStore: ObservableObject {
         }
     }
 
+    func linkEmail(email: String, currentPassword: String) {
+        authenticate { [self] in
+            try await self.authenticationClient.linkEmail(email: email, currentPassword: currentPassword)
+        }
+    }
+
     func linkAccount(identifier: String, currentPassword: String) {
         authenticate { [self] in
             try await self.authenticationClient.linkAccount(identifier: identifier, currentPassword: currentPassword)
@@ -127,25 +132,6 @@ final class AccountSessionStore: ObservableObject {
         }
     }
 
-    func sendPhoneVerification(phoneNumber: String) {
-        performAccountOperation {
-            let verificationID = try await self.authenticationClient.sendPhoneVerification(phoneNumber: phoneNumber)
-            self.pendingPhoneVerificationID = verificationID
-        }
-    }
-
-    func signInPhone(verificationCode: String) {
-        authenticate { [self] in
-            guard let verificationID = self.pendingPhoneVerificationID else {
-                throw AccountAuthenticationError.missingVerificationCode
-            }
-            return try await self.authenticationClient.signInPhone(
-                verificationID: verificationID,
-                verificationCode: verificationCode
-            )
-        }
-    }
-
     func signInWeChat() {
         authenticate { [self] in
             try await self.authenticationClient.signInWeChat()
@@ -165,7 +151,6 @@ final class AccountSessionStore: ObservableObject {
         currentProfile = nil
         lastError = nil
         lastNotice = nil
-        pendingPhoneVerificationID = nil
         defaults.removeObject(forKey: Self.sessionStorageKey)
         FirestoreAppDataSyncService.shared.stopSync()
         AccountScopedModelContainerStore.shared.unload()

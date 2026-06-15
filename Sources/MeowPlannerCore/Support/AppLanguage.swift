@@ -142,7 +142,6 @@ public enum PlannerTextKey: String, Sendable {
     case loginButton
     case accountLogin
     case email
-    case phone
     case wechat
     case password
     case currentPassword
@@ -156,6 +155,7 @@ public enum PlannerTextKey: String, Sendable {
     case forgotPassword
     case changePassword
     case linkAccount
+    case linkEmail
     case deleteAccount
     case deleteAccountWarning
     case deleteAccountConfirmationMessage
@@ -165,7 +165,6 @@ public enum PlannerTextKey: String, Sendable {
     case accountIdentifier
     case optionalEmail
     case provider
-    case phoneComingSoon
     case wechatNeedsSetup
     case planning
     case focusSettings
@@ -344,7 +343,6 @@ public enum PlannerCopy {
         .loginButton: "Log In",
         .accountLogin: "Account",
         .email: "Email",
-        .phone: "Phone",
         .wechat: "WeChat",
         .password: "Password",
         .currentPassword: "Current Password",
@@ -358,6 +356,7 @@ public enum PlannerCopy {
         .forgotPassword: "Forgot Password",
         .changePassword: "Change Password",
         .linkAccount: "Link Account",
+        .linkEmail: "Link Email",
         .deleteAccount: "Delete Account",
         .deleteAccountWarning: "Deleting your account will permanently remove your cloud planner data and cannot be undone.",
         .deleteAccountConfirmationMessage: "Confirm account deletion? Deleted accounts cannot be recovered.",
@@ -367,7 +366,6 @@ public enum PlannerCopy {
         .accountIdentifier: "Account",
         .optionalEmail: "Email (Optional)",
         .provider: "Provider",
-        .phoneComingSoon: "Coming soon",
         .wechatNeedsSetup: "Needs platform setup",
         .planning: "Planning",
         .focusSettings: "Focus",
@@ -545,7 +543,6 @@ public enum PlannerCopy {
         .loginButton: "登录",
         .accountLogin: "账号",
         .email: "邮箱",
-        .phone: "手机号",
         .wechat: "微信",
         .password: "密码",
         .currentPassword: "当前密码",
@@ -559,6 +556,7 @@ public enum PlannerCopy {
         .forgotPassword: "忘记密码",
         .changePassword: "更改密码",
         .linkAccount: "关联账号",
+        .linkEmail: "绑定邮箱",
         .deleteAccount: "删除账号",
         .deleteAccountWarning: "删除账号会永久删除你的云端规划数据，且无法撤销。",
         .deleteAccountConfirmationMessage: "是否确认删除账号，删除账号不可找回",
@@ -568,7 +566,6 @@ public enum PlannerCopy {
         .accountIdentifier: "账号",
         .optionalEmail: "邮箱（可选）",
         .provider: "登录方式",
-        .phoneComingSoon: "即将支持",
         .wechatNeedsSetup: "需要开放平台配置",
         .planning: "规划",
         .focusSettings: "专注",

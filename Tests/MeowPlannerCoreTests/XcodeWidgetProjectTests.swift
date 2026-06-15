@@ -241,6 +241,11 @@ struct XcodeWidgetProjectTests {
         #expect(accountSectionSource.contains("showingAuthenticationModal"))
         #expect(accountSectionSource.contains("AccountAuthenticationModalView"))
         #expect(accountSectionSource.contains("PlannerCopy.text(.loginButton"))
+        #expect(accountSectionSource.contains("var onLinkAccount: () -> Void"))
+        #expect(accountSectionSource.contains("shouldShowLinkAccountAction(for: profile)"))
+        #expect(accountSectionSource.contains("Button(action: onLinkAccount)"))
+        #expect(accountSectionSource.contains("PlannerCopy.text(.linkAccount"))
+        #expect(accountSectionSource.contains("profile.accountIdentifier == nil"))
         #expect(!accountSectionSource.contains("LabeledContent(PlannerCopy.text(.provider"))
         #expect(!accountSectionSource.contains("TextField(PlannerCopy.text(.email"))
         #expect(!accountSectionSource.contains("accountStore.registerEmail(email: emailAddress, password: password)"))
@@ -259,10 +264,12 @@ struct XcodeWidgetProjectTests {
         #expect(!accountModalSource.contains("PlannerCopy.text(.optionalEmail"))
         #expect(accountModalSource.contains("Button(role: .destructive)"))
         #expect(accountModalSource.contains("accountStore.sendEmailVerification"))
-        #expect(accountModalSource.contains("accountStore.sendPhoneVerification"))
         #expect(accountModalSource.contains("accountStore.sendPasswordReset"))
         #expect(accountModalSource.contains("PlannerCopy.text(.sendResetLink"))
         #expect(accountModalSource.contains("PlannerCopy.text(.passwordResetLinkSent"))
+        #expect(!accountModalSource.contains("sendPhoneVerification"))
+        #expect(!accountModalSource.contains("startPhoneAuthBridge"))
+        #expect(!accountModalSource.contains("linkPhone"))
         #expect(!accountModalSource.contains("enum PasswordResetStep"))
         #expect(!accountModalSource.contains("passwordResetStep = .verifyCode"))
         #expect(!accountModalSource.contains("accountStore.verifyPasswordResetCode"))
@@ -279,7 +286,9 @@ struct XcodeWidgetProjectTests {
         #expect(accountStoreSource.contains("linkAccount(identifier:"))
         #expect(accountStoreSource.contains("deleteAccount(currentPassword:"))
         #expect(accountStoreSource.contains("sendEmailVerification"))
-        #expect(accountStoreSource.contains("sendPhoneVerification"))
+        #expect(!accountStoreSource.contains("sendPhoneVerification"))
+        #expect(!accountStoreSource.contains("PhoneAuthBridge"))
+        #expect(!accountStoreSource.contains("handlePhoneAuthCallback"))
         #expect(accountStoreSource.contains("sendPasswordReset"))
         #expect(accountStoreSource.contains("func verifyPasswordResetCode"))
         #expect(accountStoreSource.contains("authenticationClient.verifyPasswordResetCode"))
@@ -302,19 +311,21 @@ struct XcodeWidgetProjectTests {
         #expect(authClientSource.contains("Auth.auth().verifyPasswordResetCode"))
         #expect(authClientSource.contains("func confirmPasswordReset"))
         #expect(authClientSource.contains("Auth.auth().confirmPasswordReset"))
-        #expect(authClientSource.contains("sendPhoneVerification"))
-        #expect(!authClientSource.contains("PhoneAuthProvider.provider()"))
-        #expect(authClientSource.contains("AccountAuthenticationError.providerUnavailable"))
+        #expect(!authClientSource.contains("sendPhoneVerification"))
+        #expect(!authClientSource.contains("PhoneAuthBridgeService"))
+        #expect(!authClientSource.contains("signIn(withCustomToken:"))
+        #expect(!authClientSource.contains("consumePhoneAuthSession(state:"))
+        #expect(authClientSource.contains("Auth.auth().currentUser?.reload"))
         let firebaseClientStart = try #require(authClientSource.range(of: "struct FirebaseAccountAuthenticationClient"))
         let changePasswordStart = try #require(authClientSource.range(
             of: "func changePassword(",
             range: firebaseClientStart.upperBound..<authClientSource.endIndex
         ))
-        let phoneVerificationStart = try #require(authClientSource.range(
-            of: "func sendPhoneVerification",
+        let wechatStart = try #require(authClientSource.range(
+            of: "func signInWeChat",
             range: changePasswordStart.upperBound..<authClientSource.endIndex
         ))
-        let changePasswordSource = String(authClientSource[changePasswordStart.lowerBound..<phoneVerificationStart.lowerBound])
+        let changePasswordSource = String(authClientSource[changePasswordStart.lowerBound..<wechatStart.lowerBound])
         #expect(changePasswordSource.contains("currentPassword: String"))
         #expect(!changePasswordSource.contains("confirmPassword"))
         let reauthenticationCall = "try await reauthenticate(with: currentPassword, user: user)"
@@ -365,6 +376,7 @@ struct XcodeWidgetProjectTests {
         let appFile = root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
         let gatedRootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift")
         let accountContainerFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift")
+        let accountSectionFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift")
         let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
         let rootViewFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
         let menuBarFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift")
@@ -373,6 +385,7 @@ struct XcodeWidgetProjectTests {
         let appSource = try String(contentsOf: appFile, encoding: .utf8)
         let gatedRootSource = sourceIfPresent(gatedRootFile)
         let accountContainerSource = sourceIfPresent(accountContainerFile)
+        let accountSectionSource = try String(contentsOf: accountSectionFile, encoding: .utf8)
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
         let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
         let menuBarSource = try String(contentsOf: menuBarFile, encoding: .utf8)
@@ -386,6 +399,16 @@ struct XcodeWidgetProjectTests {
         let deleteAccountButtonSource = try sourceWindow(
             in: settingsSource,
             from: "showingDeleteAccountConfirmation = true",
+            length: 900
+        )
+        let accountSettingsPageSource = try sourceWindow(
+            in: settingsSource,
+            from: "private var accountSettingsPage",
+            length: 900
+        )
+        let accountActionsSectionSource = try sourceWindow(
+            in: settingsSource,
+            from: "private var accountActionsSection",
             length: 900
         )
 
@@ -411,7 +434,7 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("Button(role: .destructive)"))
         #expect(settingsSource.contains("PlannerCopy.text(.signOut"))
         #expect(settingsSource.contains("PlannerCopy.text(.changePassword"))
-        #expect(settingsSource.contains("PlannerCopy.text(.linkAccount"))
+        #expect(accountSectionSource.contains("PlannerCopy.text(.linkAccount"))
         #expect(settingsSource.contains("PlannerCopy.text(.deleteAccount"))
         #expect(settingsSource.contains("showingDeleteAccountConfirmation"))
         #expect(settingsSource.contains(".alert(PlannerCopy.text(.deleteAccountConfirmationMessage"))
@@ -423,8 +446,18 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("activeSettingsSheet = .deleteAccount"))
         #expect(settingsSource.contains("activeSettingsSheet = .changePassword"))
         #expect(settingsSource.contains("activeSettingsSheet = .linkAccount"))
+        #expect(accountSettingsPageSource.contains("AccountSettingsSection("))
+        #expect(accountSettingsPageSource.contains("accountStore: accountStore"))
+        #expect(accountSettingsPageSource.contains("onLinkAccount: {"))
+        #expect(accountSettingsPageSource.contains("activeSettingsSheet = .linkAccount"))
+        #expect(!accountActionsSectionSource.contains("activeSettingsSheet = .linkAccount"))
+        #expect(!accountActionsSectionSource.contains("PlannerCopy.text(.linkAccount"))
         #expect(settingsSource.contains("case .changePassword"))
         #expect(settingsSource.contains("initialMode: .changePassword"))
+        #expect(!settingsSource.contains("case .linkPhone"))
+        #expect(settingsSource.contains("case .linkEmail"))
+        #expect(!settingsSource.contains("initialMode: .linkPhone"))
+        #expect(settingsSource.contains("initialMode: .linkEmail"))
         #expect(!settingsSource.contains("showingDeleteAccountModal"))
         #expect(!settingsSource.contains("showingChangePasswordModal"))
         #expect(!settingsSource.contains("showingLinkAccountModal"))
@@ -464,6 +497,51 @@ struct XcodeWidgetProjectTests {
         #expect(coreSnapshotSource.contains("public static func clear("))
         #expect(syncServiceSource.contains("func scheduleSync(for userID: String?"))
         #expect(syncServiceSource.contains("guard currentUserID == userID"))
+    }
+
+    @Test("macOS app does not expose phone authentication")
+    func macOSAppDoesNotExposePhoneAuthentication() throws {
+        let root = try packageRoot()
+        let vercelConfigFile = root.appendingPathComponent("vercel.json")
+        let appFile = root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let accountStoreFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/AccountSessionStore.swift")
+        let bridgeServiceFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/PhoneAuthBridgeService.swift")
+        let authClientFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift")
+        let hostingFile = root.appendingPathComponent("website/phone-auth/index.html")
+        let apiStartFile = root.appendingPathComponent("api/startPhoneAuthSession.js")
+        let apiFinishFile = root.appendingPathComponent("api/finishPhoneAuthSession.js")
+        let apiConsumeFile = root.appendingPathComponent("api/consumePhoneAuthSession.js")
+        let apiCoreFile = root.appendingPathComponent("api/_phoneAuthBridgeCore.js")
+        let apiRulesFile = root.appendingPathComponent("api/_phoneAuthBridgeRules.js")
+        let apiAdminFile = root.appendingPathComponent("api/_firebaseAdmin.js")
+
+        let vercelConfig = try String(contentsOf: vercelConfigFile, encoding: .utf8)
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let accountStoreSource = try String(contentsOf: accountStoreFile, encoding: .utf8)
+        let authClientSource = try String(contentsOf: authClientFile, encoding: .utf8)
+        let removedFiles = [
+            bridgeServiceFile,
+            hostingFile,
+            apiStartFile,
+            apiFinishFile,
+            apiConsumeFile,
+            apiCoreFile,
+            apiRulesFile,
+            apiAdminFile,
+            root.appendingPathComponent("api/test/phoneAuthBridgeRules.test.js")
+        ]
+
+        for removedFile in removedFiles {
+            #expect(!FileManager.default.fileExists(atPath: removedFile.path))
+        }
+
+        #expect(!vercelConfig.contains("\"/phone-auth\""))
+        #expect(!appSource.contains("handlePhoneAuthCallback"))
+        #expect(!accountStoreSource.contains("PhoneAuth"))
+        #expect(!accountStoreSource.contains("phone-auth"))
+        #expect(!authClientSource.contains("PhoneAuth"))
+        #expect(!authClientSource.contains("signIn(withCustomToken:"))
+        #expect(!authClientSource.contains("PhoneAuthProvider.provider()"))
     }
 
     @Test("account session does not restore stale local profile without Firebase auth")

@@ -136,6 +136,13 @@ struct AccountAuthenticationTests {
         #expect(profile.accountIdentifier == "fufu_2026")
     }
 
+    @Test("account providers expose only supported non-phone methods")
+    func accountProvidersExposeOnlySupportedNonPhoneMethods() {
+        let providerIDs = Set(AccountProvider.allCases.map(\.rawValue))
+
+        #expect(providerIDs == ["apple", "email", "wechat"])
+    }
+
     @Test("account alias rules normalize account names for lookup")
     func accountAliasRulesNormalizeAccountNamesForLookup() throws {
         #expect(try AccountAliasRules.normalizedIdentifier("  FuFu_2026  ") == "fufu_2026")

@@ -4,6 +4,8 @@ import SwiftUI
 
 struct AccountSettingsSection: View {
     @ObservedObject var accountStore: AccountSessionStore
+    var onLinkAccount: () -> Void = {}
+    var onLinkEmail: () -> Void = {}
     @Environment(\.appLanguage) private var appLanguage
 
     @State private var showingAuthenticationModal = false
@@ -45,10 +47,15 @@ struct AccountSettingsSection: View {
                 }
             }
 
-            if let phoneNumber = profile.phoneNumber, !phoneNumber.isEmpty {
-                LabeledContent(PlannerCopy.text(.phone, language: appLanguage)) {
-                    Text(phoneNumber)
-                        .foregroundStyle(.secondary)
+            if shouldShowLinkAccountAction(for: profile) {
+                Button(action: onLinkAccount) {
+                    Label(PlannerCopy.text(.linkAccount, language: appLanguage), systemImage: "person.crop.circle.badge.plus")
+                }
+            }
+
+            if shouldShowLinkEmailAction(for: profile) {
+                Button(action: onLinkEmail) {
+                    Label(PlannerCopy.text(.linkEmail, language: appLanguage), systemImage: "envelope.badge")
                 }
             }
         }
@@ -82,6 +89,14 @@ struct AccountSettingsSection: View {
         }
         return profile.provider.title(language: appLanguage)
     }
+
+    private func shouldShowLinkAccountAction(for profile: AccountProfile) -> Bool {
+        profile.accountIdentifier == nil || profile.accountIdentifier?.isEmpty == true
+    }
+
+    private func shouldShowLinkEmailAction(for profile: AccountProfile) -> Bool {
+        profile.emailAddress == nil || profile.emailAddress?.isEmpty == true
+    }
 }
 
 enum AccountErrorMessageFormatter {
@@ -95,10 +110,6 @@ enum AccountErrorMessageFormatter {
             "Use 3-32 letters, numbers, underscores, dots, or hyphens for the account name."
         case (.authentication(.invalidAccountIdentifier), .chinese):
             "账号名需要 3-32 位，只能包含字母、数字、下划线、点或连字符。"
-        case (.authentication(.invalidPhoneNumber), .english):
-            "Use an international phone number, such as +1..."
-        case (.authentication(.invalidPhoneNumber), .chinese):
-            "请输入带国家区号的手机号，例如 +1..."
         case (.authentication(.weakPassword(let minimumCharacters)), .english):
             "Use at least \(minimumCharacters) password characters."
         case (.authentication(.weakPassword(let minimumCharacters)), .chinese):

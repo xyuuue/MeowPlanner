@@ -7,6 +7,7 @@ enum AccountAuthenticationMode: String, CaseIterable, Identifiable {
     case forgotPassword
     case changePassword
     case linkAccount
+    case linkEmail
     case deleteAccount
 
     var id: String { rawValue }
@@ -23,6 +24,8 @@ enum AccountAuthenticationMode: String, CaseIterable, Identifiable {
             PlannerCopy.text(.changePassword, language: language)
         case .linkAccount:
             PlannerCopy.text(.linkAccount, language: language)
+        case .linkEmail:
+            PlannerCopy.text(.linkEmail, language: language)
         case .deleteAccount:
             PlannerCopy.text(.deleteAccount, language: language)
         }
@@ -32,7 +35,6 @@ enum AccountAuthenticationMode: String, CaseIterable, Identifiable {
 enum AccountLoginMethod: String, CaseIterable, Identifiable {
     case account
     case email
-    case phone
     case wechat
 
     var id: String { rawValue }
@@ -43,8 +45,6 @@ enum AccountLoginMethod: String, CaseIterable, Identifiable {
             PlannerCopy.text(.accountLogin, language: language)
         case .email:
             PlannerCopy.text(.email, language: language)
-        case .phone:
-            PlannerCopy.text(.phone, language: language)
         case .wechat:
             PlannerCopy.text(.wechat, language: language)
         }
@@ -60,11 +60,9 @@ struct AccountAuthenticationModalView: View {
     @State private var loginMethod: AccountLoginMethod = .account
     @State private var accountIdentifier = ""
     @State private var emailAddress = ""
-    @State private var phoneNumber = ""
     @State private var password = ""
     @State private var currentPassword = ""
     @State private var newPassword = ""
-    @State private var verificationCode = ""
     @State private var passwordResetMessage: String?
 
     init(
@@ -102,6 +100,8 @@ struct AccountAuthenticationModalView: View {
                     changePasswordContent
                 case .linkAccount:
                     linkAccountContent
+                case .linkEmail:
+                    linkEmailContent
                 case .deleteAccount:
                     deleteAccountContent
                 }
@@ -131,6 +131,11 @@ struct AccountAuthenticationModalView: View {
             }
             .onChange(of: accountStore.currentProfile?.accountIdentifier) { _, newValue in
                 if newValue != nil, mode == .linkAccount {
+                    dismiss()
+                }
+            }
+            .onChange(of: accountStore.currentProfile?.emailAddress) { _, newValue in
+                if newValue != nil, mode == .linkEmail {
                     dismiss()
                 }
             }
@@ -164,14 +169,6 @@ struct AccountAuthenticationModalView: View {
                         Label(PlannerCopy.text(.signIn, language: appLanguage), systemImage: "envelope.open")
                     }
                     .disabled(emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty || accountStore.isAuthenticating)
-                case .phone:
-                    phoneVerificationFields
-                    Button {
-                        accountStore.signInPhone(verificationCode: verificationCode)
-                    } label: {
-                        Label(PlannerCopy.text(.signIn, language: appLanguage), systemImage: "phone")
-                    }
-                    .disabled(verificationCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || accountStore.isAuthenticating)
                 case .wechat:
                     wechatButton
                 }
@@ -232,14 +229,6 @@ struct AccountAuthenticationModalView: View {
                         Label(PlannerCopy.text(.sendVerificationCode, language: appLanguage), systemImage: "number.circle")
                     }
                     .disabled(accountStore.currentProfile == nil || accountStore.isAuthenticating)
-                case .phone:
-                    phoneVerificationFields
-                    Button {
-                        accountStore.signInPhone(verificationCode: verificationCode)
-                    } label: {
-                        Label(PlannerCopy.text(.createAccount, language: appLanguage), systemImage: "phone.badge.plus")
-                    }
-                    .disabled(verificationCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || accountStore.isAuthenticating)
                 case .wechat:
                     wechatButton
                 }
@@ -257,7 +246,6 @@ struct AccountAuthenticationModalView: View {
                     let email = emailAddress.trimmingCharacters(in: .whitespacesAndNewlines)
                     accountStore.sendPasswordReset(email: email) {
                         emailAddress = email
-                        verificationCode = ""
                         newPassword = ""
                         passwordResetMessage = PlannerCopy.text(.passwordResetLinkSent, language: appLanguage)
                     }
@@ -307,6 +295,22 @@ struct AccountAuthenticationModalView: View {
                 Label(PlannerCopy.text(.linkAccount, language: appLanguage), systemImage: "person.crop.circle.badge.plus")
             }
             .disabled(accountIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || currentPassword.isEmpty || accountStore.isAuthenticating)
+        }
+    }
+
+    private var linkEmailContent: some View {
+        Section {
+            TextField(PlannerCopy.text(.email, language: appLanguage), text: $emailAddress)
+                .textFieldStyle(.roundedBorder)
+            SecureField(PlannerCopy.text(.currentPassword, language: appLanguage), text: $currentPassword)
+                .textFieldStyle(.roundedBorder)
+
+            Button {
+                accountStore.linkEmail(email: emailAddress, currentPassword: currentPassword)
+            } label: {
+                Label(PlannerCopy.text(.linkEmail, language: appLanguage), systemImage: "envelope.badge")
+            }
+            .disabled(emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || currentPassword.isEmpty || accountStore.isAuthenticating)
         }
     }
 
@@ -368,21 +372,6 @@ struct AccountAuthenticationModalView: View {
         }
     }
 
-    private var phoneVerificationFields: some View {
-        Group {
-            TextField(PlannerCopy.text(.phone, language: appLanguage), text: $phoneNumber)
-                .textFieldStyle(.roundedBorder)
-            Button {
-                accountStore.sendPhoneVerification(phoneNumber: phoneNumber)
-            } label: {
-                Label(PlannerCopy.text(.sendVerificationCode, language: appLanguage), systemImage: "number.circle")
-            }
-            .disabled(phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || accountStore.isAuthenticating)
-            TextField(PlannerCopy.text(.verificationCode, language: appLanguage), text: $verificationCode)
-                .textFieldStyle(.roundedBorder)
-        }
-    }
-
     private var wechatButton: some View {
         Button {
             accountStore.signInWeChat()
@@ -414,7 +403,6 @@ struct AccountAuthenticationModalView: View {
     }
 
     private func resetPasswordResetState() {
-        verificationCode = ""
         newPassword = ""
         passwordResetMessage = nil
     }

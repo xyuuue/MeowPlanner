@@ -17,8 +17,7 @@ protocol AccountAuthenticationClient {
     func verifyPasswordResetCode(_ code: String) async throws -> String
     func confirmPasswordReset(code: String, newPassword: String) async throws
     func changePassword(currentPassword: String, newPassword: String) async throws
-    func sendPhoneVerification(phoneNumber: String) async throws -> String
-    func signInPhone(verificationID: String, verificationCode: String) async throws -> AccountProfile
+    func linkEmail(email: String, currentPassword: String) async throws -> AccountProfile
     func signInWeChat() async throws -> AccountProfile
     func signOut() throws
 }
@@ -165,23 +164,21 @@ struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
         }
     }
 
-    func sendPhoneVerification(phoneNumber: String) async throws -> String {
-        let trimmedPhoneNumber = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedPhoneNumber.hasPrefix("+"), trimmedPhoneNumber.count >= 8 else {
-            throw AccountAuthenticationError.invalidPhoneNumber
+    func linkEmail(email: String, currentPassword: String) async throws -> AccountProfile {
+        guard let normalizedEmail = EmailAddressRules.normalizedEmail(email),
+              !AccountAliasRules.isInternalEmailAddress(normalizedEmail)
+        else {
+            throw AccountAuthenticationError.invalidEmail
+        }
+        guard let user = Auth.auth().currentUser else {
+            throw AccountAuthenticationError.accountNotFound
         }
 
-        throw AccountAuthenticationError.providerUnavailable
-    }
-
-    func signInPhone(verificationID: String, verificationCode: String) async throws -> AccountProfile {
-        let trimmedVerificationID = verificationID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedVerificationCode = verificationCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedVerificationID.isEmpty, !trimmedVerificationCode.isEmpty else {
-            throw AccountAuthenticationError.missingVerificationCode
-        }
-
-        throw AccountAuthenticationError.providerUnavailable
+        try await reauthenticate(with: currentPassword, user: user)
+        try await updateEmail(normalizedEmail, for: user)
+        try? await sendEmailVerification(for: user)
+        try await reload(user)
+        return Self.profile(from: user)
     }
 
     func signInWeChat() async throws -> AccountProfile {
@@ -288,6 +285,42 @@ struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
         }
     }
 
+    private func updateEmail(_ email: String, for user: User) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.updateEmail(to: email) { error in
+                if let error {
+                    continuation.resume(throwing: Self.mappedError(error))
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func sendEmailVerification(for user: User) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            user.sendEmailVerification { error in
+                if let error {
+                    continuation.resume(throwing: Self.mappedError(error))
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func reload(_ user: User) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            Auth.auth().currentUser?.reload { error in
+                if let error {
+                    continuation.resume(throwing: Self.mappedError(error))
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
     private func deleteCloudPlannerData(userID: String) async throws {
         for collection in CloudDataCollection.allCases {
             let collectionPath = try collection.collectionPath(userID: userID)
@@ -343,15 +376,6 @@ struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
 
     private static func profile(from user: User, accountIdentifier: String? = nil) -> AccountProfile {
         let accountIdentifier = accountIdentifier ?? user.displayName
-        if let phoneNumber = user.phoneNumber, !phoneNumber.isEmpty {
-            return AccountProfile.firebasePhone(
-                userID: user.uid,
-                phoneNumber: phoneNumber,
-                displayName: user.displayName,
-                accountIdentifier: accountIdentifier
-            )
-        }
-
         return AccountProfile.firebaseEmail(
             userID: user.uid,
             emailAddress: AccountAliasRules.isInternalEmailAddress(user.email) ? nil : user.email,
@@ -371,8 +395,6 @@ struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
         switch code {
         case .invalidEmail:
             return AccountAuthenticationError.invalidEmail
-        case .invalidPhoneNumber, .missingPhoneNumber:
-            return AccountAuthenticationError.invalidPhoneNumber
         case .emailAlreadyInUse:
             return AccountAuthenticationError.accountAlreadyExists
         case .weakPassword:
