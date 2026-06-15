@@ -401,9 +401,26 @@ public enum WidgetPlannerSnapshotStore {
             appGroupContainerURL: FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: WidgetPlannerPreferenceStore.suiteName
             ),
-            homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
+            homeDirectory: currentHomeDirectory,
             accountHomeDirectory: accountHomeDirectory
         )
+    }
+
+    private static var currentHomeDirectory: URL {
+        #if os(macOS)
+        return FileManager.default.homeDirectoryForCurrentUser
+        #else
+        if let applicationSupportDirectory = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first {
+            return applicationSupportDirectory
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+        }
+
+        return URL(fileURLWithPath: NSHomeDirectory())
+        #endif
     }
 
     static func snapshotFileURLs(

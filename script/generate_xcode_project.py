@@ -2,11 +2,34 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_DIR = ROOT / "MeowPlanner.xcodeproj"
+VALID_TARGET_PLATFORMS = {"all", "macos", "ios"}
+
+
+def default_target_platform() -> str:
+    parent_name = ROOT.parent.name.lower()
+    if parent_name == "macos":
+        return "macos"
+    if parent_name == "ios":
+        return "ios"
+    return "all"
+
+
+TARGET_PLATFORM = os.environ.get("MEOWPLANNER_TARGET_PLATFORM", default_target_platform()).lower()
+if TARGET_PLATFORM not in VALID_TARGET_PLATFORMS:
+    raise SystemExit(
+        "MEOWPLANNER_TARGET_PLATFORM must be one of: "
+        + ", ".join(sorted(VALID_TARGET_PLATFORMS))
+    )
+
+INCLUDE_MACOS = TARGET_PLATFORM in {"all", "macos"}
+INCLUDE_IOS = TARGET_PLATFORM in {"all", "ios"}
+IOS_DEVELOPMENT_TEAM = os.environ.get("MEOWPLANNER_IOS_DEVELOPMENT_TEAM", "")
 
 
 def oid(key: str) -> str:
@@ -109,7 +132,6 @@ APP_SOURCES = [
     "Sources/MeowPlannerApp/Support/AppNavigation.swift",
     "Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift",
     "Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift",
-    "Sources/MeowPlannerApp/Support/WidgetConstants.swift",
     "Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift",
     "Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift",
     "Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift",
@@ -133,13 +155,14 @@ WIDGET_SOURCES = [
     "Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift",
     "Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift",
     "Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift",
-    "Sources/MeowPlannerWidget/WidgetConstants.swift",
 ]
 
 CONFIG_FILES = [
     "Config/GoogleService-Info.plist",
     "Config/MeowPlanner-Info.plist",
     "Config/MeowPlanner.entitlements",
+    "Config/MeowPlanner-iOS-Info.plist",
+    "Config/MeowPlanner-iOS.entitlements",
     "Config/MeowPlannerWidget-Info.plist",
     "Config/MeowPlannerWidget.entitlements",
 ]
@@ -149,6 +172,10 @@ RESOURCE_FILES = [
 ]
 
 APP_RESOURCE_FILES = RESOURCE_FILES + [
+    "Config/GoogleService-Info.plist",
+]
+
+IOS_APP_RESOURCE_FILES = [
     "Config/GoogleService-Info.plist",
 ]
 
@@ -172,6 +199,25 @@ def build_settings(settings: dict[str, str | list[str]]) -> str:
 
 def main() -> None:
     objects: dict[str, str] = {}
+    active_config_files = ["Config/GoogleService-Info.plist"]
+    if INCLUDE_MACOS:
+        active_config_files.extend(
+            [
+                "Config/MeowPlanner-Info.plist",
+                "Config/MeowPlanner.entitlements",
+                "Config/MeowPlannerWidget-Info.plist",
+                "Config/MeowPlannerWidget.entitlements",
+            ]
+        )
+    if INCLUDE_IOS:
+        active_config_files.extend(
+            [
+                "Config/MeowPlanner-iOS-Info.plist",
+                "Config/MeowPlanner-iOS.entitlements",
+            ]
+        )
+    active_resource_files = RESOURCE_FILES if INCLUDE_MACOS else []
+    active_source_files = CORE_SOURCES + APP_SOURCES + (WIDGET_SOURCES if INCLUDE_MACOS else [])
 
     project = oid("project")
     main_group = group_id("main")
@@ -186,13 +232,16 @@ def main() -> None:
     app_target = oid("target:MeowPlanner")
     core_target = oid("target:MeowPlannerCore")
     widget_target = oid("target:MeowPlannerWidgetExtension")
+    ios_app_target = oid("target:MeowPlanner-iOS")
+    ios_core_target = oid("target:MeowPlannerCore-iOS")
 
     app_product = oid("product:MeowPlanner.app")
     core_product = oid("product:MeowPlannerCore.framework")
     widget_product = oid("product:MeowPlannerWidgetExtension.appex")
+    ios_app_product = oid("product:MeowPlanner-iOS.app")
+    ios_core_product = oid("product:MeowPlannerCore-iOS.framework")
 
-    all_source_files = CORE_SOURCES + APP_SOURCES + WIDGET_SOURCES
-    for path in all_source_files + CONFIG_FILES + RESOURCE_FILES:
+    for path in active_source_files + active_config_files + active_resource_files:
         add_object(
             objects,
             file_ref(path),
@@ -212,39 +261,72 @@ def main() -> None:
             f"\t\tsourceTree = \"<group>\";",
         )
 
-    add_object(
-        objects,
-        app_product,
-        "\t\tisa = PBXFileReference;\n"
-        "\t\texplicitFileType = wrapper.application;\n"
-        "\t\tincludeInIndex = 0;\n"
-        "\t\tpath = MeowPlanner.app;\n"
-        "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
-    )
-    add_object(
-        objects,
-        core_product,
-        "\t\tisa = PBXFileReference;\n"
-        "\t\texplicitFileType = wrapper.framework;\n"
-        "\t\tincludeInIndex = 0;\n"
-        "\t\tpath = MeowPlannerCore.framework;\n"
-        "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
-    )
-    add_object(
-        objects,
-        widget_product,
-        "\t\tisa = PBXFileReference;\n"
-        "\t\texplicitFileType = wrapper.app-extension;\n"
-        "\t\tincludeInIndex = 0;\n"
-        "\t\tpath = MeowPlannerWidgetExtension.appex;\n"
-        "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
-    )
+    if INCLUDE_MACOS:
+        add_object(
+            objects,
+            app_product,
+            "\t\tisa = PBXFileReference;\n"
+            "\t\texplicitFileType = wrapper.application;\n"
+            "\t\tincludeInIndex = 0;\n"
+            "\t\tpath = MeowPlanner.app;\n"
+            "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
+        )
+        add_object(
+            objects,
+            core_product,
+            "\t\tisa = PBXFileReference;\n"
+            "\t\texplicitFileType = wrapper.framework;\n"
+            "\t\tincludeInIndex = 0;\n"
+            "\t\tpath = MeowPlannerCore.framework;\n"
+            "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
+        )
+        add_object(
+            objects,
+            widget_product,
+            "\t\tisa = PBXFileReference;\n"
+            "\t\texplicitFileType = wrapper.app-extension;\n"
+            "\t\tincludeInIndex = 0;\n"
+            "\t\tpath = MeowPlannerWidgetExtension.appex;\n"
+            "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
+        )
+    if INCLUDE_IOS:
+        add_object(
+            objects,
+            ios_app_product,
+            "\t\tisa = PBXFileReference;\n"
+            "\t\texplicitFileType = wrapper.application;\n"
+            "\t\tincludeInIndex = 0;\n"
+            "\t\tpath = MeowPlanner.app;\n"
+            "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
+        )
+        add_object(
+            objects,
+            ios_core_product,
+            "\t\tisa = PBXFileReference;\n"
+            "\t\texplicitFileType = wrapper.framework;\n"
+            "\t\tincludeInIndex = 0;\n"
+            "\t\tpath = MeowPlannerCore.framework;\n"
+            "\t\tsourceTree = BUILT_PRODUCTS_DIR;",
+        )
 
-    for target, sources in [
-        ("MeowPlannerCore", CORE_SOURCES),
-        ("MeowPlanner", APP_SOURCES),
-        ("MeowPlannerWidgetExtension", WIDGET_SOURCES),
-    ]:
+    source_target_data: list[tuple[str, list[str]]] = []
+    if INCLUDE_MACOS:
+        source_target_data.extend(
+            [
+                ("MeowPlannerCore", CORE_SOURCES),
+                ("MeowPlanner", APP_SOURCES),
+                ("MeowPlannerWidgetExtension", WIDGET_SOURCES),
+            ]
+        )
+    if INCLUDE_IOS:
+        source_target_data.extend(
+            [
+                ("MeowPlannerCore-iOS", CORE_SOURCES),
+                ("MeowPlanner-iOS", APP_SOURCES),
+            ]
+        )
+
+    for target, sources in source_target_data:
         for path in sources:
             add_object(
                 objects,
@@ -252,17 +334,28 @@ def main() -> None:
                 f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path)};",
             )
 
-    for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS:
-        add_object(
-            objects,
-            build_file("MeowPlanner", path),
-            f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path, folder=path in RESOURCE_FOLDERS)};",
-        )
+    if INCLUDE_MACOS:
+        for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS:
+            add_object(
+                objects,
+                build_file("MeowPlanner", path),
+                f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path, folder=path in RESOURCE_FOLDERS)};",
+            )
+
+    if INCLUDE_IOS:
+        for path in IOS_APP_RESOURCE_FILES + RESOURCE_FOLDERS:
+            add_object(
+                objects,
+                build_file("MeowPlanner-iOS", path),
+                f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path, folder=path in RESOURCE_FOLDERS)};",
+            )
 
     core_app_framework = build_file("MeowPlanner", "MeowPlannerCore.framework", "framework")
     core_app_embed = build_file("MeowPlanner", "MeowPlannerCore.framework", "embed")
     core_widget_framework = build_file("MeowPlannerWidgetExtension", "MeowPlannerCore.framework", "framework")
     core_widget_embed = build_file("MeowPlannerWidgetExtension", "MeowPlannerCore.framework", "embed")
+    ios_core_app_framework = build_file("MeowPlanner-iOS", "MeowPlannerCore.framework", "framework")
+    ios_core_app_embed = build_file("MeowPlanner-iOS", "MeowPlannerCore.framework", "embed")
     widget_embed = build_file("MeowPlanner", "MeowPlannerWidgetExtension.appex", "embed")
     firebase_package = oid("package:firebase-ios-sdk")
     firebase_core_product = oid("product:FirebaseCore")
@@ -271,39 +364,65 @@ def main() -> None:
     firebase_core_build = build_file("MeowPlanner", "FirebaseCore", "package")
     firebase_auth_build = build_file("MeowPlanner", "FirebaseAuth", "package")
     firebase_firestore_build = build_file("MeowPlanner", "FirebaseFirestore", "package")
+    ios_firebase_core_build = build_file("MeowPlanner-iOS", "FirebaseCore", "package")
+    ios_firebase_auth_build = build_file("MeowPlanner-iOS", "FirebaseAuth", "package")
+    ios_firebase_firestore_build = build_file("MeowPlanner-iOS", "FirebaseFirestore", "package")
 
-    add_object(objects, core_app_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};")
-    add_object(
-        objects,
-        core_app_embed,
-        f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
-    )
-    add_object(objects, core_widget_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};")
-    add_object(
-        objects,
-        core_widget_embed,
-        f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
-    )
-    add_object(
-        objects,
-        widget_embed,
-        f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {widget_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
-    )
-    add_object(
-        objects,
-        firebase_core_build,
-        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_core_product};",
-    )
-    add_object(
-        objects,
-        firebase_auth_build,
-        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_auth_product};",
-    )
-    add_object(
-        objects,
-        firebase_firestore_build,
-        f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_firestore_product};",
-    )
+    if INCLUDE_MACOS:
+        add_object(objects, core_app_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};")
+        add_object(
+            objects,
+            core_app_embed,
+            f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
+        )
+        add_object(objects, core_widget_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};")
+        add_object(
+            objects,
+            core_widget_embed,
+            f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {core_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
+        )
+        add_object(
+            objects,
+            widget_embed,
+            f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {widget_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
+        )
+        add_object(
+            objects,
+            firebase_core_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_core_product};",
+        )
+        add_object(
+            objects,
+            firebase_auth_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_auth_product};",
+        )
+        add_object(
+            objects,
+            firebase_firestore_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_firestore_product};",
+        )
+    if INCLUDE_IOS:
+        add_object(objects, ios_core_app_framework, f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {ios_core_product};")
+        add_object(
+            objects,
+            ios_core_app_embed,
+            f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {ios_core_product};\n\t\tsettings = {{ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }};",
+        )
+        add_object(
+            objects,
+            ios_firebase_core_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_core_product};",
+        )
+        add_object(
+            objects,
+            ios_firebase_auth_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_auth_product};",
+        )
+        add_object(
+            objects,
+            ios_firebase_firestore_build,
+            f"\t\tisa = PBXBuildFile;\n\t\tproductRef = {firebase_firestore_product};",
+        )
 
     def sources_phase(target: str, sources: list[str]) -> None:
         add_object(
@@ -349,33 +468,57 @@ def main() -> None:
         )
         return phase
 
-    sources_phase("MeowPlannerCore", CORE_SOURCES)
-    frameworks_phase("MeowPlannerCore", [])
-    resources_phase("MeowPlannerCore", [])
+    if INCLUDE_MACOS:
+        sources_phase("MeowPlannerCore", CORE_SOURCES)
+        frameworks_phase("MeowPlannerCore", [])
+        resources_phase("MeowPlannerCore", [])
 
-    sources_phase("MeowPlanner", APP_SOURCES)
-    frameworks_phase("MeowPlanner", [core_app_framework, firebase_core_build, firebase_auth_build, firebase_firestore_build])
-    resources_phase("MeowPlanner", [build_file("MeowPlanner", path) for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS])
-    app_embed_frameworks = copy_phase("MeowPlanner", "Embed Frameworks", "10", [core_app_embed])
-    app_embed_extensions = copy_phase("MeowPlanner", "Embed App Extensions", "13", [widget_embed])
+        sources_phase("MeowPlanner", APP_SOURCES)
+        frameworks_phase("MeowPlanner", [core_app_framework, firebase_core_build, firebase_auth_build, firebase_firestore_build])
+        resources_phase("MeowPlanner", [build_file("MeowPlanner", path) for path in APP_RESOURCE_FILES + RESOURCE_FOLDERS])
+        app_embed_frameworks = copy_phase("MeowPlanner", "Embed Frameworks", "10", [core_app_embed])
+        app_embed_extensions = copy_phase("MeowPlanner", "Embed App Extensions", "13", [widget_embed])
 
-    sources_phase("MeowPlannerWidgetExtension", WIDGET_SOURCES)
-    frameworks_phase("MeowPlannerWidgetExtension", [core_widget_framework])
-    resources_phase("MeowPlannerWidgetExtension", [])
-    widget_embed_frameworks = copy_phase("MeowPlannerWidgetExtension", "Embed Frameworks", "10", [core_widget_embed])
+        sources_phase("MeowPlannerWidgetExtension", WIDGET_SOURCES)
+        frameworks_phase("MeowPlannerWidgetExtension", [core_widget_framework])
+        resources_phase("MeowPlannerWidgetExtension", [])
+        widget_embed_frameworks = copy_phase("MeowPlannerWidgetExtension", "Embed Frameworks", "10", [core_widget_embed])
+
+    if INCLUDE_IOS:
+        sources_phase("MeowPlannerCore-iOS", CORE_SOURCES)
+        frameworks_phase("MeowPlannerCore-iOS", [])
+        resources_phase("MeowPlannerCore-iOS", [])
+
+        sources_phase("MeowPlanner-iOS", APP_SOURCES)
+        frameworks_phase(
+            "MeowPlanner-iOS",
+            [ios_core_app_framework, ios_firebase_core_build, ios_firebase_auth_build, ios_firebase_firestore_build],
+        )
+        resources_phase("MeowPlanner-iOS", [build_file("MeowPlanner-iOS", path) for path in IOS_APP_RESOURCE_FILES + RESOURCE_FOLDERS])
+        ios_app_embed_frameworks = copy_phase("MeowPlanner-iOS", "Embed Frameworks", "10", [ios_core_app_embed])
 
     core_proxy_for_app = oid("proxy:app-core")
     widget_proxy_for_app = oid("proxy:app-widget")
     core_proxy_for_widget = oid("proxy:widget-core")
+    ios_core_proxy_for_app = oid("proxy:ios-app-core")
     app_core_dependency = oid("dependency:app-core")
     app_widget_dependency = oid("dependency:app-widget")
     widget_core_dependency = oid("dependency:widget-core")
+    ios_app_core_dependency = oid("dependency:ios-app-core")
 
-    for proxy, remote, remote_info in [
-        (core_proxy_for_app, core_target, "MeowPlannerCore"),
-        (widget_proxy_for_app, widget_target, "MeowPlannerWidgetExtension"),
-        (core_proxy_for_widget, core_target, "MeowPlannerCore"),
-    ]:
+    proxy_data: list[tuple[str, str, str]] = []
+    if INCLUDE_MACOS:
+        proxy_data.extend(
+            [
+                (core_proxy_for_app, core_target, "MeowPlannerCore"),
+                (widget_proxy_for_app, widget_target, "MeowPlannerWidgetExtension"),
+                (core_proxy_for_widget, core_target, "MeowPlannerCore"),
+            ]
+        )
+    if INCLUDE_IOS:
+        proxy_data.append((ios_core_proxy_for_app, ios_core_target, "MeowPlannerCore-iOS"))
+
+    for proxy, remote, remote_info in proxy_data:
         add_object(
             objects,
             proxy,
@@ -386,11 +529,19 @@ def main() -> None:
             f"\t\tremoteInfo = {remote_info};",
         )
 
-    for dependency, target, proxy in [
-        (app_core_dependency, core_target, core_proxy_for_app),
-        (app_widget_dependency, widget_target, widget_proxy_for_app),
-        (widget_core_dependency, core_target, core_proxy_for_widget),
-    ]:
+    dependency_data: list[tuple[str, str, str]] = []
+    if INCLUDE_MACOS:
+        dependency_data.extend(
+            [
+                (app_core_dependency, core_target, core_proxy_for_app),
+                (app_widget_dependency, widget_target, widget_proxy_for_app),
+                (widget_core_dependency, core_target, core_proxy_for_widget),
+            ]
+        )
+    if INCLUDE_IOS:
+        dependency_data.append((ios_app_core_dependency, ios_core_target, ios_core_proxy_for_app))
+
+    for dependency, target, proxy in dependency_data:
         add_object(
             objects,
             dependency,
@@ -399,46 +550,80 @@ def main() -> None:
             f"\t\ttargetProxy = {proxy};",
         )
 
-    target_data = [
-        (
-            core_target,
-            "MeowPlannerCore",
-            core_product,
-            "com.apple.product-type.framework",
-            [phase_id("MeowPlannerCore", "Sources"), phase_id("MeowPlannerCore", "Frameworks"), phase_id("MeowPlannerCore", "Resources")],
-            [],
-        ),
-        (
-            widget_target,
-            "MeowPlannerWidgetExtension",
-            widget_product,
-            "com.apple.product-type.app-extension",
+    target_data = []
+    if INCLUDE_MACOS:
+        target_data.extend(
             [
-                phase_id("MeowPlannerWidgetExtension", "Sources"),
-                phase_id("MeowPlannerWidgetExtension", "Frameworks"),
-                phase_id("MeowPlannerWidgetExtension", "Resources"),
-                widget_embed_frameworks,
-            ],
-            [widget_core_dependency],
-        ),
-        (
-            app_target,
-            "MeowPlanner",
-            app_product,
-            "com.apple.product-type.application",
+                (
+                    core_target,
+                    "MeowPlannerCore",
+                    core_product,
+                    "com.apple.product-type.framework",
+                    [phase_id("MeowPlannerCore", "Sources"), phase_id("MeowPlannerCore", "Frameworks"), phase_id("MeowPlannerCore", "Resources")],
+                    [],
+                ),
+                (
+                    widget_target,
+                    "MeowPlannerWidgetExtension",
+                    widget_product,
+                    "com.apple.product-type.app-extension",
+                    [
+                        phase_id("MeowPlannerWidgetExtension", "Sources"),
+                        phase_id("MeowPlannerWidgetExtension", "Frameworks"),
+                        phase_id("MeowPlannerWidgetExtension", "Resources"),
+                        widget_embed_frameworks,
+                    ],
+                    [widget_core_dependency],
+                ),
+                (
+                    app_target,
+                    "MeowPlanner",
+                    app_product,
+                    "com.apple.product-type.application",
+                    [
+                        phase_id("MeowPlanner", "Sources"),
+                        phase_id("MeowPlanner", "Frameworks"),
+                        phase_id("MeowPlanner", "Resources"),
+                        app_embed_frameworks,
+                        app_embed_extensions,
+                    ],
+                    [app_core_dependency, app_widget_dependency],
+                ),
+            ]
+        )
+    if INCLUDE_IOS:
+        target_data.extend(
             [
-                phase_id("MeowPlanner", "Sources"),
-                phase_id("MeowPlanner", "Frameworks"),
-                phase_id("MeowPlanner", "Resources"),
-                app_embed_frameworks,
-                app_embed_extensions,
-            ],
-            [app_core_dependency, app_widget_dependency],
-        ),
-    ]
+                (
+                    ios_core_target,
+                    "MeowPlannerCore-iOS",
+                    ios_core_product,
+                    "com.apple.product-type.framework",
+                    [
+                        phase_id("MeowPlannerCore-iOS", "Sources"),
+                        phase_id("MeowPlannerCore-iOS", "Frameworks"),
+                        phase_id("MeowPlannerCore-iOS", "Resources"),
+                    ],
+                    [],
+                ),
+                (
+                    ios_app_target,
+                    "MeowPlanner-iOS",
+                    ios_app_product,
+                    "com.apple.product-type.application",
+                    [
+                        phase_id("MeowPlanner-iOS", "Sources"),
+                        phase_id("MeowPlanner-iOS", "Frameworks"),
+                        phase_id("MeowPlanner-iOS", "Resources"),
+                        ios_app_embed_frameworks,
+                    ],
+                    [ios_app_core_dependency],
+                ),
+            ]
+        )
 
     for target_id, name, product, product_type, phases, dependencies in target_data:
-        package_product_dependencies = [firebase_core_product, firebase_auth_product, firebase_firestore_product] if name == "MeowPlanner" else []
+        package_product_dependencies = [firebase_core_product, firebase_auth_product, firebase_firestore_product] if name in ["MeowPlanner", "MeowPlanner-iOS"] else []
         add_object(
             objects,
             target_id,
@@ -470,19 +655,23 @@ def main() -> None:
         "\t\tname = MeowPlannerApp;\n"
         "\t\tsourceTree = \"<group>\";",
     )
-    add_object(
-        objects,
-        widget_group,
-        "\t\tisa = PBXGroup;\n"
-        f"\t\tchildren = {list_block([file_ref(path) for path in WIDGET_SOURCES], indent=3)};\n"
-        "\t\tname = MeowPlannerWidget;\n"
-        "\t\tsourceTree = \"<group>\";",
-    )
+    if INCLUDE_MACOS:
+        add_object(
+            objects,
+            widget_group,
+            "\t\tisa = PBXGroup;\n"
+            f"\t\tchildren = {list_block([file_ref(path) for path in WIDGET_SOURCES], indent=3)};\n"
+            "\t\tname = MeowPlannerWidget;\n"
+            "\t\tsourceTree = \"<group>\";",
+        )
+    sources_group_children = [core_group, app_group]
+    if INCLUDE_MACOS:
+        sources_group_children.append(widget_group)
     add_object(
         objects,
         sources_group,
         "\t\tisa = PBXGroup;\n"
-        f"\t\tchildren = {list_block([core_group, app_group, widget_group], indent=3)};\n"
+        f"\t\tchildren = {list_block(sources_group_children, indent=3)};\n"
         "\t\tname = Sources;\n"
         "\t\tsourceTree = \"<group>\";",
     )
@@ -490,7 +679,7 @@ def main() -> None:
         objects,
         config_group,
         "\t\tisa = PBXGroup;\n"
-        f"\t\tchildren = {list_block([file_ref(path) for path in CONFIG_FILES], indent=3)};\n"
+        f"\t\tchildren = {list_block([file_ref(path) for path in active_config_files], indent=3)};\n"
         "\t\tname = Config;\n"
         "\t\tsourceTree = \"<group>\";",
     )
@@ -498,15 +687,20 @@ def main() -> None:
         objects,
         resources_group,
         "\t\tisa = PBXGroup;\n"
-        f"\t\tchildren = {list_block([file_ref(path) for path in RESOURCE_FILES] + [file_ref(path, folder=True) for path in RESOURCE_FOLDERS], indent=3)};\n"
+        f"\t\tchildren = {list_block([file_ref(path) for path in active_resource_files] + [file_ref(path, folder=True) for path in RESOURCE_FOLDERS], indent=3)};\n"
         "\t\tname = Resources;\n"
         "\t\tsourceTree = \"<group>\";",
     )
+    product_children = []
+    if INCLUDE_MACOS:
+        product_children.extend([app_product, core_product, widget_product])
+    if INCLUDE_IOS:
+        product_children.extend([ios_app_product, ios_core_product])
     add_object(
         objects,
         products_group,
         "\t\tisa = PBXGroup;\n"
-        f"\t\tchildren = {list_block([app_product, core_product, widget_product], indent=3)};\n"
+        f"\t\tchildren = {list_block(product_children, indent=3)};\n"
         "\t\tname = Products;\n"
         "\t\tsourceTree = \"<group>\";",
     )
@@ -571,6 +765,15 @@ def main() -> None:
         "SWIFT_OPTIMIZATION_LEVEL": "-Onone",
         "SWIFT_VERSION": "6.0",
     }
+    if INCLUDE_IOS and not INCLUDE_MACOS:
+        common_project_debug.pop("MACOSX_DEPLOYMENT_TARGET", None)
+        common_project_debug.update(
+            {
+                "IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+                "SDKROOT": "iphoneos",
+                "SUPPORTED_PLATFORMS": ["iphoneos", "iphonesimulator"],
+            }
+        )
     common_project_release = dict(common_project_debug)
     common_project_release.update(
         {
@@ -597,6 +800,17 @@ def main() -> None:
         "SUPPORTED_PLATFORMS": "macosx",
         "SWIFT_VERSION": "6.0",
     }
+    ios_base_target = {
+        "CODE_SIGN_STYLE": "Automatic",
+        "DEVELOPMENT_ASSET_PATHS": "",
+        "DEVELOPMENT_TEAM": IOS_DEVELOPMENT_TEAM,
+        "ENABLE_PREVIEWS": "YES",
+        "IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+        "SDKROOT": "iphoneos",
+        "SUPPORTED_PLATFORMS": ["iphoneos", "iphonesimulator"],
+        "SWIFT_VERSION": "6.0",
+        "TARGETED_DEVICE_FAMILY": "1,2",
+    }
     core_settings = dict(base_target)
     core_settings.update(
         {
@@ -605,6 +819,18 @@ def main() -> None:
             "MACH_O_TYPE": "mh_dylib",
             "PRODUCT_BUNDLE_IDENTIFIER": "com.yuelingqiu.MeowPlannerCore",
             "PRODUCT_NAME": "$(TARGET_NAME)",
+            "SKIP_INSTALL": "YES",
+        }
+    )
+    ios_core_settings = dict(ios_base_target)
+    ios_core_settings.update(
+        {
+            "GENERATE_INFOPLIST_FILE": "YES",
+            "LD_DYLIB_INSTALL_NAME": "@rpath/$(EXECUTABLE_PATH)",
+            "MACH_O_TYPE": "mh_dylib",
+            "PRODUCT_BUNDLE_IDENTIFIER": "com.yuelingqiu.MeowPlannerCore.iOS",
+            "PRODUCT_MODULE_NAME": "MeowPlannerCore",
+            "PRODUCT_NAME": "MeowPlannerCore",
             "SKIP_INSTALL": "YES",
         }
     )
@@ -618,6 +844,16 @@ def main() -> None:
             "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/../Frameworks"],
             "PRODUCT_BUNDLE_IDENTIFIER": "com.yuelingqiu.MeowPlanner",
             "PRODUCT_NAME": "$(TARGET_NAME)",
+        }
+    )
+    ios_app_settings = dict(ios_base_target)
+    ios_app_settings.update(
+        {
+            "CODE_SIGN_ENTITLEMENTS": "Config/MeowPlanner-iOS.entitlements",
+            "INFOPLIST_FILE": "Config/MeowPlanner-iOS-Info.plist",
+            "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks"],
+            "PRODUCT_BUNDLE_IDENTIFIER": "com.yuelingqiu.MeowPlanner",
+            "PRODUCT_NAME": "MeowPlanner",
         }
     )
     widget_settings = dict(base_target)
@@ -637,10 +873,22 @@ def main() -> None:
 
     config_sets = {
         "Project": (common_project_debug, common_project_release),
-        "MeowPlannerCore": (core_settings, core_settings),
-        "MeowPlannerWidgetExtension": (widget_settings, widget_settings),
-        "MeowPlanner": (app_settings, app_settings),
     }
+    if INCLUDE_MACOS:
+        config_sets.update(
+            {
+                "MeowPlannerCore": (core_settings, core_settings),
+                "MeowPlannerWidgetExtension": (widget_settings, widget_settings),
+                "MeowPlanner": (app_settings, app_settings),
+            }
+        )
+    if INCLUDE_IOS:
+        config_sets.update(
+            {
+                "MeowPlannerCore-iOS": (ios_core_settings, ios_core_settings),
+                "MeowPlanner-iOS": (ios_app_settings, ios_app_settings),
+            }
+        )
 
     for target_name, (debug_settings, release_settings) in config_sets.items():
         for config_name, settings in [("Debug", debug_settings), ("Release", release_settings)]:
@@ -683,6 +931,26 @@ def main() -> None:
             f"\t\tproductName = {product_name};",
         )
 
+    target_attributes: list[str] = []
+    active_targets: list[str] = []
+    if INCLUDE_MACOS:
+        target_attributes.extend(
+            [
+                f"\t\t\t\t{app_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};",
+                f"\t\t\t\t{core_target} = {{CreatedOnToolsVersion = 26.5; }};",
+                f"\t\t\t\t{widget_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};",
+            ]
+        )
+        active_targets.extend([app_target, core_target, widget_target])
+    if INCLUDE_IOS:
+        target_attributes.extend(
+            [
+                f"\t\t\t\t{ios_app_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};",
+                f"\t\t\t\t{ios_core_target} = {{CreatedOnToolsVersion = 26.5; }};",
+            ]
+        )
+        active_targets.extend([ios_app_target, ios_core_target])
+
     add_object(
         objects,
         project,
@@ -693,9 +961,8 @@ def main() -> None:
         "\t\t\tLastUpgradeCheck = 2600;\n"
         "\t\t\tORGANIZATIONNAME = yuelingqiu;\n"
         "\t\t\tTargetAttributes = {\n"
-        f"\t\t\t\t{app_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};\n"
-        f"\t\t\t\t{core_target} = {{CreatedOnToolsVersion = 26.5; }};\n"
-        f"\t\t\t\t{widget_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};\n"
+        + "\n".join(target_attributes)
+        + "\n"
         "\t\t\t};\n"
         "\t\t};\n"
         f"\t\tbuildConfigurationList = {config_list_id('Project')};\n"
@@ -708,7 +975,7 @@ def main() -> None:
         f"\t\tproductRefGroup = {products_group};\n"
         "\t\tprojectDirPath = \"\";\n"
         "\t\tprojectRoot = \"\";\n"
-        f"\t\ttargets = {list_block([app_target, core_target, widget_target], indent=3)};",
+        f"\t\ttargets = {list_block(active_targets, indent=3)};",
     )
 
     pbxproj = [
@@ -835,6 +1102,93 @@ def main() -> None:
 """,
         encoding="utf-8",
     )
+    (scheme_dir / "MeowPlanner-iOS.xcscheme").write_text(
+        f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{ios_app_target}"
+               BuildableName = "MeowPlanner.app"
+               BlueprintName = "MeowPlanner-iOS"
+               ReferencedContainer = "container:MeowPlanner.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{ios_app_target}"
+            BuildableName = "MeowPlanner.app"
+            BlueprintName = "MeowPlanner-iOS"
+            ReferencedContainer = "container:MeowPlanner.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{ios_app_target}"
+            BuildableName = "MeowPlanner.app"
+            BlueprintName = "MeowPlanner-iOS"
+            ReferencedContainer = "container:MeowPlanner.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+""",
+        encoding="utf-8",
+    )
+    if not INCLUDE_MACOS:
+        (scheme_dir / "MeowPlanner.xcscheme").unlink(missing_ok=True)
+    if not INCLUDE_IOS:
+        (scheme_dir / "MeowPlanner-iOS.xcscheme").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

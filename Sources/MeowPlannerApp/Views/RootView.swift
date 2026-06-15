@@ -5,6 +5,7 @@ import SwiftUI
 import AppKit
 #endif
 
+#if os(macOS)
 enum MainWindowLaunchCoordinator {
     @MainActor
     static private var isHandlingWidgetLaunch = false
@@ -213,6 +214,7 @@ enum MainWindowLaunchCoordinator {
         }
     }
 }
+#endif
 
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -895,18 +897,32 @@ struct RootView: View {
         }
         .modifier(SignedOutWorkspaceReadOnlyModifier(
             isEnabled: isSignedOutWorkspace && section != .settings,
+            disablesContent: isSignedOutWorkspace && section != .settings && section != .calendar,
             language: appLanguage
         ))
     }
 }
 
+private struct MeowPlannerSignedOutReadOnlyKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var meowPlannerSignedOutReadOnly: Bool {
+        get { self[MeowPlannerSignedOutReadOnlyKey.self] }
+        set { self[MeowPlannerSignedOutReadOnlyKey.self] = newValue }
+    }
+}
+
 private struct SignedOutWorkspaceReadOnlyModifier: ViewModifier {
     var isEnabled: Bool
+    var disablesContent: Bool = true
     var language: AppLanguage
 
     func body(content: Content) -> some View {
         content
-            .disabled(isEnabled)
+            .environment(\.meowPlannerSignedOutReadOnly, isEnabled)
+            .disabled(disablesContent)
             .overlay(alignment: .topTrailing) {
                 if isEnabled {
                     signedOutBadge

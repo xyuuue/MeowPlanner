@@ -142,6 +142,10 @@ enum AccountErrorMessageFormatter {
             "Cannot connect to Firebase. Check your network connection or the app's outgoing network permission."
         case (.remoteAuthentication(let message), .chinese) where isFirebaseNetworkError(message):
             "无法连接 Firebase。请检查网络连接或应用的联网权限。"
+        case (.remoteAuthentication(let message), .english) where isFirebaseKeychainError(message):
+            "iOS Keychain is unavailable. Check the app signing and Keychain configuration."
+        case (.remoteAuthentication(let message), .chinese) where isFirebaseKeychainError(message):
+            "iOS Keychain 不可用。请检查应用签名和 Keychain 配置。"
         case (.remoteAuthentication(let message), .english):
             "Account action failed: \(message)"
         case (.remoteAuthentication(let message), .chinese):
@@ -155,5 +159,10 @@ enum AccountErrorMessageFormatter {
             || normalized.contains("unreachable host")
             || normalized.contains("timed out")
             || normalized.contains("interrupted connection")
+    }
+
+    private static func isFirebaseKeychainError(_ message: String) -> Bool {
+        let normalized = message.lowercased()
+        return normalized.contains("keychain")
     }
 }

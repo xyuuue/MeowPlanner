@@ -7,19 +7,29 @@ import SwiftUI
 struct CalendarHomeView: View {
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.meowPlannerSignedOutReadOnly) private var signedOutReadOnly
     @Query(sort: \PlannerEvent.startDate) private var events: [PlannerEvent]
     @Query private var preferences: [PlannerPreference]
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionX") private var floatingAddButtonPositionX: Double = 1.0
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionY") private var floatingAddButtonPositionY: Double = 1.0
 
     @State private var selectedDate = Date()
+    @State private var displayedMonth = Date()
     @State private var selectedEventTagName: String?
     @State private var showingEventEditor = false
     @State private var editingEvent: PlannerEvent?
     @State private var floatingButtonDragOffset = CGSize.zero
+    @State private var agendaCardDate: Date?
+    @State private var agendaCardScrollAnchorDate = Date()
 
     private let compactMonthGridMinHeight: CGFloat = 520
     private let regularMonthGridHeight: CGFloat = 760
+    private let iosCalendarToolbarHeight: CGFloat = 52
+    private let iosCalendarVerticalPadding: CGFloat = 12
+    private let iosCalendarBottomReserve: CGFloat = 18
+    private let iosMonthGridMinHeight: CGFloat = 620
+    private let agendaCardSpacing: CGFloat = 14
+    private let agendaCardSidePeek: CGFloat = 30
 
     private var displayedEvents: [PlannerEvent] {
         events.filter { event in
@@ -30,67 +40,26 @@ struct CalendarHomeView: View {
     }
 
     private var dayEvents: [PlannerEvent] {
+        dayEvents(on: selectedDate)
+    }
+
+    private func dayEvents(on date: Date) -> [PlannerEvent] {
         displayedEvents
-            .filter { eventOccurs($0, on: selectedDate) }
+            .filter { eventOccurs($0, on: date) }
             .sorted(by: completedLastEvents)
+    }
+
+    private var calendar: Calendar {
+        .current
     }
 
     var body: some View {
         GeometryReader { proxy in
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-
-                    #if os(macOS)
-                    MonthGridView(
-                        selectedDate: $selectedDate,
-                        events: displayedEvents,
-                        todos: [],
-                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                        showChineseCalendar: showChineseCalendar,
-                        onDayDoubleClick: openEventEditor,
-                        onEventDoubleClick: editEvent
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: monthGridHeight(for: proxy.size.height))
-
-                    DayAgendaView(
-                        selectedDate: selectedDate,
-                        events: dayEvents,
-                        onCompleteEvent: completeEvent,
-                        onDeleteEvent: deleteEvent,
-                        onEditEvent: editEvent,
-                        onAddEvent: { showingEventEditor = true },
-                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                        showChineseCalendar: showChineseCalendar
-                    )
-                    #else
-                    MonthGridView(
-                        selectedDate: $selectedDate,
-                        events: displayedEvents,
-                        todos: [],
-                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                        showChineseCalendar: showChineseCalendar,
-                        onDayDoubleClick: openEventEditor,
-                        onEventDoubleClick: editEvent
-                    )
-
-                    DayAgendaView(
-                        selectedDate: selectedDate,
-                        events: dayEvents,
-                        onCompleteEvent: completeEvent,
-                        onDeleteEvent: deleteEvent,
-                        onEditEvent: editEvent,
-                        onAddEvent: { showingEventEditor = true },
-                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                        showChineseCalendar: showChineseCalendar
-                    )
-                    #endif
-                }
-                .padding()
-            }
-            .verticalPageScrollOnly()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            #if os(iOS)
+            iosFullScreenMonthCalendar(proxy: proxy)
+            #else
+            desktopCalendarScroll(proxy: proxy)
+            #endif
         }
         .overlay(alignment: .bottomTrailing) {
             GeometryReader { proxy in
@@ -123,15 +92,25 @@ struct CalendarHomeView: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
+                                guard !signedOutReadOnly else {
+                                    floatingButtonDragOffset = .zero
+                                    return
+                                }
+
                                 floatingButtonDragOffset = value.translation
                             }
                             .onEnded { value in
+                                guard !signedOutReadOnly else {
+                                    floatingButtonDragOffset = .zero
+                                    return
+                                }
+
                                 let finalX = clampX(baseX + value.translation.width)
                                 let finalY = clampY(baseY + value.translation.height)
                                 let dragDistance = hypot(value.translation.width, value.translation.height)
 
                                 if dragDistance < 8 {
-                                    showingEventEditor = true
+                                    openEventEditor(on: selectedDate)
                                 } else {
                                     if movableWidth > 0 {
                                         floatingAddButtonPositionX = Double((finalX - minX) / movableWidth)
@@ -155,6 +134,13 @@ struct CalendarHomeView: View {
                     mainBackgroundMotifs
                 }
         }
+        .overlay(alignment: .center) {
+            #if os(iOS)
+            iosAgendaCardOverlay
+            #else
+            EmptyView()
+            #endif
+        }
         .sheet(isPresented: $showingEventEditor) {
             EventEditorView(defaultDate: selectedDate, localRemindersEnabled: localRemindersEnabled, defaultEventIsAllDay: defaultEventIsAllDay)
         }
@@ -164,6 +150,438 @@ struct CalendarHomeView: View {
             }
         }
     }
+
+    #if os(iOS)
+    private func iosFullScreenMonthCalendar(proxy: GeometryProxy) -> some View {
+        let iosMonthGridHeight = iosMonthGridHeight(for: proxy.size, safeAreaInsets: proxy.safeAreaInsets)
+
+        return VStack(alignment: .leading, spacing: iosCalendarVerticalPadding) {
+            iosCompactCalendarToolbar
+
+            MonthGridView(
+                selectedDate: $selectedDate,
+                displayedMonth: $displayedMonth,
+                events: displayedEvents,
+                todos: [],
+                completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                showChineseCalendar: showChineseCalendar,
+                showsMonthHeader: false,
+                onDayTap: { presentAgendaCard(for: $0) },
+                onDayDoubleClick: openEventEditor,
+                onEventDoubleClick: editEvent
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: iosMonthGridHeight)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, iosCalendarVerticalPadding)
+        .padding(.bottom, iosCalendarBottomReserve)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var iosCompactCalendarToolbar: some View {
+        HStack(spacing: 16) {
+            ScheduleDisplayTagFilterMenu(
+                selectedTagName: $selectedEventTagName,
+                tagNames: eventFilterTagOptions
+            )
+            .labelStyle(.iconOnly)
+            .font(.title2.weight(.semibold))
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
+
+            iosMonthYearMenu
+
+            Spacer(minLength: 0)
+
+            Color.clear
+                .frame(width: 34, height: 34)
+                .accessibilityHidden(true)
+        }
+        .frame(height: iosCalendarToolbarHeight)
+    }
+
+    private var iosMonthYearMenu: some View {
+        Menu {
+            Picker("Year", selection: iosDisplayedYearBinding) {
+                ForEach(iosDisplayedYearOptions, id: \.self) { year in
+                    Text("\(year)").tag(year)
+                }
+            }
+
+            Picker("Month", selection: iosDisplayedMonthBinding) {
+                ForEach(1...12, id: \.self) { month in
+                    Text(iosMonthName(for: month)).tag(month)
+                }
+            }
+
+            Divider()
+
+            Button {
+                resetDisplayedMonthToToday()
+            } label: {
+                Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "calendar.badge.clock")
+            }
+        } label: {
+            HStack(spacing: 7) {
+                FuFuAssetImage(size: 30)
+
+                Text(iosDisplayedMonthTitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .lineLimit(1)
+                    .monospacedDigit()
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(iosDisplayedMonthTitle)
+    }
+
+    private var iosDisplayedMonthTitle: String {
+        let components = calendar.dateComponents([.year, .month], from: displayedMonth)
+        let year = components.year ?? 0
+        let month = components.month ?? 1
+        let monthText = month < 10 ? "0\(month)" : "\(month)"
+        return "\(year).\(monthText)"
+    }
+
+    private var iosDisplayedYearOptions: [Int] {
+        let year = calendar.component(.year, from: displayedMonth)
+        return Array((year - 10)...(year + 10))
+    }
+
+    private var iosDisplayedYearBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.year, from: displayedMonth) },
+            set: { updateDisplayedMonth(year: $0) }
+        )
+    }
+
+    private var iosDisplayedMonthBinding: Binding<Int> {
+        Binding(
+            get: { calendar.component(.month, from: displayedMonth) },
+            set: { updateDisplayedMonth(month: $0) }
+        )
+    }
+
+    private func iosMonthName(for month: Int) -> String {
+        switch appLanguage {
+        case .english:
+            var components = DateComponents()
+            components.calendar = calendar
+            components.year = 2026
+            components.month = month
+            components.day = 1
+            guard let date = components.date else {
+                return "\(month)"
+            }
+            return date.formatted(.dateTime.month(.wide))
+        case .chinese:
+            return "\(month) 月"
+        }
+    }
+
+    private func updateDisplayedMonth(year: Int? = nil, month: Int? = nil) {
+        var components = calendar.dateComponents([.year, .month], from: displayedMonth)
+        components.year = year ?? components.year
+        components.month = month ?? components.month
+        components.day = 1
+
+        guard let updatedMonth = components.date else {
+            return
+        }
+
+        let normalizedMonth = monthStart(for: updatedMonth)
+        displayedMonth = normalizedMonth
+        if !calendar.isDate(selectedDate, equalTo: normalizedMonth, toGranularity: .month) {
+            selectedDate = normalizedMonth
+        }
+    }
+
+    private func resetDisplayedMonthToToday() {
+        let today = Date()
+        selectedDate = today
+        displayedMonth = monthStart(for: today)
+    }
+
+    private func iosMonthGridHeight(for availableSize: CGSize, safeAreaInsets: EdgeInsets) -> CGFloat {
+        guard availableSize.height.isFinite, availableSize.height > 0 else {
+            return iosMonthGridMinHeight
+        }
+
+        let reservedHeight = iosCalendarToolbarHeight
+            + iosCalendarVerticalPadding * 2
+            + iosCalendarBottomReserve
+            + max(0, safeAreaInsets.bottom - 12)
+        return max(iosMonthGridMinHeight, availableSize.height - reservedHeight)
+    }
+
+    private var iosAgendaCardOverlay: some View {
+        Group {
+            if let displayedAgendaCardDate = agendaCardDate {
+                ZStack {
+                    Color.black.opacity(0.38)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            dismissAgendaCard()
+                        }
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .center) {
+                            Text(iosAgendaTitle(for: displayedAgendaCardDate))
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.72)
+
+                            Spacer(minLength: 10)
+
+                            Button {
+                                presentAgendaCard(for: Date())
+                            } label: {
+                                Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "arrow.uturn.backward")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 12)
+                                    .background(MeowPlannerTheme.pawButtonBrown, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 24)
+
+                        GeometryReader { proxy in
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: agendaCardSpacing) {
+                                    ForEach(agendaCardDates(centeredOn: agendaCardScrollAnchorDate), id: \.self) { date in
+                                        iosAgendaCard(for: date)
+                                            .frame(width: agendaCardWidth(for: proxy.size.width))
+                                            .scrollTransition(.interactive, axis: .horizontal) { content, phase in
+                                                content
+                                                    .scaleEffect(phase.isIdentity ? 1 : 0.96)
+                                                    .opacity(phase.isIdentity ? 1 : 0.78)
+                                            }
+                                    }
+                                }
+                                .scrollTargetLayout()
+                            }
+                            .contentMargins(.horizontal, agendaCardSidePeek, for: .scrollContent)
+                            .scrollTargetBehavior(.viewAligned)
+                            .scrollPosition(id: $agendaCardDate)
+                            .onChange(of: agendaCardDate) { _, newValue in
+                                guard let newValue else {
+                                    return
+                                }
+                                let normalizedDate = calendar.startOfDay(for: newValue)
+                                selectedDate = normalizedDate
+                                displayedMonth = monthStart(for: normalizedDate)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 560)
+                    }
+                    .padding(.horizontal, 10)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: agendaCardDate)
+    }
+
+    private func iosAgendaCard(for date: Date) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(PlannerCopy.text(.schedule, language: appLanguage))
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MeowPlannerTheme.accentText)
+
+                    Spacer()
+
+                    Text(PlannerCopy.scheduleSummary(scheduleCount: dayEvents(on: date).count, language: appLanguage))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(MeowPlannerTheme.cream.opacity(0.72), in: Capsule())
+                }
+
+                let eventsForDate = dayEvents(on: date)
+                if eventsForDate.isEmpty {
+                    FuFuEmptyStateView(
+                        title: PlannerCopy.text(.clearDay, language: appLanguage),
+                        message: PlannerCopy.text(.clearDayMessage, language: appLanguage),
+                        actionTitle: PlannerCopy.text(.addSchedule, language: appLanguage),
+                        action: { openEventEditor(on: date) }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(eventsForDate) { event in
+                                iosAgendaEventRow(event)
+                            }
+                        }
+                        .padding(.bottom, 88)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 24))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(MeowPlannerTheme.blush.opacity(0.40), lineWidth: 2)
+            }
+
+            Button {
+                openEventEditor(on: date)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 42, weight: .regular))
+                    .foregroundStyle(.white)
+                    .frame(width: 78, height: 78)
+                    .background(MeowPlannerTheme.pawButtonBrown, in: Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(MeowPlannerTheme.coffee.opacity(0.34), lineWidth: 4)
+                    }
+            }
+            .buttonStyle(.plain)
+            .padding(28)
+            .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
+        }
+    }
+
+    private func agendaCardWidth(for availableWidth: CGFloat) -> CGFloat {
+        guard availableWidth.isFinite, availableWidth > 0 else {
+            return 308
+        }
+
+        return max(260, availableWidth - agendaCardSidePeek * 2)
+    }
+
+    private func iosAgendaEventRow(_ event: PlannerEvent) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                completeEvent(event)
+            } label: {
+                Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(event.isCompleted ? MeowPlannerTheme.color(hex: event.colorHex) : MeowPlannerTheme.blush.opacity(0.42))
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(event.title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .lineLimit(2)
+                    .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
+
+                Text(event.timeSummary(language: appLanguage))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.72))
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                editEvent(event)
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(MeowPlannerTheme.accentText)
+                    .frame(width: 34, height: 34)
+                    .background(MeowPlannerTheme.cream.opacity(0.70), in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(MeowPlannerTheme.color(hex: event.colorHex))
+                .frame(width: 5)
+                .padding(.vertical, 10)
+        }
+    }
+
+    private func agendaCardDates(centeredOn date: Date) -> [Date] {
+        let startDate = calendar.startOfDay(for: date)
+        return (-15...15).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: startDate)
+        }
+    }
+
+    private func iosAgendaTitle(for date: Date) -> String {
+        let dateText = date.formatted(.dateTime.month(.twoDigits).day(.twoDigits).weekday(.wide))
+        guard showChineseCalendar else {
+            return dateText
+        }
+
+        let chineseInfo = ChineseCalendarInfoProvider.info(for: date, calendar: calendar)
+        return "\(dateText)  \(chineseInfo.displayText)"
+    }
+
+    private func presentAgendaCard(for date: Date) {
+        let normalizedDate = calendar.startOfDay(for: date)
+        selectedDate = normalizedDate
+        displayedMonth = monthStart(for: normalizedDate)
+        agendaCardDate = normalizedDate
+        agendaCardScrollAnchorDate = normalizedDate
+    }
+
+    private func dismissAgendaCard() {
+        agendaCardDate = nil
+    }
+
+    #else
+    private func desktopCalendarScroll(proxy: GeometryProxy) -> some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 18) {
+                header
+
+                MonthGridView(
+                    selectedDate: $selectedDate,
+                    displayedMonth: $displayedMonth,
+                    events: displayedEvents,
+                    todos: [],
+                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                    showChineseCalendar: showChineseCalendar,
+                    onDayDoubleClick: openEventEditor,
+                    onEventDoubleClick: editEvent
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: monthGridHeight(for: proxy.size.height))
+
+                DayAgendaView(
+                    selectedDate: selectedDate,
+                    events: dayEvents,
+                    onCompleteEvent: completeEvent,
+                    onDeleteEvent: deleteEvent,
+                    onEditEvent: editEvent,
+                    onAddEvent: { openEventEditor(on: selectedDate) },
+                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                    showChineseCalendar: showChineseCalendar
+                )
+            }
+            .padding()
+        }
+        .verticalPageScrollOnly()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+    #endif
 
     private func monthGridHeight(for availableHeight: CGFloat) -> CGFloat {
         guard availableHeight.isFinite else {
@@ -307,11 +725,12 @@ struct CalendarHomeView: View {
                     .stroke(MeowPlannerTheme.creamRing, lineWidth: ringWidth)
             }
             .shadow(color: MeowPlannerTheme.coffee.opacity(0.24), radius: shadowRadius, y: shadowY)
+            .opacity(signedOutReadOnly ? 0.45 : 1)
             .contentShape(Circle())
             .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
             .accessibilityAddTraits(.isButton)
             .accessibilityAction {
-                showingEventEditor = true
+                openEventEditor(on: selectedDate)
             }
     }
 
@@ -361,6 +780,10 @@ struct CalendarHomeView: View {
     }
 
     private func completeEvent(_ event: PlannerEvent) {
+        guard !signedOutReadOnly else {
+            return
+        }
+
         if event.isCompleted {
             event.reopen()
         } else {
@@ -370,12 +793,21 @@ struct CalendarHomeView: View {
     }
 
     private func deleteEvent(_ event: PlannerEvent) {
+        guard !signedOutReadOnly else {
+            return
+        }
+
         modelContext.delete(event)
         persistWidgetUpdate()
     }
 
     private func editEvent(_ event: PlannerEvent) {
+        guard !signedOutReadOnly else {
+            return
+        }
+
         showingEventEditor = false
+        agendaCardDate = nil
         editingEvent = event
     }
 
@@ -385,11 +817,21 @@ struct CalendarHomeView: View {
     }
 
     private func openEventEditor(on date: Date) {
+        guard !signedOutReadOnly else {
+            return
+        }
+
         guard editingEvent == nil else {
             return
         }
         selectedDate = date
+        displayedMonth = monthStart(for: date)
+        agendaCardDate = nil
         showingEventEditor = true
+    }
+
+    private func monthStart(for date: Date) -> Date {
+        calendar.dateInterval(of: .month, for: date)?.start ?? date
     }
 }
 

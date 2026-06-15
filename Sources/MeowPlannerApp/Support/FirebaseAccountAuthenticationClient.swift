@@ -409,6 +409,8 @@ struct FirebaseAccountAuthenticationClient: AccountAuthenticationClient {
             return AccountSessionError.remoteAuthentication(message: "Please sign in again before changing your password.")
         case .operationNotAllowed:
             return AccountAuthenticationError.providerUnavailable
+        case .keychainError:
+            return AccountSessionError.remoteAuthentication(message: "Firebase Auth could not access the iOS Keychain.")
         default:
             return AccountSessionError.remoteAuthentication(message: nsError.localizedDescription)
         }
