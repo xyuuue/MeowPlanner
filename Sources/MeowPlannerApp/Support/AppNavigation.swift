@@ -26,7 +26,22 @@ enum AppSection: String, CaseIterable, Identifiable {
 
     static let defaultSidebarOrderStorageValue = sidebarStorageValue(for: defaultSidebarOrder)
 
+    static let iosBottomNavigationStorageKey = "meowplanner.ios.bottomNavigation.sections"
+
+    static let defaultIOSBottomNavigationSections: [AppSection] = [
+        .calendar,
+        .todo,
+        .schedule,
+        .settings
+    ]
+
+    static let defaultIOSBottomNavigationStorageValue = storageValue(for: defaultIOSBottomNavigationSections)
+
     static func sidebarStorageValue(for sections: [AppSection]) -> String {
+        storageValue(for: sections)
+    }
+
+    static func storageValue(for sections: [AppSection]) -> String {
         sections.map(\.rawValue).joined(separator: ",")
     }
 
@@ -47,6 +62,26 @@ enum AppSection: String, CaseIterable, Identifiable {
         }
 
         return orderedSections
+    }
+
+    static func iosBottomNavigationSections(from storageValue: String) -> [AppSection] {
+        let storedSections = parsedUniqueSections(from: storageValue)
+        return storedSections.isEmpty ? defaultIOSBottomNavigationSections : storedSections
+    }
+
+    private static func parsedUniqueSections(from storageValue: String) -> [AppSection] {
+        var sections = [AppSection]()
+
+        for rawValue in storageValue.split(separator: ",") {
+            guard let section = AppSection(rawValue: String(rawValue)),
+                  !sections.contains(section)
+            else {
+                continue
+            }
+            sections.append(section)
+        }
+
+        return sections
     }
 
     func title(language: AppLanguage) -> String {

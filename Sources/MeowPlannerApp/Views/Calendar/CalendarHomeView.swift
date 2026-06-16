@@ -16,6 +16,26 @@ struct CalendarHomeView: View {
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionX") private var floatingAddButtonPositionX: Double = 1.0
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionY") private var floatingAddButtonPositionY: Double = 1.0
 
+    #if os(macOS)
+    private let sidebarExpandAction: (() -> Void)?
+    private let sidebarExpandTitle: String
+    private let macOSTitlebarContentInset: CGFloat = 18
+    private let desktopCalendarHeaderContentSpacing: CGFloat = 0
+    #endif
+
+    #if os(iOS)
+    @ObservedObject private var iosNavigationState: IOSCalendarNavigationState
+
+    init(iosNavigationState: IOSCalendarNavigationState) {
+        self.iosNavigationState = iosNavigationState
+    }
+    #else
+    init(sidebarExpandAction: (() -> Void)? = nil, sidebarExpandTitle: String = "") {
+        self.sidebarExpandAction = sidebarExpandAction
+        self.sidebarExpandTitle = sidebarExpandTitle
+    }
+    #endif
+
     @State private var selectedDate = Date()
     @State private var displayedMonth = Date()
     @State private var monthTransitionDirection = 1
@@ -29,12 +49,14 @@ struct CalendarHomeView: View {
 
     private let compactMonthGridMinHeight: CGFloat = 520
     private let regularMonthGridHeight: CGFloat = 760
-    private let iosCalendarToolbarHeight: CGFloat = 52
+    private let iosCalendarHorizontalPadding: CGFloat = 0
     private let iosCalendarVerticalPadding: CGFloat = 12
     private let iosCalendarBottomReserve: CGFloat = 18
     private let iosMonthGridMinHeight: CGFloat = 620
     private let agendaCardSpacing: CGFloat = 14
     private let agendaCardSidePeek: CGFloat = 30
+    private let iosAgendaCardHeight: CGFloat = 500
+    private let iosAgendaCardHorizontalInset: CGFloat = 28
     private let iosDatePickerYearRange = 1901...2099
 
     private var displayedEvents: [PlannerEvent] {
@@ -71,10 +93,11 @@ struct CalendarHomeView: View {
             GeometryReader { proxy in
                 let buttonSize = floatingAddButtonSize(for: proxy.size)
                 let inset = calendarFloatingAddButtonEdgeInset(for: buttonSize)
+                let bottomInset = inset
                 let minX = inset + buttonSize / 2
                 let maxX = max(minX, proxy.size.width - inset - buttonSize / 2)
                 let minY = inset + buttonSize / 2
-                let maxY = max(minY, proxy.size.height - inset - buttonSize / 2)
+                let maxY = max(minY, proxy.size.height - bottomInset - buttonSize / 2)
                 let movableWidth = max(0, maxX - minX)
                 let movableHeight = max(0, maxY - minY)
                 let clampX = { (value: CGFloat) in
@@ -132,13 +155,11 @@ struct CalendarHomeView: View {
             }
         }
         .background {
-            MeowPlannerTheme.fufuPlannerBackground
-                .overlay {
-                    MeowPlannerTheme.plannerGradient.opacity(0.86)
-                }
-                .overlay {
-                    mainBackgroundMotifs
-                }
+            #if os(iOS)
+            PlannerIOSImageBackground(gradientOpacity: 0.86)
+            #else
+            PlannerImageBackground(gradientOpacity: 0.86)
+            #endif
         }
         .overlay(alignment: .center) {
             #if os(iOS)
@@ -166,90 +187,48 @@ struct CalendarHomeView: View {
             .presentationDetents([.height(320)])
             .presentationDragIndicator(.hidden)
         }
+        .onAppear {
+            syncIOSCalendarNavigationState()
+        }
+        .onDisappear {
+            iosNavigationState.setAgendaOverlayPresented(false)
+            iosNavigationState.clear()
+        }
+        .onChange(of: displayedMonth) { _, _ in
+            syncIOSCalendarNavigationState()
+        }
+        .onChange(of: selectedEventTagName) { _, _ in
+            syncIOSCalendarNavigationState()
+        }
+        .onChange(of: eventFilterTagOptions) { _, _ in
+            syncIOSCalendarNavigationState()
+        }
         #endif
     }
 
     #if os(iOS)
     private func iosFullScreenMonthCalendar(proxy: GeometryProxy) -> some View {
-        let iosMonthGridHeight = iosMonthGridHeight(for: proxy.size, safeAreaInsets: proxy.safeAreaInsets)
+        let iosMonthGridHeight = iosMonthGridHeight(for: proxy.size)
 
-        return VStack(alignment: .leading, spacing: iosCalendarVerticalPadding) {
-            iosCompactCalendarToolbar
-
-            MonthGridView(
-                selectedDate: $selectedDate,
-                displayedMonth: $displayedMonth,
-                monthTransitionDirection: $monthTransitionDirection,
-                events: displayedEvents,
-                todos: [],
-                completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                showChineseCalendar: showChineseCalendar,
-                showsMonthHeader: false,
-                onDayTap: { presentAgendaCard(for: $0) },
-                onDayDoubleClick: openEventEditor,
-                onEventDoubleClick: editEvent
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: iosMonthGridHeight)
-        }
-        .padding(.horizontal, 12)
+        return MonthGridView(
+            selectedDate: $selectedDate,
+            displayedMonth: $displayedMonth,
+            monthTransitionDirection: $monthTransitionDirection,
+            events: displayedEvents,
+            todos: [],
+            completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+            showChineseCalendar: showChineseCalendar,
+            showsMonthHeader: false,
+            onDayTap: { presentAgendaCard(for: $0) },
+            onDayDoubleClick: openEventEditor,
+            onEventDoubleClick: editEvent
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: iosMonthGridHeight)
+        .padding(.horizontal, iosCalendarHorizontalPadding)
         .padding(.top, iosCalendarVerticalPadding)
         .padding(.bottom, iosCalendarBottomReserve)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private var iosCompactCalendarToolbar: some View {
-        HStack(spacing: 16) {
-            ScheduleDisplayTagFilterMenu(
-                selectedTagName: $selectedEventTagName,
-                tagNames: eventFilterTagOptions
-            )
-            .labelStyle(.iconOnly)
-            .font(.title2.weight(.semibold))
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
-
-            iosDateToolbarTitle
-
-            Spacer(minLength: 0)
-
-            Color.clear
-                .frame(width: 34, height: 34)
-                .accessibilityHidden(true)
-        }
-        .frame(height: iosCalendarToolbarHeight)
-    }
-
-    private var iosDateToolbarTitle: some View {
-        HStack(spacing: 7) {
-            Button {
-                resetDisplayedMonthToToday()
-            } label: {
-                FuFuAssetImage(size: 30)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(PlannerCopy.text(.today, language: appLanguage))
-
-            Button {
-                presentIOSDatePicker()
-            } label: {
-                HStack(spacing: 5) {
-                    Text(iosDisplayedMonthTitle)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(MeowPlannerTheme.cocoa)
-                        .lineLimit(1)
-                        .monospacedDigit()
-
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(MeowPlannerTheme.caramel)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(iosDisplayedMonthTitle)
-        }
-        .contentShape(Rectangle())
     }
 
     private var iosDatePickerSelection: Binding<Date> {
@@ -277,16 +256,26 @@ struct CalendarHomeView: View {
         setCalendarSelection(to: Date())
     }
 
-    private func iosMonthGridHeight(for availableSize: CGSize, safeAreaInsets: EdgeInsets) -> CGFloat {
+    private func syncIOSCalendarNavigationState() {
+        iosNavigationState.configure(
+            displayedMonthTitle: iosDisplayedMonthTitle,
+            selectedTagName: selectedEventTagName,
+            tagNames: eventFilterTagOptions,
+            resetToToday: { resetDisplayedMonthToToday() },
+            presentMonthPicker: { presentIOSDatePicker() },
+            selectTag: { selectedEventTagName = $0 }
+        )
+    }
+
+    private func iosMonthGridHeight(for availableSize: CGSize) -> CGFloat {
         guard availableSize.height.isFinite, availableSize.height > 0 else {
             return iosMonthGridMinHeight
         }
 
-        let reservedHeight = iosCalendarToolbarHeight
-            + iosCalendarVerticalPadding * 2
+        let reservedHeight = iosCalendarVerticalPadding
             + iosCalendarBottomReserve
-            + max(0, safeAreaInsets.bottom - 12)
-        return max(iosMonthGridMinHeight, availableSize.height - reservedHeight)
+        let availableGridHeight = availableSize.height - reservedHeight
+        return max(1, availableGridHeight)
     }
 
     private var iosAgendaCardOverlay: some View {
@@ -339,7 +328,7 @@ struct CalendarHomeView: View {
                                 }
                                 .scrollTargetLayout()
                             }
-                            .contentMargins(.horizontal, agendaCardSidePeek, for: .scrollContent)
+                            .contentMargins(.horizontal, iosAgendaCardHorizontalInset, for: .scrollContent)
                             .scrollTargetBehavior(.viewAligned)
                             .scrollPosition(id: $agendaCardDate)
                             .onChange(of: agendaCardDate) { _, newValue in
@@ -350,9 +339,9 @@ struct CalendarHomeView: View {
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 560)
+                        .frame(height: iosAgendaCardHeight)
                     }
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 0)
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 }
             }
@@ -405,11 +394,11 @@ struct CalendarHomeView: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(24)
+            .padding(22)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 24))
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
             .overlay {
-                RoundedRectangle(cornerRadius: 24)
+                RoundedRectangle(cornerRadius: 22)
                     .stroke(MeowPlannerTheme.blush.opacity(0.40), lineWidth: 2)
             }
 
@@ -427,7 +416,7 @@ struct CalendarHomeView: View {
                     }
             }
             .buttonStyle(.plain)
-            .padding(24)
+            .padding(20)
             .accessibilityLabel(PlannerCopy.text(.addSchedule, language: appLanguage))
         }
     }
@@ -437,7 +426,7 @@ struct CalendarHomeView: View {
             return 308
         }
 
-        return max(260, availableWidth - agendaCardSidePeek * 2)
+        return max(260, availableWidth - iosAgendaCardHorizontalInset * 2)
     }
 
     private func iosAgendaEventRow(_ event: PlannerEvent) -> some View {
@@ -451,28 +440,22 @@ struct CalendarHomeView: View {
             }
             .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(event.title)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(MeowPlannerTheme.cocoa)
-                    .lineLimit(2)
-                    .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
-
-                Text(event.timeSummary(language: appLanguage))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.72))
-            }
-
-            Spacer(minLength: 8)
-
             Button {
                 editEvent(event)
             } label: {
-                Image(systemName: "pencil")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(MeowPlannerTheme.accentText)
-                    .frame(width: 34, height: 34)
-                    .background(MeowPlannerTheme.cream.opacity(0.70), in: Circle())
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(event.title)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .lineLimit(2)
+                        .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
+
+                    Text(event.timeSummary(language: appLanguage))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -508,49 +491,60 @@ struct CalendarHomeView: View {
         setCalendarSelection(to: normalizedDate)
         agendaCardDate = normalizedDate
         agendaCardScrollAnchorDate = normalizedDate
-    }
-
-    private func dismissAgendaCard() {
-        agendaCardDate = nil
+        iosNavigationState.setAgendaOverlayPresented(true)
     }
 
     #else
     private func desktopCalendarScroll(proxy: GeometryProxy) -> some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: desktopCalendarHeaderContentSpacing) {
                 header
+                    .padding(.top, macOSTitlebarContentInset)
+                    .padding(.horizontal)
 
-                MonthGridView(
-                    selectedDate: $selectedDate,
-                    displayedMonth: $displayedMonth,
-                    monthTransitionDirection: $monthTransitionDirection,
-                    events: displayedEvents,
-                    todos: [],
-                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                    showChineseCalendar: showChineseCalendar,
-                    onDayDoubleClick: openEventEditor,
-                    onEventDoubleClick: editEvent
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: monthGridHeight(for: proxy.size.height))
+                VStack(alignment: .leading, spacing: 18) {
+                    MonthGridView(
+                        selectedDate: $selectedDate,
+                        displayedMonth: $displayedMonth,
+                        monthTransitionDirection: $monthTransitionDirection,
+                        events: displayedEvents,
+                        todos: [],
+                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                        showChineseCalendar: showChineseCalendar,
+                        onDayDoubleClick: openEventEditor,
+                        onEventDoubleClick: editEvent
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: monthGridHeight(for: proxy.size.height))
 
-                DayAgendaView(
-                    selectedDate: selectedDate,
-                    events: dayEvents,
-                    onCompleteEvent: completeEvent,
-                    onDeleteEvent: deleteEvent,
-                    onEditEvent: editEvent,
-                    onAddEvent: { openEventEditor(on: selectedDate) },
-                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                    showChineseCalendar: showChineseCalendar
-                )
+                    DayAgendaView(
+                        selectedDate: selectedDate,
+                        events: dayEvents,
+                        onCompleteEvent: completeEvent,
+                        onDeleteEvent: deleteEvent,
+                        onEditEvent: editEvent,
+                        onAddEvent: { openEventEditor(on: selectedDate) },
+                        completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                        showChineseCalendar: showChineseCalendar
+                    )
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
-            .padding()
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .verticalPageScrollOnly()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
     }
     #endif
+
+    private func dismissAgendaCard() {
+        #if os(iOS)
+        agendaCardDate = nil
+        iosNavigationState.setAgendaOverlayPresented(false)
+        #endif
+    }
 
     private func monthGridHeight(for availableHeight: CGFloat) -> CGFloat {
         guard availableHeight.isFinite else {
@@ -600,84 +594,6 @@ struct CalendarHomeView: View {
         preferences.first?.showChineseCalendar ?? PlannerPreference.defaults.showChineseCalendar
     }
 
-    private var mainBackgroundMotifs: some View {
-        GeometryReader { proxy in
-            ZStack {
-                cornerPawWatermark(
-                    proxy: proxy,
-                    size: 300,
-                    x: 0.12,
-                    y: 0.76,
-                    rotation: -12,
-                    color: MeowPlannerTheme.fufuPawTint.opacity(0.13)
-                )
-
-                centerPawWatermark(
-                    proxy: proxy,
-                    size: 190,
-                    x: 0.50,
-                    y: 0.38,
-                    rotation: 6,
-                    color: MeowPlannerTheme.caramel.opacity(0.15)
-                )
-
-                cornerPawWatermark(
-                    proxy: proxy,
-                    size: 320,
-                    x: 0.84,
-                    y: 0.70,
-                    rotation: 16,
-                    color: MeowPlannerTheme.blush.opacity(0.12)
-                )
-
-                pawMotif(proxy: proxy, size: 132, x: 0.78, y: 0.10, rotation: 8, color: MeowPlannerTheme.warmCream.opacity(0.09))
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-        .allowsHitTesting(false)
-    }
-
-    private func centerPawWatermark(
-        proxy: GeometryProxy,
-        size: CGFloat,
-        x: CGFloat,
-        y: CGFloat,
-        rotation: Double,
-        color: Color
-    ) -> some View {
-        Image(systemName: "pawprint")
-            .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(color)
-            .rotationEffect(.degrees(rotation))
-            .position(x: proxy.size.width * x, y: proxy.size.height * y)
-    }
-
-    private func cornerPawWatermark(
-        proxy: GeometryProxy,
-        size: CGFloat,
-        x: CGFloat,
-        y: CGFloat,
-        rotation: Double,
-        color: Color
-    ) -> some View {
-        pawMotif(proxy: proxy, size: size, x: x, y: y, rotation: rotation, color: color)
-    }
-
-    private func pawMotif(
-        proxy: GeometryProxy,
-        size: CGFloat,
-        x: CGFloat,
-        y: CGFloat,
-        rotation: Double,
-        color: Color
-    ) -> some View {
-        Image(systemName: "pawprint.fill")
-            .font(.system(size: size, weight: .bold))
-            .foregroundStyle(color)
-            .rotationEffect(.degrees(rotation))
-            .position(x: proxy.size.width * x, y: proxy.size.height * y)
-    }
-
     private func floatingAddScheduleButton(size: CGFloat) -> some View {
         let iconSize = size * 24 / 62
         let ringWidth = size * 3 / 62
@@ -717,6 +633,19 @@ struct CalendarHomeView: View {
             }
 
             Spacer()
+
+            headerTrailingControls
+        }
+    }
+
+    @ViewBuilder
+    private var headerTrailingControls: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            #if os(macOS)
+            if let sidebarExpandAction {
+                MeowPlannerSidebarExpandButton(action: sidebarExpandAction, title: sidebarExpandTitle)
+            }
+            #endif
 
             scheduleDisplayFilterButton
         }
@@ -776,7 +705,7 @@ struct CalendarHomeView: View {
         }
 
         showingEventEditor = false
-        agendaCardDate = nil
+        dismissAgendaCard()
         editingEvent = event
     }
 
@@ -794,7 +723,7 @@ struct CalendarHomeView: View {
             return
         }
         setCalendarSelection(to: date)
-        agendaCardDate = nil
+        dismissAgendaCard()
         showingEventEditor = true
     }
 
@@ -802,10 +731,19 @@ struct CalendarHomeView: View {
         let normalizedDate = calendar.startOfDay(for: date)
         let targetMonth = monthStart(for: normalizedDate)
         monthTransitionDirection = targetMonth < displayedMonth ? -1 : 1
-        withAnimation(.snappy(duration: 0.26)) {
+        withTransaction(calendarSelectionTransaction) {
             selectedDate = normalizedDate
             displayedMonth = targetMonth
         }
+    }
+
+    private var calendarSelectionTransaction: Transaction {
+        var transaction = Transaction(animation: .snappy(duration: 0.26))
+        #if os(iOS)
+        transaction.disablesAnimations = true
+        transaction.animation = nil
+        #endif
+        return transaction
     }
 
     private func monthStart(for date: Date) -> Date {
@@ -971,6 +909,7 @@ private struct EventEditorView: View {
     @State private var colorHex = PlannerPreference.defaultEventColorHexes[0]
     @State private var didSyncInitialColorWithPalette = false
     @State private var showingPaletteColorEditor = false
+    @State private var showingIOSColorPaletteSelector = false
     @State private var paletteEditorColorHex = PlannerPreference.defaultEventColorHexes[0]
     @State private var paletteEditorOriginalColorHex: String?
     @State private var showingDeleteEventConfirmation = false
@@ -1003,6 +942,494 @@ private struct EventEditorView: View {
     }
 
     var body: some View {
+        platformEditorBody
+            .onAppear(perform: syncInitialColorWithPalette)
+            .onChange(of: isMultiDay, syncMultiDayMode)
+            .onChange(of: startDate) { _, _ in
+                keepDeadlineAfterStart()
+            }
+            .onChange(of: endDate) { _, _ in
+                keepDeadlineAfterStart()
+            }
+            .sheet(isPresented: $showingPaletteColorEditor) {
+                PaletteColorEditorView(
+                    initialColorHex: paletteEditorColorHex,
+                    originalColorHex: paletteEditorOriginalColorHex,
+                    canDelete: paletteEditorOriginalColorHex != nil && eventColorOptions.count > 1,
+                    onSave: { newColorHex, originalColorHex in
+                        if let originalColorHex {
+                            updatePaletteColor(from: originalColorHex, to: newColorHex)
+                        } else {
+                            addPaletteColor(newColorHex)
+                        }
+                    },
+                    onDelete: { colorHex in
+                        deletePaletteColor(colorHex)
+                    }
+                )
+            }
+            #if os(iOS)
+            .sheet(isPresented: $showingIOSColorPaletteSelector) {
+                IOSDefaultColorPaletteSheet(
+                    colorHexes: eventColorOptions,
+                    selectedColorHex: colorHex,
+                    onSelect: { selectedColorHex in
+                        applyColorHex(selectedColorHex)
+                        showingIOSColorPaletteSelector = false
+                    }
+                )
+                .presentationDetents([.height(240)])
+                .presentationDragIndicator(.visible)
+            }
+            #endif
+            .sheet(isPresented: $showingTagSelector) {
+                TagSelectionSheet(
+                    selectedTagName: tagName,
+                    tagNames: eventTagOptions,
+                    onSelect: { selectedTagName in
+                        tagName = selectedTagName
+                    },
+                    onAddTag: {
+                        showingTagSelector = false
+                        DispatchQueue.main.async {
+                            showingNewTagEditor = true
+                        }
+                    }
+                )
+            }
+            .sheet(isPresented: $showingNewTagEditor) {
+                NewTagEditorView { newTagName in
+                    addEventTag(newTagName)
+                }
+            }
+            .confirmationDialog(PlannerCopy.text(.deleteSchedule, language: appLanguage), isPresented: $showingDeleteEventConfirmation) {
+                Button(PlannerCopy.text(.deleteSchedule, language: appLanguage), role: .destructive) {
+                    deleteEvent()
+                }
+                Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
+            }
+    }
+
+    @ViewBuilder
+    private var platformEditorBody: some View {
+        #if os(iOS)
+        iosEditorBody
+        #else
+        desktopEditorBody
+        #endif
+    }
+
+    #if os(iOS)
+    private var iosEditorTitleFont: Font {
+        .system(size: 20, weight: .semibold)
+    }
+
+    private var iosEditorRowFont: Font {
+        .system(size: 16, weight: .semibold)
+    }
+
+    private var iosEditorBodyFont: Font {
+        .system(size: 15, weight: .medium)
+    }
+
+    private var iosEditorAuxiliaryFont: Font {
+        .system(size: 13, weight: .medium)
+    }
+
+    private var iosEditorChipFont: Font {
+        .system(size: 12, weight: .semibold)
+    }
+
+    private var iosEditorActionFont: Font {
+        .system(size: 18, weight: .semibold)
+    }
+
+    private var iosEditorBody: some View {
+        NavigationStack {
+            ZStack {
+                MeowPlannerTheme.plannerGradient
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        iosTitleCard
+                        iosScheduleOptionsCard
+                        iosDateCard
+                        iosReminderCard
+                        iosDetailsCard
+                        iosNotesCard
+                        if event != nil {
+                            iosDeleteEventButton
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .navigationTitle(event == nil ? PlannerCopy.text(.newSchedule, language: appLanguage) : PlannerCopy.text(.editSchedule, language: appLanguage))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PlannerCopy.text(.cancel, language: appLanguage)) {
+                        dismiss()
+                    }
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                iosBottomSaveBar
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+    }
+
+    private var iosTitleCard: some View {
+        iosEditorCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "circle")
+                        .font(iosEditorTitleFont)
+                        .foregroundStyle(MeowPlannerTheme.blush.opacity(0.52))
+                        .padding(.top, 2)
+
+                    TextField(PlannerCopy.text(.title, language: appLanguage), text: $title, axis: .vertical)
+                        .font(iosEditorTitleFont)
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .textFieldStyle(.plain)
+                        .lineLimit(1...3)
+                        .submitLabel(.done)
+                }
+
+                iosTitleMetadataScroll
+            }
+        }
+    }
+
+    private var iosScheduleOptionsCard: some View {
+        iosEditorCard {
+            VStack(spacing: 12) {
+                iosToggleRow(
+                    title: PlannerCopy.text(.allDay, language: appLanguage),
+                    systemImage: "sun.max",
+                    isOn: $isAllDay,
+                    isDisabled: isMultiDay
+                )
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                iosToggleRow(
+                    title: PlannerCopy.text(.multiDayTask, language: appLanguage),
+                    systemImage: "calendar.badge.clock",
+                    isOn: $isMultiDay
+                )
+            }
+        }
+    }
+
+    private var iosDateCard: some View {
+        iosEditorCard {
+            datePickerRows
+        }
+    }
+
+    private var iosReminderCard: some View {
+        iosEditorCard {
+            VStack(spacing: 12) {
+                iosToggleRow(
+                    title: PlannerCopy.text(.reminder, language: appLanguage),
+                    systemImage: "bell",
+                    isOn: $hasReminder,
+                    isDisabled: !localRemindersEnabled
+                )
+
+                if localRemindersEnabled && hasReminder {
+                    Divider()
+                        .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                    iosReminderOffsetInput
+                } else if !localRemindersEnabled {
+                    Label(PlannerCopy.text(.noReminder, language: appLanguage), systemImage: "bell.slash")
+                        .font(iosEditorAuxiliaryFont)
+                        .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.68))
+                }
+            }
+        }
+    }
+
+    private var iosDetailsCard: some View {
+        iosEditorCard {
+            VStack(spacing: 14) {
+                HStack {
+                    Label(PlannerCopy.text(.repeatSchedule, language: appLanguage), systemImage: "repeat")
+                        .font(iosEditorBodyFont)
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                    Spacer()
+                    Picker(PlannerCopy.text(.repeatSchedule, language: appLanguage), selection: $repeatRuleSelection) {
+                        ForEach(RepeatRuleSelection.allCases) { selection in
+                            Text(selection.title(language: appLanguage)).tag(selection)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(MeowPlannerTheme.caramel)
+                    .fufuControlTint()
+                }
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                Button {
+                    showingTagSelector = true
+                } label: {
+                    HStack {
+                        Label(PlannerCopy.text(.tag, language: appLanguage), systemImage: "tag")
+                            .font(iosEditorBodyFont)
+                            .foregroundStyle(MeowPlannerTheme.cocoa)
+                        Spacer()
+                        Text(tagName.isEmpty ? PlannerCopy.text(.noTag, language: appLanguage) : tagName)
+                            .font(iosEditorBodyFont)
+                            .foregroundStyle(tagName.isEmpty ? MeowPlannerTheme.accentText.opacity(0.62) : MeowPlannerTheme.caramel)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.50))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                iosPaletteColorControls
+            }
+        }
+    }
+
+    private var iosNotesCard: some View {
+        iosEditorCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(PlannerCopy.text(.notes, language: appLanguage), systemImage: "note.text")
+                    .font(iosEditorRowFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+
+                TextField(PlannerCopy.text(.notes, language: appLanguage), text: $notes, axis: .vertical)
+                    .font(iosEditorBodyFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .textFieldStyle(.plain)
+                    .lineLimit(4...8)
+                    .padding(12)
+                    .background(MeowPlannerTheme.cream.opacity(0.36), in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    private var iosBottomSaveBar: some View {
+        Button {
+            save()
+        } label: {
+            Text(PlannerCopy.text(.save, language: appLanguage))
+                .font(iosEditorActionFont)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(MeowPlannerTheme.pawButtonBrown, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.48 : 1)
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.94))
+    }
+
+    private var iosDeleteEventButton: some View {
+        Button(role: .destructive) {
+            showingDeleteEventConfirmation = true
+        } label: {
+            Label(PlannerCopy.text(.deleteSchedule, language: appLanguage), systemImage: "trash")
+                .font(iosEditorRowFont)
+                .foregroundStyle(MeowPlannerTheme.blush)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(MeowPlannerTheme.blush.opacity(0.11), in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iosEditorCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.88), in: RoundedRectangle(cornerRadius: 22))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(MeowPlannerTheme.blush.opacity(0.28), lineWidth: 1.5)
+            }
+    }
+
+    private func iosToggleRow(
+        title: String,
+        systemImage: String,
+        isOn: Binding<Bool>,
+        isDisabled: Bool = false
+    ) -> some View {
+        Toggle(isOn: isOn) {
+            Label(title, systemImage: systemImage)
+                .font(iosEditorRowFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+        }
+        .fufuControlTint()
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.48 : 1)
+    }
+
+    private var iosTagChip: some View {
+        Button {
+            showingTagSelector = true
+        } label: {
+            Label(tagName.isEmpty ? PlannerCopy.text(.noTag, language: appLanguage) : tagName, systemImage: "tag.fill")
+                .font(iosEditorChipFont)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(MeowPlannerTheme.cream.opacity(0.56), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var iosTitleMetadataScroll: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                iosTagChip
+                iosRepeatChip
+                iosColorChip
+            }
+            .padding(.vertical, 1)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private var iosRepeatChip: some View {
+        Menu {
+            ForEach(RepeatRuleSelection.allCases) { selection in
+                Button {
+                    repeatRuleSelection = selection
+                } label: {
+                    Label(
+                        selection.title(language: appLanguage),
+                        systemImage: repeatRuleSelection == selection ? "checkmark.circle.fill" : "circle"
+                    )
+                }
+            }
+        } label: {
+            Label(repeatRuleSelection.title(language: appLanguage), systemImage: "repeat")
+                .font(iosEditorChipFont)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(MeowPlannerTheme.cream.opacity(0.56), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .fufuControlTint()
+    }
+
+    private var iosReminderOffsetInput: some View {
+        HStack(spacing: 10) {
+            Text(PlannerCopy.text(.reminderBefore, language: appLanguage))
+                .font(iosEditorBodyFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+
+            Spacer(minLength: 12)
+
+            TextField("", value: $reminderOffset, format: .number)
+                .font(iosEditorRowFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+                .multilineTextAlignment(.trailing)
+                .keyboardType(.numberPad)
+                .textFieldStyle(.plain)
+                .frame(width: 64)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(MeowPlannerTheme.cream.opacity(0.48), in: RoundedRectangle(cornerRadius: 12))
+                .onChange(of: reminderOffset) { _, newValue in
+                    reminderOffset = min(max(newValue, 0), 120)
+                }
+
+            Text(appLanguage == .chinese ? "分钟" : "min")
+                .font(iosEditorAuxiliaryFont)
+                .foregroundStyle(MeowPlannerTheme.accentText.opacity(0.70))
+        }
+    }
+
+    private var iosColorChip: some View {
+        Button {
+            showingIOSColorPaletteSelector = true
+        } label: {
+            Circle()
+                .fill(MeowPlannerTheme.color(hex: colorHex))
+                .frame(width: 26, height: 26)
+                .overlay {
+                    Circle()
+                        .stroke(MeowPlannerTheme.cocoa.opacity(0.18), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(PlannerCopy.text(.color, language: appLanguage))
+    }
+
+    private var iosPaletteColorControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label(PlannerCopy.text(.color, language: appLanguage), systemImage: "paintpalette")
+                    .font(iosEditorBodyFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                Spacer()
+                iosColorChip
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(eventColorOptions, id: \.self) { option in
+                        ColorSwatchButton(
+                            colorHex: option,
+                            isSelected: colorHex == option,
+                            canDelete: eventColorOptions.count > 1,
+                            onSelect: { applyColorHex(option) },
+                            onDelete: { deletePaletteColor(option) }
+                        )
+                    }
+
+                    Button {
+                        openPaletteColorEditor(nil)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                            .frame(width: 30, height: 30)
+                            .background(MeowPlannerTheme.cream.opacity(0.72), in: Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(MeowPlannerTheme.caramel.opacity(0.32), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PlannerCopy.text(.addColor, language: appLanguage))
+                }
+            }
+        }
+    }
+    #endif
+
+    private var desktopEditorBody: some View {
         NavigationStack {
             Form {
                 TextField(PlannerCopy.text(.title, language: appLanguage), text: $title)
@@ -1055,57 +1482,6 @@ private struct EventEditorView: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .background(MeowPlannerTheme.plannerGradient)
-            .onAppear(perform: syncInitialColorWithPalette)
-            .onChange(of: isMultiDay, syncMultiDayMode)
-            .onChange(of: startDate) { _, _ in
-                keepDeadlineAfterStart()
-            }
-            .onChange(of: endDate) { _, _ in
-                keepDeadlineAfterStart()
-            }
-            .sheet(isPresented: $showingPaletteColorEditor) {
-                PaletteColorEditorView(
-                    initialColorHex: paletteEditorColorHex,
-                    originalColorHex: paletteEditorOriginalColorHex,
-                    canDelete: paletteEditorOriginalColorHex != nil && eventColorOptions.count > 1,
-                    onSave: { newColorHex, originalColorHex in
-                        if let originalColorHex {
-                            updatePaletteColor(from: originalColorHex, to: newColorHex)
-                        } else {
-                            addPaletteColor(newColorHex)
-                        }
-                    },
-                    onDelete: { colorHex in
-                        deletePaletteColor(colorHex)
-                    }
-                )
-            }
-            .sheet(isPresented: $showingTagSelector) {
-                TagSelectionSheet(
-                    selectedTagName: tagName,
-                    tagNames: eventTagOptions,
-                    onSelect: { selectedTagName in
-                        tagName = selectedTagName
-                    },
-                    onAddTag: {
-                        showingTagSelector = false
-                        DispatchQueue.main.async {
-                            showingNewTagEditor = true
-                        }
-                    }
-                )
-            }
-            .sheet(isPresented: $showingNewTagEditor) {
-                NewTagEditorView { newTagName in
-                    addEventTag(newTagName)
-                }
-            }
-            .confirmationDialog(PlannerCopy.text(.deleteSchedule, language: appLanguage), isPresented: $showingDeleteEventConfirmation) {
-                Button(PlannerCopy.text(.deleteSchedule, language: appLanguage), role: .destructive) {
-                    deleteEvent()
-                }
-                Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
-            }
             .navigationTitle(event == nil ? PlannerCopy.text(.newSchedule, language: appLanguage) : PlannerCopy.text(.editSchedule, language: appLanguage))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1434,6 +1810,54 @@ private struct FuFuDatePickerRow: View {
 
     private let calendar = Calendar.current
 
+    private var calendarIconFont: Font {
+        #if os(iOS)
+        return .system(size: 15, weight: .bold)
+        #else
+        return .system(size: 17, weight: .bold)
+        #endif
+    }
+
+    private var calendarIconSize: CGFloat {
+        #if os(iOS)
+        return 44
+        #else
+        return 48
+        #endif
+    }
+
+    private var rowTitleFont: Font {
+        #if os(iOS)
+        return .system(size: 11, weight: .semibold)
+        #else
+        return .caption.weight(.semibold)
+        #endif
+    }
+
+    private var primaryDateFont: Font {
+        #if os(iOS)
+        return .system(size: 18, weight: .bold)
+        #else
+        return .title3.weight(.bold)
+        #endif
+    }
+
+    private var secondaryDateFont: Font {
+        #if os(iOS)
+        return .system(size: 14, weight: .medium)
+        #else
+        return .callout.weight(.medium)
+        #endif
+    }
+
+    private var disclosureIconFont: Font {
+        #if os(iOS)
+        return .system(size: 13, weight: .bold)
+        #else
+        return .system(size: 14, weight: .bold)
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
@@ -1447,28 +1871,28 @@ private struct FuFuDatePickerRow: View {
                         RoundedRectangle(cornerRadius: 14)
                             .fill(MeowPlannerTheme.caramel)
                         Image(systemName: "calendar")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(calendarIconFont)
                             .foregroundStyle(.white)
                     }
-                    .frame(width: 48, height: 48)
+                    .frame(width: calendarIconSize, height: calendarIconSize)
                     .shadow(color: MeowPlannerTheme.coffee.opacity(0.12), radius: 6, y: 3)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
-                            .font(.caption.weight(.semibold))
+                            .font(rowTitleFont)
                             .foregroundStyle(MeowPlannerTheme.caramel)
                         Text(primaryDateText)
-                            .font(.title3.weight(.bold))
+                            .font(primaryDateFont)
                             .foregroundStyle(MeowPlannerTheme.cocoa)
                         Text(secondaryDateText)
-                            .font(.callout.weight(.medium))
+                            .font(secondaryDateFont)
                             .foregroundStyle(MeowPlannerTheme.caramel)
                     }
 
                     Spacer(minLength: 12)
 
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(disclosureIconFont)
                         .foregroundStyle(MeowPlannerTheme.caramel)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .padding(8)
@@ -1914,7 +2338,7 @@ private enum RepeatRuleSelection: String, CaseIterable, Identifiable {
     private static let weekdaySet: Set<Int> = [2, 3, 4, 5, 6]
 }
 
-private struct ScheduleDisplayTagFilterMenu: View {
+struct ScheduleDisplayTagFilterMenu: View {
     @Environment(\.appLanguage) private var appLanguage
 
     @Binding var selectedTagName: String?
@@ -1933,7 +2357,7 @@ private struct ScheduleDisplayTagFilterMenu: View {
             Label {
                 Text(PlannerCopy.text(.scheduleDisplay, language: appLanguage))
             } icon: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
+                Image(systemName: "tag.circle")
             }
             .foregroundStyle(MeowPlannerTheme.accentText)
         }
@@ -2041,6 +2465,70 @@ private struct NewTagEditorView: View {
         .frame(minWidth: 320, minHeight: 180)
     }
 }
+
+#if os(iOS)
+private struct IOSDefaultColorPaletteSheet: View {
+    @Environment(\.appLanguage) private var appLanguage
+    @Environment(\.dismiss) private var dismiss
+
+    var colorHexes: [String]
+    var selectedColorHex: String
+    var onSelect: (String) -> Void
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 14), count: 5)
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(colorHexes, id: \.self) { option in
+                        Button {
+                            onSelect(option)
+                        } label: {
+                            Circle()
+                                .fill(MeowPlannerTheme.color(hex: option))
+                                .frame(width: 34, height: 34)
+                                .overlay {
+                                    Circle()
+                                        .stroke(isSelected(option) ? MeowPlannerTheme.cocoa : Color.primary.opacity(0.14), lineWidth: isSelected(option) ? 3 : 1)
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(option)
+                    }
+                }
+                .padding(18)
+                .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.90), in: RoundedRectangle(cornerRadius: 22))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(MeowPlannerTheme.blush.opacity(0.28), lineWidth: 1.5)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .background(MeowPlannerTheme.plannerGradient)
+            .navigationTitle(PlannerCopy.text(.color, language: appLanguage))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PlannerCopy.text(.cancel, language: appLanguage)) {
+                        dismiss()
+                    }
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+            }
+        }
+    }
+
+    private func isSelected(_ option: String) -> Bool {
+        MeowPlannerTheme.normalizedHex(option) == MeowPlannerTheme.normalizedHex(selectedColorHex)
+    }
+}
+#endif
 
 struct PaletteColorEditorView: View {
     @Environment(\.appLanguage) private var appLanguage

@@ -219,6 +219,191 @@ enum MeowPlannerTheme {
     }
 }
 
+struct PlannerPawStarBackground: View {
+    var gradientOpacity: Double = 0.86
+
+    var body: some View {
+        MeowPlannerTheme.fufuPlannerBackground
+            .overlay {
+                MeowPlannerTheme.plannerGradient.opacity(gradientOpacity)
+            }
+            .overlay {
+                motifs
+            }
+    }
+
+    private var motifs: some View {
+        GeometryReader { proxy in
+            ZStack {
+                pawMotif(proxy: proxy, size: 212, x: -0.08, y: 0.42, rotation: -14, color: MeowPlannerTheme.fufuPawTint.opacity(0.060))
+                pawMotif(proxy: proxy, size: 190, x: 1.06, y: 0.76, rotation: 16, color: MeowPlannerTheme.blush.opacity(0.058))
+                pawMotif(proxy: proxy, size: 152, x: 0.23, y: 0.80, rotation: 10, color: MeowPlannerTheme.caramel.opacity(0.075))
+                pawMotif(proxy: proxy, size: 132, x: 0.94, y: 0.27, rotation: -12, color: MeowPlannerTheme.warmCream.opacity(0.070))
+                pawMotif(proxy: proxy, size: 118, x: 0.20, y: 0.24, rotation: 15, color: MeowPlannerTheme.blush.opacity(0.060))
+                pawMotif(proxy: proxy, size: 76, x: 0.76, y: 0.60, rotation: -16, color: MeowPlannerTheme.fufuPawTint.opacity(0.050))
+                pawMotif(proxy: proxy, size: 54, x: 0.48, y: 0.43, rotation: 9, color: MeowPlannerTheme.warmCream.opacity(0.045))
+                pawMotif(proxy: proxy, size: 44, x: 0.64, y: 0.88, rotation: -10, color: MeowPlannerTheme.blush.opacity(0.045))
+
+                starMotif(proxy: proxy, size: 30, x: 0.12, y: 0.56, rotation: 12, color: MeowPlannerTheme.blush.opacity(0.060))
+                starMotif(proxy: proxy, size: 28, x: 0.72, y: 0.14, rotation: -8, color: MeowPlannerTheme.warmCream.opacity(0.062))
+                starMotif(proxy: proxy, size: 24, x: 0.93, y: 0.53, rotation: -10, color: MeowPlannerTheme.caramel.opacity(0.052))
+                starMotif(proxy: proxy, size: 20, x: 0.32, y: 0.59, rotation: 18, color: MeowPlannerTheme.blush.opacity(0.048), systemImage: "star.fill")
+                starMotif(proxy: proxy, size: 18, x: 0.55, y: 0.30, rotation: 7, color: MeowPlannerTheme.fufuPawTint.opacity(0.046), systemImage: "star.fill")
+                starMotif(proxy: proxy, size: 16, x: 0.82, y: 0.91, rotation: -14, color: MeowPlannerTheme.caramel.opacity(0.044))
+                starMotif(proxy: proxy, size: 14, x: 0.42, y: 0.72, rotation: 10, color: MeowPlannerTheme.warmCream.opacity(0.045), systemImage: "star.fill")
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func pawMotif(
+        proxy: GeometryProxy,
+        size: CGFloat,
+        x: CGFloat,
+        y: CGFloat,
+        rotation: Double,
+        color: Color,
+        systemImage: String = "pawprint.fill"
+    ) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(color)
+            .rotationEffect(.degrees(rotation))
+            .position(x: proxy.size.width * x, y: proxy.size.height * y)
+    }
+
+    private func starMotif(
+        proxy: GeometryProxy,
+        size: CGFloat,
+        x: CGFloat,
+        y: CGFloat,
+        rotation: Double,
+        color: Color,
+        systemImage: String = "sparkle"
+    ) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(color)
+            .rotationEffect(.degrees(rotation))
+            .position(x: proxy.size.width * x, y: proxy.size.height * y)
+    }
+}
+
+struct PlannerIOSImageBackground: View {
+    #if os(iOS)
+    @Environment(\.colorScheme) private var colorScheme
+    #endif
+
+    var gradientOpacity: Double = 0.86
+
+    var body: some View {
+        #if os(iOS)
+        GeometryReader { proxy in
+            Group {
+                if let image = platformImage {
+                    imageView(image)
+                } else {
+                    PlannerPawStarBackground(gradientOpacity: gradientOpacity)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        #else
+        PlannerPawStarBackground(gradientOpacity: gradientOpacity)
+        #endif
+    }
+
+    #if os(iOS)
+    private var backgroundResourceName: String {
+        colorScheme == .dark ? "iOSBackgroundDark" : "iOSBackground"
+    }
+
+    private var platformImage: UIImage? {
+        guard let url = MeowPlannerResourceBundle.url(
+            forResource: backgroundResourceName,
+            withExtension: "png"
+        ) else {
+            return nil
+        }
+        return UIImage(contentsOfFile: url.path)
+    }
+
+    private func imageView(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+    }
+    #endif
+}
+
+struct PlannerImageBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var gradientOpacity: Double = 0.86
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let image = platformImage {
+                    imageView(image)
+                } else {
+                    MeowPlannerTheme.fufuPlannerBackground
+                        .overlay {
+                            MeowPlannerTheme.plannerGradient.opacity(gradientOpacity)
+                        }
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var backgroundResourceName: String {
+        colorScheme == .dark ? "BackgroundDark" : "Background"
+    }
+
+    #if os(macOS)
+    private var platformImage: NSImage? {
+        guard let url = MeowPlannerResourceBundle.url(
+            forResource: backgroundResourceName,
+            withExtension: "png"
+        ) else {
+            return nil
+        }
+        return NSImage(contentsOf: url)
+    }
+
+    private func imageView(_ image: NSImage) -> some View {
+        Image(nsImage: image)
+            .resizable()
+            .scaledToFill()
+    }
+    #else
+    private var platformImage: UIImage? {
+        guard let url = MeowPlannerResourceBundle.url(
+            forResource: backgroundResourceName,
+            withExtension: "png"
+        ) else {
+            return nil
+        }
+        return UIImage(contentsOfFile: url.path)
+    }
+
+    private func imageView(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+    }
+    #endif
+}
+
 struct PlannerNumberInputRow: View {
     var title: String
     @Binding var value: Int
@@ -405,7 +590,7 @@ struct NumericInputOutsideClickCommitter: View {
 #endif
 
 private enum MeowPlannerResourceBundle {
-    static func url(forResource name: String, withExtension extensionName: String, subdirectory: String) -> URL? {
+    static func url(forResource name: String, withExtension extensionName: String, subdirectory: String? = nil) -> URL? {
         #if SWIFT_PACKAGE
         if let url = Bundle.module.url(
             forResource: name,

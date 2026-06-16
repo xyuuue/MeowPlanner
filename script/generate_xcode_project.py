@@ -144,6 +144,7 @@ APP_SOURCES = [
     "Sources/MeowPlannerApp/Views/Focus/FocusView.swift",
     "Sources/MeowPlannerApp/Views/Habits/HabitsView.swift",
     "Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift",
+    "Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift",
     "Sources/MeowPlannerApp/Views/RootView.swift",
     "Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift",
     "Sources/MeowPlannerApp/Views/Settings/SettingsView.swift",
@@ -173,8 +174,19 @@ RESOURCE_FILES = [
     "Resources/AppIcon/AppIcon.icns",
 ]
 
+APP_BACKGROUND_RESOURCE_FILES = [
+    "Resources/Background.png",
+    "Resources/BackgroundDark.png",
+]
+
+IOS_BACKGROUND_RESOURCE_FILES = [
+    "Resources/iOSBackground.png",
+    "Resources/iOSBackgroundDark.png",
+]
+
 APP_RESOURCE_FILES = RESOURCE_FILES + [
     "Config/GoogleService-Info.plist",
+    *APP_BACKGROUND_RESOURCE_FILES,
 ]
 
 IOS_ASSET_CATALOGS = [
@@ -183,6 +195,8 @@ IOS_ASSET_CATALOGS = [
 
 IOS_APP_RESOURCE_FILES = [
     "Config/GoogleService-Info.plist",
+    *APP_BACKGROUND_RESOURCE_FILES,
+    *IOS_BACKGROUND_RESOURCE_FILES,
     *IOS_ASSET_CATALOGS,
 ]
 
@@ -223,7 +237,12 @@ def main() -> None:
                 "Config/MeowPlanner-iOS.entitlements",
             ]
         )
-    active_resource_files = (RESOURCE_FILES if INCLUDE_MACOS else []) + (IOS_ASSET_CATALOGS if INCLUDE_IOS else [])
+    active_resource_files = (
+        (RESOURCE_FILES if INCLUDE_MACOS else [])
+        + (APP_BACKGROUND_RESOURCE_FILES if INCLUDE_MACOS or INCLUDE_IOS else [])
+        + (IOS_BACKGROUND_RESOURCE_FILES if INCLUDE_IOS else [])
+        + (IOS_ASSET_CATALOGS if INCLUDE_IOS else [])
+    )
     active_source_files = CORE_SOURCES + APP_SOURCES + (WIDGET_SOURCES if INCLUDE_MACOS else [])
 
     project = oid("project")

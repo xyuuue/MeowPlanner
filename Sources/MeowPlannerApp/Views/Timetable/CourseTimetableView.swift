@@ -185,29 +185,33 @@ private struct CourseTimetableSetupView: View {
                 .overlay { timetableBackgroundMotifs }
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 18) {
-                timetableSetupHeader
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 18) {
+                    timetableSetupHeader
 
-                timetableFormCard
+                    timetableFormCard
 
-                Button {
-                    saveTimetable()
-                } label: {
-                    Text(PlannerCopy.text(.save, language: appLanguage))
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
+                    Button {
+                        saveTimetable()
+                    } label: {
+                        Text(PlannerCopy.text(.save, language: appLanguage))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(MeowPlannerTheme.caramel)
+
+                    if timetable != nil {
+                        deleteTimetableButton
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MeowPlannerTheme.caramel)
-
-                if timetable != nil {
-                    deleteTimetableButton
-                }
+                .padding(30)
+                .frame(maxWidth: 920, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(30)
-            .frame(maxWidth: 920, alignment: .topLeading)
+            .verticalPageScrollOnly()
         }
-        .frame(minWidth: 760, minHeight: 640)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .confirmationDialog(deleteTimetableTitle, isPresented: $showingDeleteConfirmation) {
             Button(deleteTimetableTitle, role: .destructive) {
                 deleteTimetable()

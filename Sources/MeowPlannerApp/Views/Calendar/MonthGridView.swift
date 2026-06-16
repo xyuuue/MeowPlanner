@@ -19,6 +19,10 @@ struct MonthGridView: View {
 
     @State private var suppressNextDayDoubleClick = false
     @GestureState private var monthDragTranslation: CGFloat = 0
+    #if os(iOS)
+    @State private var iosScrollPosition: Date?
+    @State private var iosPagerAnchorMonth: Date?
+    #endif
 
     @Query private var preferences: [PlannerPreference]
 
@@ -34,17 +38,18 @@ struct MonthGridView: View {
     private let desktopDayContentSpacing: CGFloat = 2
     private let desktopPlannerItemRowHeight: CGFloat = 20
     private let desktopPlannerItemListSpacing: CGFloat = 4
-    private let iosMultiDaySegmentHeight: CGFloat = 14
-    private let iosDayCellHorizontalPadding: CGFloat = 3
-    private let iosMonthGridContentPadding: CGFloat = 8
+    private let iosMultiDaySegmentHeight: CGFloat = 18
+    private let iosDayCellHorizontalPadding: CGFloat = 2
+    private let iosMonthGridContentPadding: CGFloat = 0
     private let iosMonthGridHeaderHeight: CGFloat = 30
     private let iosMonthGridContentSpacing: CGFloat = 8
     private let iosWeekdayHeaderHeight: CGFloat = 26
     private let iosDayCellVerticalPadding: CGFloat = 4
     private let iosDayDateHeaderHeight: CGFloat = 18
     private let iosDayContentSpacing: CGFloat = 1
-    private let iosPlannerItemRowHeight: CGFloat = 14
+    private let iosPlannerItemRowHeight: CGFloat = 18
     private let iosPlannerItemListSpacing: CGFloat = 2
+    private let iosAdjacentMonthPeek: CGFloat = 18
     private let minimumVisiblePlannerItemRows: CGFloat = 1
 
     private var multiDaySegmentHeight: CGFloat {
@@ -189,15 +194,23 @@ struct MonthGridView: View {
 
     private var plannerItemTextFont: Font {
         #if os(iOS)
-        return .system(size: 8, weight: .semibold)
+        return .system(size: 8.6, weight: .semibold)
         #else
         return .caption.weight(.semibold)
         #endif
     }
 
+    private var plannerItemMinimumScaleFactor: CGFloat {
+        #if os(iOS)
+        return 0.84
+        #else
+        return 0.82
+        #endif
+    }
+
     private var plannerItemHorizontalPadding: CGFloat {
         #if os(iOS)
-        return 3
+        return 2
         #else
         return 6
         #endif
@@ -287,103 +300,234 @@ struct MonthGridView: View {
             let visiblePlannerDays = plannerDays(maxVisibleItems: Int.max)
             let layoutMetrics = monthGridLayoutMetrics(for: proxy.size, dayCount: visiblePlannerDays.count)
 
-            ZStack {
-                calendarWatermark
-
-                VStack(alignment: .leading, spacing: layoutMetrics.contentSpacing) {
-                    if showsMonthHeader {
-                        HStack(spacing: 10) {
-                            Button {
-                                moveMonth(by: -1)
-                            } label: {
-                                Image(systemName: "chevron.left")
-                            }
-                            .buttonStyle(.borderless)
-
-                            Label(monthTitle, systemImage: "pawprint.fill")
-                                .font(monthHeaderFont)
-                                .foregroundStyle(MeowPlannerTheme.cocoa)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-
-                            Button {
-                                moveMonth(by: 1)
-                            } label: {
-                                Image(systemName: "chevron.right")
-                            }
-                            .buttonStyle(.borderless)
-
-                            Spacer(minLength: 0)
-
-                            Button {
-                                resetToToday()
-                            } label: {
-                                Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "calendar.badge.clock")
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .tint(MeowPlannerTheme.caramel)
-                        }
-                        .frame(height: layoutMetrics.headerHeight, alignment: .center)
-                    }
-
-                    LazyVGrid(columns: columns, spacing: 0) {
-                        ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
-                            weekdayHeaderCell(symbol, height: layoutMetrics.weekdayHeaderHeight)
-                        }
-
-                        ForEach(visiblePlannerDays) { day in
-                            dayCell(
-                                day,
-                                height: layoutMetrics.dayCellHeight,
-                                plannerItemListHeight: layoutMetrics.plannerItemListHeight,
-                                visibleDays: visiblePlannerDays
-                            )
-                        }
-                    }
-                    .id(displayedMonth)
-                    .offset(x: monthDragTranslation)
-                    .transition(monthGridTransition)
-                    .frame(height: layoutMetrics.gridHeight, alignment: .top)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(MeowPlannerTheme.monthGridDivider.opacity(0.38), lineWidth: 1)
-                    }
-                }
-            }
-            .padding(layoutMetrics.contentPadding)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+            #if os(iOS)
+            iosContinuousMonthPager(proxy: proxy)
+            #else
+            monthGridPage(visiblePlannerDays: visiblePlannerDays, layoutMetrics: layoutMetrics)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+            #endif
         }
-        .background(
-            LinearGradient(
-                colors: [
-                    MeowPlannerTheme.fufuCalendarBackground.opacity(0.92),
-                    MeowPlannerTheme.fufuPlannerBackground.opacity(0.74),
-                    MeowPlannerTheme.blush.opacity(0.12)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 8)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(MeowPlannerTheme.blush.opacity(0.18), lineWidth: 1)
-        }
+        .modifier(monthGridOuterChrome)
         .background {
+            #if os(macOS)
             HorizontalSwipeScrollDetector { horizontal in
                 moveMonth(by: horizontal < 0 ? 1 : -1)
             }
+            #endif
         }
         #if os(iOS)
-        .simultaneousGesture(monthSwipeGesture)
+        .onChange(of: displayedMonth) { _, newValue in
+            syncIOSScrollPosition(to: newValue, animated: true)
+        }
+        .onChange(of: iosScrollPosition) { _, newValue in
+            guard let newValue else {
+                return
+            }
+            updateDisplayedMonthFromIOSScrollPosition(newValue)
+        }
         #endif
-        .animation(.snappy(duration: 0.22), value: displayedMonth)
+        .animation(displayedMonthAnimation, value: displayedMonth)
         .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.86), value: monthDragTranslation)
         .onAppear {
-            displayedMonth = monthStart(for: selectedDate)
+            let initialMonth = monthStart(for: selectedDate)
+            displayedMonth = initialMonth
+            #if os(iOS)
+            iosPagerAnchorMonth = initialMonth
+            syncIOSScrollPosition(to: initialMonth, animated: false)
+            #endif
         }
+    }
+
+    @ViewBuilder
+    private func monthGridPage(visiblePlannerDays: [MonthPlannerDay], layoutMetrics: MonthGridLayoutMetrics) -> some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: layoutMetrics.contentSpacing) {
+                if showsMonthHeader {
+                    HStack(spacing: 10) {
+                        Button {
+                            moveMonth(by: -1)
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .buttonStyle(.borderless)
+
+                        Label(monthTitle, systemImage: "pawprint.fill")
+                            .font(monthHeaderFont)
+                            .foregroundStyle(MeowPlannerTheme.cocoa)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+
+                        Button {
+                            moveMonth(by: 1)
+                        } label: {
+                            Image(systemName: "chevron.right")
+                        }
+                        .buttonStyle(.borderless)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            resetToToday()
+                        } label: {
+                            Label(PlannerCopy.text(.today, language: appLanguage), systemImage: "calendar.badge.clock")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(MeowPlannerTheme.caramel)
+                    }
+                    .frame(height: layoutMetrics.headerHeight, alignment: .center)
+                }
+
+                monthGrid(visiblePlannerDays: visiblePlannerDays, layoutMetrics: layoutMetrics)
+            }
+        }
+        .padding(layoutMetrics.contentPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private func monthGrid(visiblePlannerDays: [MonthPlannerDay], layoutMetrics: MonthGridLayoutMetrics) -> some View {
+        let grid = LazyVGrid(columns: columns, spacing: 0) {
+            ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { index, symbol in
+                weekdayHeaderCell(symbol, height: layoutMetrics.weekdayHeaderHeight, isLastColumn: index == weekdaySymbols.count - 1)
+            }
+
+            ForEach(Array(visiblePlannerDays.enumerated()), id: \.element.id) { index, day in
+                dayCell(
+                    day,
+                    height: layoutMetrics.dayCellHeight,
+                    plannerItemListHeight: layoutMetrics.plannerItemListHeight,
+                    visibleDays: visiblePlannerDays,
+                    isLastColumn: index % 7 == 6
+                )
+            }
+        }
+
+        #if os(iOS)
+        grid
+            .frame(height: layoutMetrics.gridHeight, alignment: .top)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay { monthGridBorder }
+        #else
+        grid
+            .id(displayedMonth)
+            .offset(x: monthDragTranslation)
+            .transition(monthGridTransition)
+            .frame(height: layoutMetrics.gridHeight, alignment: .top)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay { monthGridBorder }
+        #endif
+    }
+
+    #if os(iOS)
+    private func iosContinuousMonthPager(proxy: GeometryProxy) -> some View {
+        let pageWidth = max(1, proxy.size.width - iosAdjacentMonthPeek * 2)
+        let pagerCenterMonth = iosPagerAnchorMonth ?? displayedMonth
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 0) {
+                ForEach(iosPagerMonths(centeredOn: pagerCenterMonth), id: \.self) { month in
+                    let visiblePlannerDays = plannerDays(for: month, maxVisibleItems: Int.max)
+                    let layoutMetrics = monthGridLayoutMetrics(
+                        for: CGSize(width: pageWidth, height: proxy.size.height),
+                        dayCount: visiblePlannerDays.count
+                    )
+
+                    monthGridPage(visiblePlannerDays: visiblePlannerDays, layoutMetrics: layoutMetrics)
+                        .frame(width: pageWidth, height: proxy.size.height, alignment: .topLeading)
+                        .scrollTransition(.interactive, axis: .horizontal) { content, phase in
+                            content
+                                .scaleEffect(phase.isIdentity ? 1 : 0.985)
+                                .opacity(phase.isIdentity ? 1 : 0.84)
+                        }
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .contentMargins(.horizontal, iosAdjacentMonthPeek, for: .scrollContent)
+        .modifier(IOSMonthPagerScrollTargetBehavior())
+        .scrollPosition(id: $iosScrollPosition)
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+    }
+
+    private func iosPagerMonths(centeredOn month: Date) -> [Date] {
+        let centerMonth = monthStart(for: month)
+        return (-36...36).compactMap { offset in
+            calendar.date(byAdding: .month, value: offset, to: centerMonth).map(monthStart)
+        }
+    }
+
+    private func syncIOSScrollPosition(to month: Date, animated: Bool) {
+        let normalizedMonth = monthStart(for: month)
+        let anchoredMonths = iosPagerMonths(centeredOn: iosPagerAnchorMonth ?? normalizedMonth)
+        if !anchoredMonths.contains(normalizedMonth) {
+            iosPagerAnchorMonth = normalizedMonth
+        }
+        guard iosScrollPosition != normalizedMonth else {
+            return
+        }
+
+        if animated {
+            withAnimation(.snappy(duration: 0.26)) {
+                iosScrollPosition = normalizedMonth
+            }
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                iosScrollPosition = normalizedMonth
+            }
+        }
+    }
+
+    private func updateDisplayedMonthFromIOSScrollPosition(_ month: Date) {
+        let normalizedMonth = monthStart(for: month)
+        guard !calendar.isDate(normalizedMonth, equalTo: displayedMonth, toGranularity: .month) else {
+            return
+        }
+
+        monthTransitionDirection = normalizedMonth < displayedMonth ? -1 : 1
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            displayedMonth = normalizedMonth
+        }
+    }
+    #endif
+
+    private var displayedMonthAnimation: Animation? {
+        #if os(iOS)
+        return nil
+        #else
+        return .snappy(duration: 0.22)
+        #endif
+    }
+
+    private var monthGridOuterChrome: MonthGridOuterChrome {
+        MonthGridOuterChrome()
+    }
+
+    @ViewBuilder
+    private var monthGridBorder: some View {
+        #if os(iOS)
+        EmptyView()
+        #else
+        RoundedRectangle(cornerRadius: 8)
+            .stroke(MeowPlannerTheme.monthGridDivider.opacity(monthGridBorderOpacity), lineWidth: 1)
+        #endif
+    }
+
+    private var monthGridBorderOpacity: Double {
+        return 0.24
+    }
+
+    private var gridDividerOpacity: Double {
+        #if os(iOS)
+        return 0.34
+        #else
+        return 0.20
+        #endif
     }
 
     private func monthGridLayoutMetrics(for availableSize: CGSize, dayCount: Int) -> MonthGridLayoutMetrics {
@@ -447,8 +591,12 @@ struct MonthGridView: View {
     }
 
     private func plannerDays(maxVisibleItems: Int) -> [MonthPlannerDay] {
+        plannerDays(for: displayedMonth, maxVisibleItems: maxVisibleItems)
+    }
+
+    private func plannerDays(for month: Date, maxVisibleItems: Int) -> [MonthPlannerDay] {
         MonthPlannerGridBuilder.days(
-            for: displayedMonth,
+            for: month,
             events: events,
             todos: todos,
             maxVisibleItems: maxVisibleItems,
@@ -456,59 +604,56 @@ struct MonthGridView: View {
         )
     }
 
-    private var calendarWatermark: some View {
-        VStack {
-            HStack {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 54, weight: .bold))
-                    .rotationEffect(.degrees(-14))
-                    .foregroundStyle(MeowPlannerTheme.caramel.opacity(0.07))
-                Spacer()
-            }
-
-            Spacer()
-
-            HStack {
-                Spacer()
-                pawWatermark
-            }
-        }
-        .padding(24)
-        .allowsHitTesting(false)
-    }
-
-    private var pawWatermark: some View {
-        Image(systemName: "pawprint.fill")
-            .font(.system(size: 96, weight: .bold))
-            .foregroundStyle(MeowPlannerTheme.warmCream.opacity(0.16))
-            .rotationEffect(.degrees(10))
-    }
-
-    private func weekdayHeaderCell(_ symbol: String, height: CGFloat) -> some View {
+    private func weekdayHeaderCell(_ symbol: String, height: CGFloat, isLastColumn: Bool) -> some View {
         Text(symbol)
             .font(weekdayHeaderFont)
             .foregroundStyle(MeowPlannerTheme.accentText)
             .padding(.vertical, weekdayHeaderVerticalPadding)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(MeowPlannerTheme.monthGridHeaderBackground)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(MeowPlannerTheme.monthGridDivider.opacity(0.34))
-                    .frame(height: 1)
-            }
-            .overlay(alignment: .trailing) {
-                Rectangle()
-                    .fill(MeowPlannerTheme.monthGridDivider.opacity(0.34))
-                    .frame(width: 1)
-            }
+            .background { weekdayHeaderBackground }
+            .overlay(alignment: .bottom) { gridHorizontalDivider }
+            .overlay(alignment: .trailing) { gridVerticalDivider(isLastColumn: isLastColumn, isWeekdayHeader: true) }
+    }
+
+    @ViewBuilder
+    private var weekdayHeaderBackground: some View {
+        #if os(iOS)
+        Color.clear
+        #else
+        Color.clear
+        #endif
+    }
+
+    private var gridHorizontalDivider: some View {
+        Rectangle()
+            .fill(MeowPlannerTheme.monthGridDivider.opacity(gridDividerOpacity))
+            .frame(height: 1)
+    }
+
+    @ViewBuilder
+    private func gridVerticalDivider(isLastColumn: Bool, isWeekdayHeader: Bool) -> some View {
+        #if os(iOS)
+        if !isWeekdayHeader && !isLastColumn {
+            gridVerticalLine
+        }
+        #else
+        gridVerticalLine
+        #endif
+    }
+
+    private var gridVerticalLine: some View {
+        Rectangle()
+            .fill(MeowPlannerTheme.monthGridDivider.opacity(gridDividerOpacity))
+            .frame(width: 1)
     }
 
     private func dayCell(
         _ day: MonthPlannerDay,
         height: CGFloat,
         plannerItemListHeight: CGFloat,
-        visibleDays: [MonthPlannerDay]
+        visibleDays: [MonthPlannerDay],
+        isLastColumn: Bool
     ) -> some View {
         let isSelected = calendar.isDate(day.date, inSameDayAs: selectedDate)
         let isToday = calendar.isDateInToday(day.date)
@@ -537,7 +682,7 @@ struct MonthGridView: View {
             .padding(.vertical, dayCellVerticalPadding)
             .frame(height: height, alignment: .top)
             .frame(maxWidth: .infinity)
-            .background(dayCellGridBackground(isSelected: isSelected, isToday: isToday, isInSelectedMonth: day.isInSelectedMonth))
+            .background(dayCellGridBackground(isSelected: isSelected, isToday: isToday, isInSelectedMonth: day.isInSelectedMonth, isLastColumn: isLastColumn))
         }
         .zIndex(dayStartsMultiDaySpan(day) ? 2 : 0)
         .buttonStyle(.plain)
@@ -599,6 +744,8 @@ struct MonthGridView: View {
                     Text(item.title)
                         .font(plannerItemTextFont)
                         .lineLimit(1)
+                        .minimumScaleFactor(plannerItemMinimumScaleFactor)
+                        .allowsTightening(true)
                         .truncationMode(.tail)
                         .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
                 }
@@ -651,6 +798,8 @@ struct MonthGridView: View {
                 Text(item.title)
                     .font(plannerItemTextFont)
                     .lineLimit(1)
+                    .minimumScaleFactor(plannerItemMinimumScaleFactor)
+                    .allowsTightening(true)
                     .truncationMode(.tail)
                     .strikethrough(item.isCompleted && completedSchedulesUseStrikethrough)
             }
@@ -722,28 +871,25 @@ struct MonthGridView: View {
     }
 
     private func dayBackground(isSelected: Bool, isToday: Bool, isInSelectedMonth: Bool) -> some ShapeStyle {
+        #if os(iOS)
+        return AnyShapeStyle(Color.clear)
+        #else
         if isSelected {
-            return AnyShapeStyle(MeowPlannerTheme.monthGridSelectedDayBackground)
+            return AnyShapeStyle(MeowPlannerTheme.monthGridSelectedDayBackground.opacity(0.34))
         }
-        if isInSelectedMonth {
-            return AnyShapeStyle(MeowPlannerTheme.monthGridCurrentMonthCellBackground)
-        }
-        return AnyShapeStyle(MeowPlannerTheme.monthGridOutsideMonthCellBackground)
+        return AnyShapeStyle(Color.clear)
+        #endif
     }
 
-    private func dayCellGridBackground(isSelected: Bool, isToday: Bool, isInSelectedMonth: Bool) -> some View {
+    private func dayCellGridBackground(isSelected: Bool, isToday: Bool, isInSelectedMonth: Bool, isLastColumn: Bool) -> some View {
         ZStack(alignment: .bottomTrailing) {
             Rectangle()
                 .fill(dayBackground(isSelected: isSelected, isToday: isToday, isInSelectedMonth: isInSelectedMonth))
 
-            Rectangle()
-                .fill(MeowPlannerTheme.monthGridDivider.opacity(0.30))
-                .frame(height: 1)
+            gridHorizontalDivider
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
-            Rectangle()
-                .fill(MeowPlannerTheme.monthGridDivider.opacity(0.30))
-                .frame(width: 1)
+            gridVerticalDivider(isLastColumn: isLastColumn, isWeekdayHeader: false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         }
     }
@@ -891,9 +1037,7 @@ struct MonthGridView: View {
     private func moveMonth(by value: Int) {
         let targetMonth = calendar.date(byAdding: .month, value: value, to: displayedMonth) ?? displayedMonth
         monthTransitionDirection = value < 0 ? -1 : 1
-        withAnimation(.snappy(duration: 0.26)) {
-            displayedMonth = monthStart(for: targetMonth)
-        }
+        updateDisplayedMonth(targetMonth, animated: true)
     }
 
     private func selectDate(_ date: Date) {
@@ -911,37 +1055,52 @@ struct MonthGridView: View {
         selectedDate = today
         let targetMonth = monthStart(for: today)
         monthTransitionDirection = targetMonth < displayedMonth ? -1 : 1
-        withAnimation(.snappy(duration: 0.26)) {
-            displayedMonth = targetMonth
+        #if os(iOS)
+        updateDisplayedMonth(targetMonth, animated: false)
+        #else
+        updateDisplayedMonth(targetMonth, animated: true)
+        #endif
+    }
+
+    private func updateDisplayedMonth(_ targetMonth: Date, animated: Bool) {
+        let normalizedTargetMonth = monthStart(for: targetMonth)
+        if animated {
+            withAnimation(.snappy(duration: 0.26)) {
+                displayedMonth = normalizedTargetMonth
+            }
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                displayedMonth = normalizedTargetMonth
+            }
         }
     }
-
-    #if os(iOS)
-    private var monthSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 24, coordinateSpace: .local)
-            .updating($monthDragTranslation) { value, state, _ in
-                guard abs(value.translation.width) > abs(value.translation.height) else {
-                    return
-                }
-                state = value.translation.width
-            }
-            .onEnded { value in
-                handleMonthSwipe(value)
-            }
-    }
-
-    private func handleMonthSwipe(_ value: DragGesture.Value) {
-        guard abs(value.translation.width) > abs(value.translation.height),
-              abs(value.translation.width) > 52 else {
-            return
-        }
-
-        moveMonth(by: value.translation.width < 0 ? 1 : -1)
-    }
-    #endif
 
     private func monthStart(for date: Date) -> Date {
         calendar.dateInterval(of: .month, for: date)?.start ?? date
     }
 
+}
+
+#if os(iOS)
+private struct IOSMonthPagerScrollTargetBehavior: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+        } else {
+            content.scrollTargetBehavior(.viewAligned)
+        }
+    }
+}
+#endif
+
+private struct MonthGridOuterChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content
+        #else
+        content
+        #endif
+    }
 }

@@ -225,6 +225,9 @@ struct RootView: View {
     @AppStorage(AppAppearancePreference.updatedAtStorageKey) private var cloudAppearanceUpdatedAt = 0.0
     @AppStorage(AppDockIconController.storageKey) private var cloudShowDockIcon = AppDockIconController.defaultShowDockIcon
     @AppStorage("meowplanner.sidebar.sectionOrder") private var sidebarSectionOrderRaw = AppSection.defaultSidebarOrderStorageValue
+    #if os(iOS)
+    @AppStorage(AppSection.iosBottomNavigationStorageKey) private var iosBottomNavigationRaw = AppSection.defaultIOSBottomNavigationStorageValue
+    #endif
     @Query(sort: \PlannerEvent.startDate) private var widgetEvents: [PlannerEvent]
     @Query(sort: \TodoGroup.createdAt) private var cloudTodoGroups: [TodoGroup]
     @Query(sort: \TodoItem.createdAt) private var widgetTodos: [TodoItem]
@@ -246,6 +249,13 @@ struct RootView: View {
     @State private var pendingWidgetRefreshTask: Task<Void, Never>?
     @State private var isEditingSidebarOrder = false
     @State private var sidebarDropTargetSection: AppSection?
+    #if os(iOS)
+    @StateObject private var iosCalendarNavigationState = IOSCalendarNavigationState()
+    #endif
+    #if os(macOS)
+    private let macOSSidebarExpandButtonTopPadding: CGFloat = 72
+    private let macOSSidebarExpandButtonTrailingPadding: CGFloat = 34
+    #endif
 
     var body: some View {
         #if os(macOS)
@@ -271,15 +281,10 @@ struct RootView: View {
                 MeowPlannerTheme.plannerGradient
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    if sidebarVisibility == .detailOnly {
-                        collapsedSidebarControlBar
-                    }
-
-                    sectionView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                sectionView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .overlay(alignment: .topTrailing) { nonCalendarSidebarExpandButtonOverlay }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar(removing: .sidebarToggle)
@@ -320,14 +325,15 @@ struct RootView: View {
         }
         #endif
         #else
-        TabView(selection: $selection) {
-            ForEach(orderedSections) { section in
-                sectionContent(for: section)
-                    .tabItem {
-                        Label(section.title(language: appLanguage), systemImage: section.systemImage)
-                    }
-                    .tag(section)
-            }
+        IOSNavigationShellView(
+            selection: $selection,
+            allSections: orderedSections,
+            bottomSections: iosBottomNavigationSections,
+            language: appLanguage,
+            calendarNavigationState: iosCalendarNavigationState,
+            onSelect: selectSidebarSection
+        ) {
+            sectionView
         }
         .background(MeowPlannerTheme.plannerGradient)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -361,17 +367,13 @@ struct RootView: View {
         AppSection.orderedSections(from: sidebarSectionOrderRaw)
     }
 
-    #if os(macOS)
-    private var collapsedSidebarControlBar: some View {
-        HStack {
-            Spacer(minLength: 0)
-
-            collapsedSidebarExpandButton
-        }
-        .padding(.top, 16)
-        .padding(.trailing, 34)
+    #if os(iOS)
+    private var iosBottomNavigationSections: [AppSection] {
+        AppSection.iosBottomNavigationSections(from: iosBottomNavigationRaw)
     }
+    #endif
 
+    #if os(macOS)
     private var sidebarHeader: some View {
         HStack(spacing: 8) {
             Text("MeowPlanner")
@@ -431,28 +433,21 @@ struct RootView: View {
         .accessibilityLabel(sidebarCollapseTitle)
     }
 
-    private var collapsedSidebarExpandButton: some View {
-        Button {
-            expandSidebar()
-        } label: {
-            Image(systemName: "sidebar.left")
-                .font(.system(size: 16, weight: .bold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(MeowPlannerTheme.caramel)
-                .frame(width: 34, height: 34)
-                .background(MeowPlannerTheme.cream.opacity(0.82), in: Circle())
-        }
-        .buttonStyle(.borderless)
-        .help(sidebarExpandTitle)
-        .accessibilityLabel(sidebarExpandTitle)
-    }
-
     private var sidebarCollapseTitle: String {
         appLanguage == .chinese ? "收起侧边栏" : "Hide sidebar"
     }
 
     private var sidebarExpandTitle: String {
         appLanguage == .chinese ? "展开侧边栏" : "Show sidebar"
+    }
+
+    @ViewBuilder
+    private var nonCalendarSidebarExpandButtonOverlay: some View {
+        if sidebarVisibility == .detailOnly && selection != .calendar {
+            MeowPlannerSidebarExpandButton(action: expandSidebar, title: sidebarExpandTitle)
+                .padding(.top, macOSSidebarExpandButtonTopPadding)
+                .padding(.trailing, macOSSidebarExpandButtonTrailingPadding)
+        }
     }
 
     @ViewBuilder
@@ -605,7 +600,11 @@ struct RootView: View {
 
         switch section {
         case .calendar:
+            #if os(iOS)
+            selection = section
+            #else
             refreshCalendarAfterExternalOpen()
+            #endif
         default:
             selection = section
         }
@@ -881,8 +880,16 @@ struct RootView: View {
         Group {
             switch section {
             case .calendar:
-                CalendarHomeView()
+                #if os(iOS)
+                CalendarHomeView(iosNavigationState: iosCalendarNavigationState)
                     .id(calendarRenderToken)
+                #else
+                CalendarHomeView(
+                    sidebarExpandAction: sidebarVisibility == .detailOnly ? { expandSidebar() } : nil,
+                    sidebarExpandTitle: sidebarExpandTitle
+                )
+                    .id(calendarRenderToken)
+                #endif
             case .todo:
                 TodoHomeView()
             case .schedule:
@@ -900,6 +907,25 @@ struct RootView: View {
             disablesContent: isSignedOutWorkspace && section != .settings && section != .calendar,
             language: appLanguage
         ))
+    }
+}
+
+struct MeowPlannerSidebarExpandButton: View {
+    var action: () -> Void
+    var title: String
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "sidebar.left")
+                .font(.system(size: 16, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 34, height: 34)
+                .background(MeowPlannerTheme.cream.opacity(0.82), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .help(title)
+        .accessibilityLabel(title)
     }
 }
 

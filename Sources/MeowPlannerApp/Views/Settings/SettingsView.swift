@@ -10,6 +10,7 @@ enum SettingsDestination: Hashable {
 
 private enum SettingsSheet: String, Identifiable {
     case eventColorEditor
+    case signIn
     case linkAccount
     case linkEmail
     case changePassword
@@ -21,10 +22,14 @@ private enum SettingsSheet: String, Identifiable {
 struct SettingsView: View {
     @Query private var preferences: [PlannerPreference]
     @Environment(\.appLanguage) private var appLanguage
+    @Environment(\.dismiss) private var dismissSettingsDestination
     @Environment(\.modelContext) private var modelContext
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
+    #if os(iOS)
+    @AppStorage(AppSection.iosBottomNavigationStorageKey) private var iosBottomNavigationRaw = AppSection.defaultIOSBottomNavigationStorageValue
+    #endif
     @StateObject private var accountStore = AccountSessionStore.shared
     private let defaults = UserDefaults.standard
 
@@ -53,6 +58,91 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        settingsNavigationStack
+            .background { settingsPageBackground }
+            .alert(PlannerCopy.text(.deleteAccountConfirmationMessage, language: appLanguage), isPresented: $showingDeleteAccountConfirmation) {
+                Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
+                Button(PlannerCopy.text(.deleteAccount, language: appLanguage), role: .destructive) {
+                    activeSettingsSheet = .deleteAccount
+                }
+            }
+            .onAppear(perform: loadPreference)
+            .onChange(of: appLanguageID) { _, _ in
+                defaults.set(Date().timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
+            }
+            .onChange(of: appearanceID) { _, _ in
+                defaults.set(Date().timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)
+            }
+            .onChange(of: focusMinutes) { _, newValue in
+                preference.defaultFocusMinutes = newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: weekStartPreference) { _, newValue in
+                preference.weekStartPreference = newValue
+                WidgetPlannerPreferenceStore.weekStartPreference = newValue
+                WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
+                savePreferenceUpdate()
+            }
+            .onChange(of: notificationsEnabled) { _, newValue in
+                preference.localRemindersEnabled = newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: defaultEventIsAllDay) { _, newValue in
+                preference.defaultEventIsAllDay = newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: hideCompletedSchedules) { _, newValue in
+                showCompletedSchedules = !newValue
+                preference.showCompletedSchedules = !newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: completedSchedulesUseStrikethrough) { _, newValue in
+                preference.completedSchedulesUseStrikethrough = newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: showChineseCalendar) { _, newValue in
+                preference.showChineseCalendar = newValue
+                WidgetPlannerPreferenceStore.showChineseCalendar = newValue
+                WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
+                savePreferenceUpdate()
+            }
+            .onChange(of: scheduleTimeCollapseEnabled) { _, newValue in
+                preference.scheduleTimeCollapseEnabled = newValue
+                if newValue {
+                    showingTimeCollapsePanel = true
+                } else {
+                    showingTimeCollapsePanel = false
+                }
+                savePreferenceUpdate()
+            }
+            .onChange(of: scheduleCollapsedStartHour) { _, _ in
+                persistCollapsedHourRange()
+            }
+            .onChange(of: scheduleCollapsedEndHour) { _, _ in
+                persistCollapsedHourRange()
+            }
+            .onChange(of: timeDisplayPreference) { _, newValue in
+                preference.timeDisplayPreference = newValue
+                savePreferenceUpdate()
+            }
+            .onChange(of: showDockIcon) { _, newValue in
+                AppDockIconController.apply(showDockIcon: newValue, relaunchIfNeeded: true)
+            }
+    }
+
+    #if os(iOS)
+    private var settingsNavigationStack: some View {
+        settingsNavigationContent
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
+    }
+    #else
+    private var settingsNavigationStack: some View {
+        settingsNavigationContent
+    }
+    #endif
+
+    private var settingsNavigationContent: some View {
         NavigationStack(path: $navigationPath) {
             settingsHomePage
                 .navigationDestination(for: SettingsDestination.self) { destination in
@@ -63,75 +153,6 @@ struct SettingsView: View {
                         personalizationSettingsPage
                     }
                 }
-        }
-        .background(MeowPlannerTheme.plannerGradient)
-        .alert(PlannerCopy.text(.deleteAccountConfirmationMessage, language: appLanguage), isPresented: $showingDeleteAccountConfirmation) {
-            Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
-            Button(PlannerCopy.text(.deleteAccount, language: appLanguage), role: .destructive) {
-                activeSettingsSheet = .deleteAccount
-            }
-        }
-        .onAppear(perform: loadPreference)
-        .onChange(of: appLanguageID) { _, _ in
-            defaults.set(Date().timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
-        }
-        .onChange(of: appearanceID) { _, _ in
-            defaults.set(Date().timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)
-        }
-        .onChange(of: focusMinutes) { _, newValue in
-            preference.defaultFocusMinutes = newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: weekStartPreference) { _, newValue in
-            preference.weekStartPreference = newValue
-            WidgetPlannerPreferenceStore.weekStartPreference = newValue
-            WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
-            savePreferenceUpdate()
-        }
-        .onChange(of: notificationsEnabled) { _, newValue in
-            preference.localRemindersEnabled = newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: defaultEventIsAllDay) { _, newValue in
-            preference.defaultEventIsAllDay = newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: hideCompletedSchedules) { _, newValue in
-            showCompletedSchedules = !newValue
-            preference.showCompletedSchedules = !newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: completedSchedulesUseStrikethrough) { _, newValue in
-            preference.completedSchedulesUseStrikethrough = newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: showChineseCalendar) { _, newValue in
-            preference.showChineseCalendar = newValue
-            WidgetPlannerPreferenceStore.showChineseCalendar = newValue
-            WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
-            savePreferenceUpdate()
-        }
-        .onChange(of: scheduleTimeCollapseEnabled) { _, newValue in
-            preference.scheduleTimeCollapseEnabled = newValue
-            if newValue {
-                showingTimeCollapsePanel = true
-            } else {
-                showingTimeCollapsePanel = false
-            }
-            savePreferenceUpdate()
-        }
-        .onChange(of: scheduleCollapsedStartHour) { _, _ in
-            persistCollapsedHourRange()
-        }
-        .onChange(of: scheduleCollapsedEndHour) { _, _ in
-            persistCollapsedHourRange()
-        }
-        .onChange(of: timeDisplayPreference) { _, newValue in
-            preference.timeDisplayPreference = newValue
-            savePreferenceUpdate()
-        }
-        .onChange(of: showDockIcon) { _, newValue in
-            AppDockIconController.apply(showDockIcon: newValue, relaunchIfNeeded: true)
         }
     }
 
@@ -159,13 +180,17 @@ struct SettingsView: View {
 
             scopeSection
         }
-        .navigationTitle(PlannerCopy.text(.settings, language: appLanguage))
+        .settingsPlatformNavigationTitle(PlannerCopy.text(.settings, language: appLanguage))
     }
 
     private var accountSettingsPage: some View {
         settingsForm {
+            settingsBackButton
             AccountSettingsSection(
                 accountStore: accountStore,
+                onSignIn: {
+                    activeSettingsSheet = .signIn
+                },
                 onLinkAccount: {
                     activeSettingsSheet = .linkAccount
                 },
@@ -180,34 +205,90 @@ struct SettingsView: View {
                 accountActionsSection
             }
         }
-        .navigationTitle(PlannerCopy.text(.account, language: appLanguage))
+        .settingsPlatformNavigationTitle(PlannerCopy.text(.account, language: appLanguage))
     }
 
     private var personalizationSettingsPage: some View {
         settingsForm {
+            settingsBackButton
             languageSection
             appearanceSection
+            #if os(macOS)
             dockIconSection
+            #endif
             focusSection
             personalizationSection
+            #if os(iOS)
+            iosBottomNavigationSection
+            #endif
             eventColorsSection
         }
-        .navigationTitle(PlannerCopy.text(.personalizationSettings, language: appLanguage))
+        .settingsPlatformNavigationTitle(PlannerCopy.text(.personalizationSettings, language: appLanguage))
+    }
+
+    private var settingsBackButton: some View {
+        Button {
+            if !navigationPath.isEmpty {
+                navigationPath.removeLast()
+            } else {
+                dismissSettingsDestination()
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13, weight: .bold))
+                Text(settingsBackButtonTitle)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(MeowPlannerTheme.caramel)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(MeowPlannerTheme.cream.opacity(0.58), in: Capsule())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(settingsBackButtonTitle)
+    }
+
+    private var settingsBackButtonTitle: String {
+        appLanguage == .chinese ? "返回设置" : "Back to Settings"
     }
 
     private func settingsForm<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         Form {
             content()
+                .listRowBackground(settingsRowBackground)
+                .listRowSeparatorTint(MeowPlannerTheme.caramel.opacity(0.14))
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .verticalPageScrollOnly()
+        .tint(MeowPlannerTheme.pawButtonBrown)
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(MeowPlannerTheme.plannerGradient)
+        .background { settingsPageBackground }
         .sheet(item: $activeSettingsSheet) { sheet in
             settingsSheetContent(sheet)
         }
+    }
+
+    private var settingsRowBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(MeowPlannerTheme.fufuCalendarBackground.opacity(0.88))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(MeowPlannerTheme.caramel.opacity(0.10), lineWidth: 1)
+            }
+    }
+
+    @ViewBuilder
+    private var settingsPageBackground: some View {
+        #if os(iOS)
+        PlannerPawStarBackground(gradientOpacity: 0.82)
+        #else
+        MeowPlannerTheme.plannerGradient
+        #endif
     }
 
     @ViewBuilder
@@ -224,6 +305,11 @@ struct SettingsView: View {
                     addEventColor(colorHex)
                 }
             }
+        case .signIn:
+            AccountAuthenticationModalView(
+                accountStore: accountStore,
+                initialMode: .signIn
+            )
         case .changePassword:
             AccountAuthenticationModalView(
                 accountStore: accountStore,
@@ -297,12 +383,14 @@ struct SettingsView: View {
         }
     }
 
+    #if os(macOS)
     private var dockIconSection: some View {
         Section(PlannerCopy.text(.dockIcon, language: appLanguage)) {
             Toggle(PlannerCopy.text(.showDockIcon, language: appLanguage), isOn: $showDockIcon)
                 .fufuControlTint()
         }
     }
+    #endif
 
     private var focusSection: some View {
         Section(PlannerCopy.text(.focusSettings, language: appLanguage)) {
@@ -347,6 +435,156 @@ struct SettingsView: View {
                 .fufuControlTint()
         }
     }
+
+    #if os(iOS)
+    private var iosBottomNavigationSection: some View {
+        Section(PlannerCopy.text(.bottomNavigation, language: appLanguage)) {
+            ForEach(iosBottomNavigationSettingsSections) { section in
+                HStack(spacing: 12) {
+                    Toggle(isOn: iosBottomNavigationSelectionBinding(for: section)) {
+                        Label(section.title(language: appLanguage), systemImage: section.systemImage)
+                    }
+                    .fufuControlTint()
+                    .disabled(iosBottomNavigationIsLastSelectedSection(section))
+                    .layoutPriority(1)
+
+                    if iosBottomNavigationSections.contains(section) {
+                        iosBottomNavigationMoveButton(
+                            systemImage: "chevron.up",
+                            isDisabled: !canMoveIOSBottomNavigationSection(section, offset: -1),
+                            accessibilityTitle: iosBottomNavigationMoveUpTitle(for: section)
+                        ) {
+                            moveIOSBottomNavigationSection(section, offset: -1)
+                        }
+
+                        iosBottomNavigationMoveButton(
+                            systemImage: "chevron.down",
+                            isDisabled: !canMoveIOSBottomNavigationSection(section, offset: 1),
+                            accessibilityTitle: iosBottomNavigationMoveDownTitle(for: section)
+                        ) {
+                            moveIOSBottomNavigationSection(section, offset: 1)
+                        }
+                    }
+                }
+            }
+
+            Button {
+                resetIOSBottomNavigation()
+            } label: {
+                Label(PlannerCopy.text(.restoreDefault, language: appLanguage), systemImage: "arrow.counterclockwise")
+            }
+        }
+    }
+
+    private var iosBottomNavigationSections: [AppSection] {
+        AppSection.iosBottomNavigationSections(from: iosBottomNavigationRaw)
+    }
+
+    private var iosBottomNavigationSettingsSections: [AppSection] {
+        let selectedSections = iosBottomNavigationSections
+        let remainingSections = AppSection.defaultSidebarOrder.filter { !selectedSections.contains($0) }
+        return selectedSections + remainingSections
+    }
+
+    private func iosBottomNavigationSelectionBinding(for section: AppSection) -> Binding<Bool> {
+        Binding(
+            get: { iosBottomNavigationSections.contains(section) },
+            set: { isEnabled in
+                setIOSBottomNavigationSection(section, isEnabled: isEnabled)
+            }
+        )
+    }
+
+    private func setIOSBottomNavigationSection(_ section: AppSection, isEnabled: Bool) {
+        var sections = iosBottomNavigationSections
+
+        if isEnabled {
+            guard !sections.contains(section) else {
+                return
+            }
+            sections.append(section)
+        } else {
+            guard sections.count > 1 else {
+                return
+            }
+            sections.removeAll { $0 == section }
+        }
+
+        updateIOSBottomNavigationSections(sections)
+    }
+
+    private func moveIOSBottomNavigationSection(_ section: AppSection, offset: Int) {
+        var sections = iosBottomNavigationSections
+        guard let currentIndex = sections.firstIndex(of: section) else {
+            return
+        }
+
+        let newIndex = currentIndex + offset
+        guard sections.indices.contains(newIndex) else {
+            return
+        }
+
+        sections.swapAt(currentIndex, newIndex)
+        updateIOSBottomNavigationSections(sections)
+    }
+
+    private func canMoveIOSBottomNavigationSection(_ section: AppSection, offset: Int) -> Bool {
+        guard let currentIndex = iosBottomNavigationSections.firstIndex(of: section) else {
+            return false
+        }
+
+        return iosBottomNavigationSections.indices.contains(currentIndex + offset)
+    }
+
+    private func iosBottomNavigationIsLastSelectedSection(_ section: AppSection) -> Bool {
+        iosBottomNavigationSections.count == 1 && iosBottomNavigationSections.contains(section)
+    }
+
+    private func resetIOSBottomNavigation() {
+        iosBottomNavigationRaw = AppSection.defaultIOSBottomNavigationStorageValue
+    }
+
+    private func updateIOSBottomNavigationSections(_ sections: [AppSection]) {
+        let normalizedSections = sections.isEmpty ? AppSection.defaultIOSBottomNavigationSections : sections
+        iosBottomNavigationRaw = AppSection.storageValue(for: normalizedSections)
+    }
+
+    private func iosBottomNavigationMoveButton(
+        systemImage: String,
+        isDisabled: Bool,
+        accessibilityTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(isDisabled ? MeowPlannerTheme.caramel.opacity(0.34) : MeowPlannerTheme.caramel)
+                .frame(width: 30, height: 30)
+                .background(MeowPlannerTheme.cream.opacity(isDisabled ? 0.32 : 0.68), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel(accessibilityTitle)
+    }
+
+    private func iosBottomNavigationMoveUpTitle(for section: AppSection) -> String {
+        switch appLanguage {
+        case .english:
+            "Move \(section.title(language: appLanguage)) up"
+        case .chinese:
+            "上移\(section.title(language: appLanguage))"
+        }
+    }
+
+    private func iosBottomNavigationMoveDownTitle(for section: AppSection) -> String {
+        switch appLanguage {
+        case .english:
+            "Move \(section.title(language: appLanguage)) down"
+        case .chinese:
+            "下移\(section.title(language: appLanguage))"
+        }
+    }
+    #endif
 
     private var eventColorsSection: some View {
         Section(PlannerCopy.text(.eventColors, language: appLanguage)) {
@@ -414,9 +652,15 @@ struct SettingsView: View {
     }
 
     private var personalizationDestinationSubtitle: String {
+        #if os(macOS)
         appLanguage == .chinese
             ? "语言、外观、Dock、专注和显示偏好"
             : "Language, appearance, Dock, focus, and display preferences"
+        #else
+        appLanguage == .chinese
+            ? "语言、外观、专注和显示偏好"
+            : "Language, appearance, focus, and display preferences"
+        #endif
     }
 
     private func accountDisplayName(for profile: AccountProfile) -> String {
@@ -651,6 +895,17 @@ struct SettingsView: View {
         eventColorHexes.removeAll { $0 == colorHex }
         preference.eventColorHexes = eventColorHexes
         savePreferenceUpdate()
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func settingsPlatformNavigationTitle(_ title: String) -> some View {
+        #if os(iOS)
+        self
+        #else
+        navigationTitle(title)
+        #endif
     }
 }
 

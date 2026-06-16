@@ -1,4 +1,7 @@
 import FirebaseCore
+#if os(iOS)
+import FirebaseAuth
+#endif
 import MeowPlannerCore
 import SwiftData
 import SwiftUI
@@ -123,6 +126,29 @@ private final class MeowPlannerApplicationDelegate: NSObject, NSApplicationDeleg
 }
 #endif
 
+#if os(iOS)
+private enum FirebaseAuthKeychainConfigurator {
+    static func apply() {
+        guard let accessGroup = currentKeychainAccessGroup() else {
+            return
+        }
+
+        try? Auth.auth().useUserAccessGroup(accessGroup)
+    }
+
+    private static func currentKeychainAccessGroup() -> String? {
+        guard let rawPrefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+              !rawPrefix.isEmpty,
+              !rawPrefix.contains("$(") else {
+            return nil
+        }
+
+        let prefix = rawPrefix.hasSuffix(".") ? rawPrefix : "\(rawPrefix)."
+        return "\(prefix)com.yuelingqiu.MeowPlanner"
+    }
+}
+#endif
+
 @main
 struct MeowPlannerApp: App {
     private let legacyModelContainer: ModelContainer
@@ -142,6 +168,9 @@ struct MeowPlannerApp: App {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+        #if os(iOS)
+        FirebaseAuthKeychainConfigurator.apply()
+        #endif
 
         let focusTimerStore = FocusTimerStore()
         _focusTimerStore = StateObject(wrappedValue: focusTimerStore)

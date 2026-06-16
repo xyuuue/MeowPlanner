@@ -132,6 +132,13 @@
 		fileRef = E7948FDA3B2676DF5F2B24D0;
 	};
 
+	0BD8C2DCCBA78DBEAED23746 = {
+		isa = PBXFileReference;
+		lastKnownFileType = file;
+		path = Resources/iOSBackground.png;
+		sourceTree = "<group>";
+	};
+
 	0CAD04C79FF72FFF6BEA75D4 = {
 		isa = PBXFileReference;
 		lastKnownFileType = text.plist.xml;
@@ -212,6 +219,11 @@
 		fileRef = 9D84EEF9584A8114C70E9EFB;
 	};
 
+	17B6F0B545E2305FB872B822 = {
+		isa = PBXBuildFile;
+		fileRef = 318D18021CA4172EF5AE92DC;
+	};
+
 	180BB19C6150BD0D387EFFDA = {
 		isa = PBXNativeTarget;
 		buildConfigurationList = BA44B14C8F78B2A72038244D;
@@ -230,6 +242,11 @@
 		productName = MeowPlannerCore;
 		productReference = C454C15D80121CBA073EEBE8;
 		productType = "com.apple.product-type.framework";
+	};
+
+	1817CB429C33608EE59C960C = {
+		isa = PBXBuildFile;
+		fileRef = B9056A05FB7CE51EC5814456;
 	};
 
 	189704E89A2B823FABE7B489 = {
@@ -282,6 +299,7 @@
 			7B2C85655704FE71DFDB68C1,
 			9D168680780B08F377EF8D09,
 			BC3E3253E23F644D0E360691,
+			4CCC9422EC1F987DD4F4B420,
 			E107676B3776172843A29847,
 			5CADD55F7ADB2CB3BC8A6ABF,
 			041CD91A5B4286E3FCBB2A73,
@@ -361,6 +379,10 @@
 		isa = PBXGroup;
 		children = (
 			B7241800D60C73BB38025BBB,
+			D490E87E55B480C82A0659D9,
+			318D18021CA4172EF5AE92DC,
+			0BD8C2DCCBA78DBEAED23746,
+			FB2EDE17BEE61AFC2B88A112,
 			F35C76A143A1080A06A20D54,
 			0346D3E0A98991BAF579E9B4,
 			317E43A0AAD9986BF5C0A889,
@@ -534,6 +556,13 @@
 		productType = "com.apple.product-type.application";
 	};
 
+	318D18021CA4172EF5AE92DC = {
+		isa = PBXFileReference;
+		lastKnownFileType = file;
+		path = Resources/BackgroundDark.png;
+		sourceTree = "<group>";
+	};
+
 	32A0532E45E17C4AB224D0CE = {
 		isa = PBXBuildFile;
 		fileRef = D0A8402802E0226BE82F7B66;
@@ -576,6 +605,10 @@
 		buildActionMask = 2147483647;
 		files = (
 			DA154C6E83CCDA3C7DD4F930,
+			F58144AD183ACA44F77FE92B,
+			17B6F0B545E2305FB872B822,
+			B164D1D1F9F24A52ABC7C998,
+			7F3CCF28237E3C01E045299D,
 			7E328B982B4A265A1427F76B,
 			21187C2CBBFA69A67107AC4A,
 			1C8FBFAD31855F4EC7CF8CA8,
@@ -693,6 +726,11 @@
 		lastKnownFileType = text.plist.xml;
 		path = Config/GoogleService-Info.plist;
 		sourceTree = "<group>";
+	};
+
+	4CCC9422EC1F987DD4F4B420 = {
+		isa = PBXBuildFile;
+		fileRef = B9056A05FB7CE51EC5814456;
 	};
 
 	4F3D78C43E6CB42C68008553 = {
@@ -967,6 +1005,11 @@
 		fileRef = D315528429EBD4EC4D08CD4B;
 	};
 
+	7F3CCF28237E3C01E045299D = {
+		isa = PBXBuildFile;
+		fileRef = FB2EDE17BEE61AFC2B88A112;
+	};
+
 	7FF4B2B0BE1FA2630B96B1D1 = {
 		isa = XCBuildConfiguration;
 		name = Release;
@@ -1115,6 +1158,11 @@
 		targetProxy = B08FC46ECE5A991DCA2E8F50;
 	};
 
+	884A6FE81AA9DDBDBAA3549A = {
+		isa = PBXBuildFile;
+		fileRef = 318D18021CA4172EF5AE92DC;
+	};
+
 	88F15A726917E2CD910233AE = {
 		isa = PBXBuildFile;
 		fileRef = 7C40F8326F1BBC3FE53E3479;
@@ -1126,6 +1174,8 @@
 		files = (
 			00266C99B40A1A88754A83F2,
 			0439AB6DED5B56F0F569B7F7,
+			8CCF440DA9FAF2B4B2522CC3,
+			884A6FE81AA9DDBDBAA3549A,
 			51E9AD78980BB365FDA73674,
 			0FEBC0367BFD5C098E8BF3CF,
 		);
@@ -1157,6 +1207,7 @@
 			1E482FB6489F08186495E686,
 			00EE8033D4CFD10142294C34,
 			85E87F86EF823B9255EE8884,
+			1817CB429C33608EE59C960C,
 			BB3C8E85EDA748D94DDC2AF8,
 			632A251B42096AAF8B0E5C5C,
 			9131729FF693F4606B3C76A4,
@@ -1190,6 +1241,11 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 			};
+	};
+
+	8CCF440DA9FAF2B4B2522CC3 = {
+		isa = PBXBuildFile;
+		fileRef = D490E87E55B480C82A0659D9;
 	};
 
 	8D08A23C91E9F53E6C32771A = {
@@ -1621,6 +1677,11 @@
 		remoteInfo = MeowPlannerWidgetExtension;
 	};
 
+	B164D1D1F9F24A52ABC7C998 = {
+		isa = PBXBuildFile;
+		fileRef = 0BD8C2DCCBA78DBEAED23746;
+	};
+
 	B2809A80D8BBF7637877AF03 = {
 		isa = PBXFileReference;
 		lastKnownFileType = text.plist.xml;
@@ -1660,6 +1721,13 @@
 	B7FA11469469AE30EBA97782 = {
 		isa = PBXBuildFile;
 		fileRef = 9BD0F17E21CEFBA550AE1533;
+	};
+
+	B9056A05FB7CE51EC5814456 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.swift;
+		path = Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift;
+		sourceTree = "<group>";
 	};
 
 	B9F3A196ACBA4274A5989E23 = {
@@ -1926,6 +1994,7 @@
 			FA98C30EA1AFDA9CBB767013,
 			CD39EB362757501DD18C7617,
 			F268C2EF0E946006FC57F088,
+			B9056A05FB7CE51EC5814456,
 			6FAF30DB61499C49B3447D9A,
 			1B6C00CDB3AE603833DF830D,
 			27F37EBD6A4EDE31E2A8E34C,
@@ -1993,6 +2062,13 @@
 			D97EF31D3D4544224A1353F2,
 		);
 		name = MeowPlannerWidget;
+		sourceTree = "<group>";
+	};
+
+	D490E87E55B480C82A0659D9 = {
+		isa = PBXFileReference;
+		lastKnownFileType = file;
+		path = Resources/Background.png;
 		sourceTree = "<group>";
 	};
 
@@ -2186,6 +2262,11 @@
 		sourceTree = "<group>";
 	};
 
+	F58144AD183ACA44F77FE92B = {
+		isa = PBXBuildFile;
+		fileRef = D490E87E55B480C82A0659D9;
+	};
+
 	F617DBCE4425E01FBD290EA0 = {
 		isa = XCBuildConfiguration;
 		name = Release;
@@ -2243,6 +2324,13 @@
 		isa = PBXFileReference;
 		lastKnownFileType = sourcecode.swift;
 		path = Sources/MeowPlannerApp/Views/Focus/FocusView.swift;
+		sourceTree = "<group>";
+	};
+
+	FB2EDE17BEE61AFC2B88A112 = {
+		isa = PBXFileReference;
+		lastKnownFileType = file;
+		path = Resources/iOSBackgroundDark.png;
 		sourceTree = "<group>";
 	};
 

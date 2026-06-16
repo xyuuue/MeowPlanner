@@ -15,6 +15,9 @@ final class AccountSessionStore: ObservableObject {
     @Published private(set) var lastError: AccountSessionError?
     @Published private(set) var lastNotice: String?
     @Published private(set) var isAuthenticating = false
+    #if os(iOS)
+    @Published private(set) var authenticationSuccessRevision = 0
+    #endif
 
     private static let sessionStorageKey = "meowplanner.account.currentSession"
 
@@ -177,6 +180,9 @@ final class AccountSessionStore: ObservableObject {
                 currentProfile = profile
                 lastError = nil
                 lastNotice = nil
+                #if os(iOS)
+                authenticationSuccessRevision += 1
+                #endif
                 defaults.removeObject(forKey: Self.sessionStorageKey)
             } catch let error as AccountAuthenticationError {
                 lastError = .authentication(error)

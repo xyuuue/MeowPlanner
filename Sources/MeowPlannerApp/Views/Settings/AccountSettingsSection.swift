@@ -4,11 +4,10 @@ import SwiftUI
 
 struct AccountSettingsSection: View {
     @ObservedObject var accountStore: AccountSessionStore
+    var onSignIn: () -> Void = {}
     var onLinkAccount: () -> Void = {}
     var onLinkEmail: () -> Void = {}
     @Environment(\.appLanguage) private var appLanguage
-
-    @State private var showingAuthenticationModal = false
 
     var body: some View {
         Section(PlannerCopy.text(.account, language: appLanguage)) {
@@ -17,12 +16,6 @@ struct AccountSettingsSection: View {
             } else {
                 signedOutContent
             }
-        }
-        .sheet(isPresented: $showingAuthenticationModal) {
-            AccountAuthenticationModalView(
-                accountStore: accountStore,
-                initialMode: .signIn
-            )
         }
     }
 
@@ -64,7 +57,7 @@ struct AccountSettingsSection: View {
     private var signedOutContent: some View {
         Group {
             Button {
-                showingAuthenticationModal = true
+                onSignIn()
             } label: {
                 Label(PlannerCopy.text(.loginButton, language: appLanguage), systemImage: "person.crop.circle")
             }

@@ -180,6 +180,8 @@ public enum PlannerTextKey: String, Sendable {
     case hideCompletedSchedules
     case completedScheduleStrikethrough
     case showChineseCalendar
+    case bottomNavigation
+    case restoreDefault
     case scheduleCollapsedStartHour
     case scheduleCollapsedEndHour
     case timeCollapse
@@ -382,6 +384,8 @@ public enum PlannerCopy {
         .hideCompletedSchedules: "Hide completed schedules",
         .completedScheduleStrikethrough: "Strikethrough completed schedules",
         .showChineseCalendar: "Show Chinese lunar calendar and festivals",
+        .bottomNavigation: "Bottom navigation",
+        .restoreDefault: "Restore default",
         .scheduleCollapsedStartHour: "Collapsed start",
         .scheduleCollapsedEndHour: "Collapsed end",
         .timeCollapse: "Time collapse",
@@ -583,6 +587,8 @@ public enum PlannerCopy {
         .hideCompletedSchedules: "完成后隐藏",
         .completedScheduleStrikethrough: "完成后显示删除线",
         .showChineseCalendar: "显示中国农历和节日",
+        .bottomNavigation: "底部导航",
+        .restoreDefault: "恢复默认",
         .scheduleCollapsedStartHour: "折叠开始",
         .scheduleCollapsedEndHour: "折叠结束",
         .timeCollapse: "时间折叠",

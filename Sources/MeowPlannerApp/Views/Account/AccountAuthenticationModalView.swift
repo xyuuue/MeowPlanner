@@ -121,6 +121,18 @@ struct AccountAuthenticationModalView: View {
                     }
                 }
             }
+            #if os(iOS)
+            .onChange(of: accountStore.authenticationSuccessRevision) { _, _ in
+                if mode == .signIn || mode == .createAccount || mode == .linkAccount || mode == .linkEmail {
+                    dismiss()
+                }
+            }
+            .onChange(of: accountStore.currentProfile?.remoteUserID) { _, newValue in
+                if newValue == nil, mode == .deleteAccount {
+                    dismiss()
+                }
+            }
+            #else
             .onChange(of: accountStore.currentProfile?.id) { _, newValue in
                 if newValue != nil, mode == .signIn || mode == .createAccount {
                     dismiss()
@@ -129,6 +141,7 @@ struct AccountAuthenticationModalView: View {
                     dismiss()
                 }
             }
+            #endif
             .onChange(of: accountStore.currentProfile?.accountIdentifier) { _, newValue in
                 if newValue != nil, mode == .linkAccount {
                     dismiss()

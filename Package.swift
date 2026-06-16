@@ -32,6 +32,10 @@ let package = Package(
             path: "Sources/MeowPlannerApp",
             resources: [
                 .copy("../../Config/GoogleService-Info.plist"),
+                .copy("../../Resources/Background.png"),
+                .copy("../../Resources/BackgroundDark.png"),
+                .copy("../../Resources/iOSBackground.png"),
+                .copy("../../Resources/iOSBackgroundDark.png"),
                 .copy("../../Resources/FuFu"),
                 .copy("../../Resources/AppIcon")
             ]
