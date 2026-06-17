@@ -45,6 +45,8 @@ let package = Package(
             dependencies: ["MeowPlannerCore"],
             path: "Sources/MeowPlannerWidget",
             resources: [
+                .copy("../../Resources/WidgetBackgroundLight.png"),
+                .copy("../../Resources/WidgetBackgroundDark.png"),
                 .copy("../../Resources/FuFu")
             ]
         ),

@@ -5,16 +5,23 @@ import SwiftUI
 enum IOSAppNavigationMetrics {
     static let bottomNavigationContentHeight: CGFloat = 68
     static let bottomNavigationTopPadding: CGFloat = 8
-    static let bottomNavigationMinimumBottomPadding: CGFloat = 8
+    static let bottomNavigationRaisedPadding: CGFloat = 40
+    static let bottomNavigationMinimumBottomPadding: CGFloat = 0
 
     static func bottomNavigationBottomPadding(for safeAreaInsets: EdgeInsets) -> CGFloat {
-        max(safeAreaInsets.bottom * 0.28, bottomNavigationMinimumBottomPadding)
+        max(safeAreaInsets.bottom, bottomNavigationMinimumBottomPadding)
     }
 
     static func bottomNavigationChromeHeight(safeAreaInsets: EdgeInsets) -> CGFloat {
         bottomNavigationContentHeight
             + bottomNavigationTopPadding
+            + bottomNavigationRaisedPadding
             + bottomNavigationBottomPadding(for: safeAreaInsets)
+    }
+
+    static func bottomNavigationReservedHeight(safeAreaInsets: EdgeInsets) -> CGFloat {
+        bottomNavigationContentHeight
+            + bottomNavigationTopPadding
     }
 }
 
@@ -77,12 +84,56 @@ final class IOSCalendarNavigationState: ObservableObject {
     }
 }
 
+@MainActor
+final class IOSTimetableNavigationState: ObservableObject {
+    @Published var title = ""
+    @Published var subtitle = ""
+    @Published var isConfigured = false
+    @Published var canEdit = false
+
+    private var presentWeekPickerAction: () -> Void = {}
+    private var editTimetableAction: () -> Void = {}
+
+    func configure(
+        title: String,
+        subtitle: String,
+        canEdit: Bool,
+        presentWeekPicker: @escaping () -> Void,
+        editTimetable: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.canEdit = canEdit
+        isConfigured = true
+        presentWeekPickerAction = presentWeekPicker
+        editTimetableAction = editTimetable
+    }
+
+    func clear() {
+        title = ""
+        subtitle = ""
+        isConfigured = false
+        canEdit = false
+        presentWeekPickerAction = {}
+        editTimetableAction = {}
+    }
+
+    func presentWeekPicker() {
+        presentWeekPickerAction()
+    }
+
+    func editTimetable() {
+        editTimetableAction()
+    }
+}
+
 struct IOSNavigationShellView<Content: View>: View {
     @Binding var selection: AppSection
     var allSections: [AppSection]
     var bottomSections: [AppSection]
     var language: AppLanguage
     @ObservedObject var calendarNavigationState: IOSCalendarNavigationState
+    @ObservedObject var timetableNavigationState: IOSTimetableNavigationState
     var onSelect: (AppSection) -> Void
     @ViewBuilder var content: () -> Content
 
@@ -106,7 +157,14 @@ struct IOSNavigationShellView<Content: View>: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if shouldShowNavigationBars && !bottomSections.isEmpty {
+                            bottomNavigationReservation(safeAreaInsets: proxy.safeAreaInsets)
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        if shouldShowNavigationBars && !bottomSections.isEmpty {
                             bottomNavigationBar(safeAreaInsets: proxy.safeAreaInsets)
+                                .offset(y: proxy.safeAreaInsets.bottom)
+                                .ignoresSafeArea(edges: .bottom)
                         }
                     }
 
@@ -117,38 +175,52 @@ struct IOSNavigationShellView<Content: View>: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .background {
-                PlannerPawStarBackground(gradientOpacity: 0.84)
-                    .ignoresSafeArea()
-            }
+            .background { iosFullScreenBackground }
             .animation(.snappy(duration: 0.2), value: isShowingSidebar)
             .animation(.easeInOut(duration: 0.18), value: calendarNavigationState.isCalendarAgendaOverlayPresented)
         }
+    }
+
+    private var iosFullScreenBackground: some View {
+        PlannerIOSImageBackground(gradientOpacity: 0.86)
+            .ignoresSafeArea()
     }
 
     private var shouldShowNavigationBars: Bool {
         !(selection == .calendar && calendarNavigationState.isCalendarAgendaOverlayPresented)
     }
 
+    private var shouldShowSidebarButton: Bool {
+        selection != .settings
+    }
+
     private var topNavigationBar: some View {
         HStack(spacing: 12) {
-            Button {
-                isShowingSidebar = true
-            } label: {
-                Image(systemName: "sidebar.left")
-                    .font(.system(size: 18, weight: .bold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(MeowPlannerTheme.caramel)
+            if shouldShowSidebarButton {
+                Button {
+                    isShowingSidebar = true
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 18, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(width: 42, height: 42)
+                        .background(MeowPlannerTheme.cream.opacity(0.76), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(sidebarOpenTitle)
+            } else {
+                Color.clear
                     .frame(width: 42, height: 42)
-                    .background(MeowPlannerTheme.cream.opacity(0.76), in: Circle())
+                    .accessibilityHidden(true)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(sidebarOpenTitle)
 
             Spacer(minLength: 0)
 
-            if selection == .calendar {
+            if selection == .calendar || selection == .schedule {
                 calendarNavigationBarCenter
+            } else if selection == .timetable && timetableNavigationState.isConfigured {
+                timetableNavigationBarCenter
             } else {
                 Text(selection.title(language: language))
                     .font(.headline.weight(.semibold))
@@ -161,6 +233,8 @@ struct IOSNavigationShellView<Content: View>: View {
 
             if selection == .calendar {
                 calendarScheduleDisplayMenu
+            } else if selection == .timetable && timetableNavigationState.canEdit {
+                timetableEditButton
             } else {
                 Color.clear
                     .frame(width: 42, height: 42)
@@ -170,13 +244,13 @@ struct IOSNavigationShellView<Content: View>: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background {
-            MeowPlannerTheme.fufuPlannerBackground.opacity(0.94)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(MeowPlannerTheme.caramel.opacity(0.12))
-                        .frame(height: 1)
-                }
+            topNavigationBackground
         }
+    }
+
+    private var topNavigationBackground: some View {
+        Color.clear
+            .ignoresSafeArea(edges: .top)
     }
 
     private var calendarNavigationBarCenter: some View {
@@ -210,6 +284,39 @@ struct IOSNavigationShellView<Content: View>: View {
         .contentShape(Rectangle())
     }
 
+    private var timetableNavigationBarCenter: some View {
+        Button {
+            timetableNavigationState.presentWeekPicker()
+        } label: {
+            HStack(spacing: 8) {
+                FuFuAssetImage(size: 30)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(timetableNavigationState.title)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(MeowPlannerTheme.cocoa)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                    }
+
+                    Text(timetableNavigationState.subtitle)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .lineLimit(1)
+                }
+                .layoutPriority(1)
+            }
+            .frame(maxWidth: 210)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(timetableNavigationState.title)
+    }
+
     private var calendarScheduleDisplayMenu: some View {
         ScheduleDisplayTagFilterMenu(
             selectedTagName: Binding(
@@ -226,10 +333,28 @@ struct IOSNavigationShellView<Content: View>: View {
         .accessibilityLabel(PlannerCopy.text(.scheduleDisplay, language: language))
     }
 
-    private func bottomNavigationBar(safeAreaInsets: EdgeInsets) -> some View {
-        let bottomPadding = IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)
+    private var timetableEditButton: some View {
+        Button {
+            timetableNavigationState.editTimetable()
+        } label: {
+            Image(systemName: "square.and.pencil")
+                .font(.system(size: 18, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 42, height: 42)
+                .background(MeowPlannerTheme.cream.opacity(0.76), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(language == .chinese ? "编辑课程表" : "Edit timetable")
+    }
 
-        return GeometryReader { proxy in
+    private func bottomNavigationReservation(safeAreaInsets: EdgeInsets) -> some View {
+        Color.clear
+            .frame(height: IOSAppNavigationMetrics.bottomNavigationReservedHeight(safeAreaInsets: safeAreaInsets))
+    }
+
+    private func bottomNavigationBar(safeAreaInsets: EdgeInsets) -> some View {
+        GeometryReader { proxy in
             let itemWidth = bottomNavigationItemWidth(containerWidth: proxy.size.width)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -245,91 +370,16 @@ struct IOSNavigationShellView<Content: View>: View {
         }
         .frame(height: IOSAppNavigationMetrics.bottomNavigationContentHeight)
         .padding(.top, IOSAppNavigationMetrics.bottomNavigationTopPadding)
-        .padding(.bottom, bottomPadding)
-        .frame(height: IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets), alignment: .top)
+        .padding(.bottom, IOSAppNavigationMetrics.bottomNavigationRaisedPadding)
+        .frame(height: IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets), alignment: .bottom)
         .background {
             bottomNavigationBackground
+                .ignoresSafeArea(edges: .bottom)
         }
     }
 
     private var bottomNavigationBackground: some View {
-        ZStack(alignment: .top) {
-            MeowPlannerTheme.fufuCalendarBackground.opacity(0.98)
-
-            LinearGradient(
-                colors: [
-                    MeowPlannerTheme.fufuPlannerBackground.opacity(0.98),
-                    MeowPlannerTheme.fufuCalendarBackground.opacity(0.96),
-                    MeowPlannerTheme.blush.opacity(0.16),
-                    MeowPlannerTheme.softBrownHighlight.opacity(0.18)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            bottomNavigationBackgroundMotifs
-
-            Rectangle()
-                .fill(MeowPlannerTheme.caramel.opacity(0.12))
-                .frame(height: 1)
-        }
-    }
-
-    private var bottomNavigationBackgroundMotifs: some View {
-        GeometryReader { proxy in
-            ZStack {
-                bottomNavigationPawMotif(
-                    proxy: proxy,
-                    size: 42,
-                    x: 0.14,
-                    y: 0.72,
-                    rotation: -10,
-                    color: MeowPlannerTheme.fufuPawTint.opacity(0.08)
-                )
-
-                bottomNavigationPawMotif(
-                    proxy: proxy,
-                    size: 34,
-                    x: 0.55,
-                    y: 0.36,
-                    rotation: 12,
-                    color: MeowPlannerTheme.blush.opacity(0.07)
-                )
-
-                bottomNavigationPawMotif(
-                    proxy: proxy,
-                    size: 28,
-                    x: 0.82,
-                    y: 0.74,
-                    rotation: -14,
-                    color: MeowPlannerTheme.fufuPawTint.opacity(0.075)
-                )
-
-                Image(systemName: "sparkle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(MeowPlannerTheme.caramel.opacity(0.10))
-                    .rotationEffect(.degrees(-8))
-                    .position(x: proxy.size.width * 0.34, y: proxy.size.height * 0.28)
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    private func bottomNavigationPawMotif(
-        proxy: GeometryProxy,
-        size: CGFloat,
-        x: CGFloat,
-        y: CGFloat,
-        rotation: Double,
-        color: Color
-    ) -> some View {
-        Image(systemName: "pawprint.fill")
-            .font(.system(size: size, weight: .bold))
-            .foregroundStyle(color)
-            .rotationEffect(.degrees(rotation))
-            .position(x: proxy.size.width * x, y: proxy.size.height * y)
+        Color.clear
     }
 
     private func bottomNavigationButton(for section: AppSection, width: CGFloat) -> some View {
@@ -353,9 +403,9 @@ struct IOSNavigationShellView<Content: View>: View {
             .frame(width: width, height: 58)
             .background(
                 bottomNavigationButtonBackground(isSelected: isSelected),
-                in: RoundedRectangle(cornerRadius: 8)
+                in: Capsule()
             )
-            .contentShape(RoundedRectangle(cornerRadius: 8))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(section.title(language: language))
@@ -364,7 +414,7 @@ struct IOSNavigationShellView<Content: View>: View {
     private func bottomNavigationButtonBackground(isSelected: Bool) -> some ShapeStyle {
         isSelected
             ? AnyShapeStyle(MeowPlannerTheme.softBrownHighlight)
-            : AnyShapeStyle(MeowPlannerTheme.cream.opacity(0.22))
+            : AnyShapeStyle(Color.clear)
     }
 
     private func sidebarOverlay(panelWidth: CGFloat, safeAreaInsets: EdgeInsets) -> some View {

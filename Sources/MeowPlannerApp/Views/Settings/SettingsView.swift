@@ -2,10 +2,16 @@ import MeowPlannerCore
 import SwiftData
 import SwiftUI
 import WidgetKit
+#if os(iOS)
+import PhotosUI
+#endif
 
 enum SettingsDestination: Hashable {
     case account
     case personalization
+    #if os(iOS)
+    case widget
+    #endif
 }
 
 private enum SettingsSheet: String, Identifiable {
@@ -19,10 +25,16 @@ private enum SettingsSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
+private let settingsContentTopInset: CGFloat = 24
+#if os(iOS)
+private let settingsPersonalizationBottomScrollExpansion: CGFloat = 260
+#else
+private let settingsPersonalizationBottomScrollExpansion: CGFloat = 0
+#endif
+
 struct SettingsView: View {
     @Query private var preferences: [PlannerPreference]
     @Environment(\.appLanguage) private var appLanguage
-    @Environment(\.dismiss) private var dismissSettingsDestination
     @Environment(\.modelContext) private var modelContext
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
@@ -46,6 +58,12 @@ struct SettingsView: View {
     @State private var scheduleCollapsedEndHour = PlannerPreference.defaults.scheduleCollapsedEndHour
     @State private var timeDisplayPreference = PlannerPreference.defaults.timeDisplayPreference
     @State private var eventColorHexes = PlannerPreference.defaultEventColorHexes
+    #if os(iOS)
+    @State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?
+    @State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle
+    @State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue
+    @State private var widgetPhotoImportError: String?
+    #endif
     @State private var showingTimeCollapsePanel = false
     @State private var activeSettingsSheet: SettingsSheet?
     @State private var showingDeleteAccountConfirmation = false
@@ -58,6 +76,14 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        settingsWithIOSWidgetChanges
+        #else
+        settingsWithPreferenceChanges
+        #endif
+    }
+
+    private var settingsBase: some View {
         settingsNavigationStack
             .background { settingsPageBackground }
             .alert(PlannerCopy.text(.deleteAccountConfirmationMessage, language: appLanguage), isPresented: $showingDeleteAccountConfirmation) {
@@ -66,6 +92,10 @@ struct SettingsView: View {
                     activeSettingsSheet = .deleteAccount
                 }
             }
+    }
+
+    private var settingsWithPreferenceChanges: some View {
+        settingsBase
             .onAppear(perform: loadPreference)
             .onChange(of: appLanguageID) { _, _ in
                 defaults.set(Date().timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
@@ -131,10 +161,28 @@ struct SettingsView: View {
     }
 
     #if os(iOS)
+    private var settingsWithIOSWidgetChanges: some View {
+        settingsWithPreferenceChanges
+            .onChange(of: widgetBackgroundStyle) { _, newValue in
+                persistWidgetBackgroundStyle(newValue)
+            }
+            .onChange(of: widgetAppearanceID) { _, newValue in
+                persistWidgetAppearancePreference(newValue)
+            }
+            .onChange(of: selectedWidgetBackgroundPhotoItem) { _, newValue in
+                Task {
+                    await importWidgetBackgroundPhoto(from: newValue)
+                }
+            }
+    }
+    #endif
+
+    #if os(iOS)
     private var settingsNavigationStack: some View {
         settingsNavigationContent
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
     }
     #else
     private var settingsNavigationStack: some View {
@@ -151,6 +199,10 @@ struct SettingsView: View {
                         accountSettingsPage
                     case .personalization:
                         personalizationSettingsPage
+                    #if os(iOS)
+                    case .widget:
+                        widgetSettingsPage
+                    #endif
                     }
                 }
         }
@@ -176,6 +228,16 @@ struct SettingsView: View {
                         systemImage: "slider.horizontal.3"
                     )
                 }
+
+                #if os(iOS)
+                NavigationLink(value: SettingsDestination.widget) {
+                    SettingsDestinationRow(
+                        title: PlannerCopy.text(.widgetSettings, language: appLanguage),
+                        subtitle: widgetDestinationSubtitle,
+                        systemImage: "rectangle.on.rectangle.angled"
+                    )
+                }
+                #endif
             }
 
             scopeSection
@@ -185,7 +247,6 @@ struct SettingsView: View {
 
     private var accountSettingsPage: some View {
         settingsForm {
-            settingsBackButton
             AccountSettingsSection(
                 accountStore: accountStore,
                 onSignIn: {
@@ -209,8 +270,7 @@ struct SettingsView: View {
     }
 
     private var personalizationSettingsPage: some View {
-        settingsForm {
-            settingsBackButton
+        settingsForm(bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion) {
             languageSection
             appearanceSection
             #if os(macOS)
@@ -226,44 +286,138 @@ struct SettingsView: View {
         .settingsPlatformNavigationTitle(PlannerCopy.text(.personalizationSettings, language: appLanguage))
     }
 
-    private var settingsBackButton: some View {
-        Button {
-            if !navigationPath.isEmpty {
-                navigationPath.removeLast()
-            } else {
-                dismissSettingsDestination()
-            }
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .bold))
-                Text(settingsBackButtonTitle)
-                    .font(.subheadline.weight(.semibold))
-            }
-            .foregroundStyle(MeowPlannerTheme.caramel)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 10)
-            .background(MeowPlannerTheme.cream.opacity(0.58), in: Capsule())
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+    #if os(iOS)
+    private var widgetSettingsPage: some View {
+        settingsForm {
+            widgetAppearanceSection
+            widgetBackgroundSection
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(settingsBackButtonTitle)
+        .settingsPlatformNavigationTitle(PlannerCopy.text(.widgetSettings, language: appLanguage))
     }
 
-    private var settingsBackButtonTitle: String {
-        appLanguage == .chinese ? "返回设置" : "Back to Settings"
+    private var widgetAppearanceSection: some View {
+        Section(widgetAppearanceSectionTitle) {
+            Picker(widgetAppearanceSystemModeTitle, selection: widgetAppearanceSystemModeBinding) {
+                Text(AppAppearancePreference.system.title(language: appLanguage))
+                    .tag(AppAppearancePreference.system.rawValue)
+                Text(widgetAppearanceManualModeTitle)
+                    .tag(appearanceManualSelectionID)
+            }
+            .fufuSegmentedPickerStyle()
+
+            if AppAppearancePreference(storedValue: widgetAppearanceID) != .system {
+                Picker(widgetAppearanceManualModeTitle, selection: widgetAppearanceManualModeBinding) {
+                    Text(AppAppearancePreference.light.title(language: appLanguage))
+                        .tag(AppAppearancePreference.light.rawValue)
+                    Text(AppAppearancePreference.dark.title(language: appLanguage))
+                        .tag(AppAppearancePreference.dark.rawValue)
+                }
+                .fufuSegmentedPickerStyle()
+            }
+        }
     }
 
-    private func settingsForm<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private var widgetBackgroundSection: some View {
+        Section(PlannerCopy.text(.widgetBackground, language: appLanguage)) {
+            let chooseBackgroundImageTitle = PlannerCopy.text(.chooseBackgroundImage, language: appLanguage)
+
+            Picker(PlannerCopy.text(.widgetBackground, language: appLanguage), selection: $widgetBackgroundStyle) {
+                ForEach(WidgetBackgroundStyle.allCases) { style in
+                    Text(style.title(language: appLanguage)).tag(style)
+                }
+            }
+            .fufuSegmentedPickerStyle()
+
+            if widgetBackgroundStyle == .customPhoto {
+                PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 18, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                            .frame(width: 28, height: 28)
+
+                        Text(chooseBackgroundImageTitle)
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                    }
+                    .padding(.vertical, 2)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let widgetPhotoImportError {
+                Text(widgetPhotoImportError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            Text(widgetBackgroundDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func persistWidgetBackgroundStyle(_ newValue: WidgetBackgroundStyle) {
+        WidgetPlannerPreferenceStore.widgetBackgroundStyle = newValue
+        reloadWidgetTimelines()
+    }
+
+    private func persistWidgetAppearancePreference(_ newValue: String) {
+        WidgetPlannerPreferenceStore.widgetAppearancePreference = AppAppearancePreference(storedValue: newValue)
+        reloadWidgetTimelines()
+    }
+
+    @MainActor
+    private func importWidgetBackgroundPhoto(from item: PhotosPickerItem?) async {
+        guard let item else {
+            return
+        }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                return
+            }
+
+            try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data)
+            widgetPhotoImportError = nil
+            widgetBackgroundStyle = .customPhoto
+            WidgetPlannerPreferenceStore.widgetBackgroundStyle = .customPhoto
+            reloadWidgetTimelines()
+        } catch {
+            widgetPhotoImportError = widgetPhotoImportFailureMessage
+        }
+    }
+
+    private func reloadWidgetTimelines() {
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    #endif
+
+    private func settingsForm<Content: View>(
+        bottomScrollExpansion settingsBottomScrollExpansion: CGFloat = 0,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         Form {
             content()
                 .listRowBackground(settingsRowBackground)
-                .listRowSeparatorTint(MeowPlannerTheme.caramel.opacity(0.14))
+                .listRowSeparator(.hidden)
+
+            #if os(iOS)
+            if settingsBottomScrollExpansion > 0 {
+                Color.clear
+                    .frame(height: settingsBottomScrollExpansion)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .accessibilityHidden(true)
+            }
+            #endif
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .verticalPageScrollOnly()
+        .settingsContentTopSpacing()
         .tint(MeowPlannerTheme.pawButtonBrown)
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -285,7 +439,11 @@ struct SettingsView: View {
     @ViewBuilder
     private var settingsPageBackground: some View {
         #if os(iOS)
-        PlannerPawStarBackground(gradientOpacity: 0.82)
+        PlannerIOSImageBackground(gradientOpacity: 0.86)
+            .overlay {
+                MeowPlannerTheme.fufuPlannerBackground.opacity(0.10)
+            }
+            .ignoresSafeArea()
         #else
         MeowPlannerTheme.plannerGradient
         #endif
@@ -442,7 +600,7 @@ struct SettingsView: View {
             ForEach(iosBottomNavigationSettingsSections) { section in
                 HStack(spacing: 12) {
                     Toggle(isOn: iosBottomNavigationSelectionBinding(for: section)) {
-                        Label(section.title(language: appLanguage), systemImage: section.systemImage)
+                        iosBottomNavigationRowLabel(for: section)
                     }
                     .fufuControlTint()
                     .disabled(iosBottomNavigationIsLastSelectedSection(section))
@@ -471,8 +629,12 @@ struct SettingsView: View {
             Button {
                 resetIOSBottomNavigation()
             } label: {
-                Label(PlannerCopy.text(.restoreDefault, language: appLanguage), systemImage: "arrow.counterclockwise")
+                iosBottomNavigationActionLabel(
+                    title: PlannerCopy.text(.restoreDefault, language: appLanguage),
+                    systemImage: "arrow.counterclockwise"
+                )
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -547,6 +709,32 @@ struct SettingsView: View {
     private func updateIOSBottomNavigationSections(_ sections: [AppSection]) {
         let normalizedSections = sections.isEmpty ? AppSection.defaultIOSBottomNavigationSections : sections
         iosBottomNavigationRaw = AppSection.storageValue(for: normalizedSections)
+    }
+
+    private func iosBottomNavigationRowLabel(for section: AppSection) -> some View {
+        iosBottomNavigationActionLabel(
+            title: section.title(language: appLanguage),
+            systemImage: section.systemImage,
+            titleColor: MeowPlannerTheme.cocoa
+        )
+    }
+
+    private func iosBottomNavigationActionLabel(
+        title: String,
+        systemImage: String,
+        titleColor: Color = MeowPlannerTheme.caramel
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+                .frame(width: 28, height: 28)
+
+            Text(title)
+                .foregroundStyle(titleColor)
+        }
+        .padding(.vertical, 2)
     }
 
     private func iosBottomNavigationMoveButton(
@@ -663,6 +851,49 @@ struct SettingsView: View {
         #endif
     }
 
+    #if os(iOS)
+    private var widgetDestinationSubtitle: String {
+        appLanguage == .chinese
+            ? "外观、背景、相册图片和透明显示"
+            : "Appearance, background, photo, and transparent display"
+    }
+
+    private var widgetAppearanceSectionTitle: String {
+        appLanguage == .chinese ? "外观" : "Appearance"
+    }
+
+    private var widgetAppearanceSystemModeTitle: String {
+        appearanceSystemModeTitle
+    }
+
+    private var widgetAppearanceManualModeTitle: String {
+        appearanceManualModeTitle
+    }
+
+    private var widgetBackgroundDescription: String {
+        switch widgetBackgroundStyle {
+        case .defaultArtwork:
+            appLanguage == .chinese
+                ? "使用 MeowPlanner 默认小组件背景。"
+                : "Use the default MeowPlanner widget background."
+        case .customPhoto:
+            appLanguage == .chinese
+                ? "从相册选择的图片会保存到共享空间，仅用于小组件背景。"
+                : "The selected photo is saved to shared storage and used only as the widget background."
+        case .transparent:
+            appLanguage == .chinese
+                ? "不绘制 MeowPlanner 自带背景图案，只保留小组件内容。"
+                : "Do not draw MeowPlanner's background artwork; keep the widget content visible."
+        }
+    }
+
+    private var widgetPhotoImportFailureMessage: String {
+        appLanguage == .chinese
+            ? "无法导入这张图片，请重新选择。"
+            : "Could not import this image. Choose another photo."
+    }
+    #endif
+
     private func accountDisplayName(for profile: AccountProfile) -> String {
         if let accountIdentifier = profile.accountIdentifier, !accountIdentifier.isEmpty {
             return accountIdentifier
@@ -701,6 +932,10 @@ struct SettingsView: View {
         timeDisplayPreference = preference.timeDisplayPreference
         eventColorHexes = preference.eventColorHexes
         eventColorEditorHex = eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
+        #if os(iOS)
+        widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle
+        widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue
+        #endif
         WidgetPlannerPreferenceStore.weekStartPreference = preference.weekStartPreference
         WidgetPlannerPreferenceStore.showChineseCalendar = preference.showChineseCalendar
     }
@@ -801,11 +1036,16 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
 
-            Button(role: .destructive) {
+            Button {
                 accountStore.signOut()
             } label: {
-                Label(PlannerCopy.text(.signOut, language: appLanguage), systemImage: "rectangle.portrait.and.arrow.right")
+                SettingsAccountActionLabel(
+                    title: PlannerCopy.text(.signOut, language: appLanguage),
+                    systemImage: "rectangle.portrait.and.arrow.right",
+                    foregroundStyle: MeowPlannerTheme.caramel
+                )
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -851,6 +1091,35 @@ struct SettingsView: View {
                 : AppAppearancePreference.light.rawValue
         }
     }
+
+    #if os(iOS)
+    private var widgetAppearanceSystemModeBinding: Binding<String> {
+        Binding {
+            AppAppearancePreference(storedValue: widgetAppearanceID) == .system
+                ? AppAppearancePreference.system.rawValue
+                : appearanceManualSelectionID
+        } set: { newValue in
+            if newValue == AppAppearancePreference.system.rawValue {
+                widgetAppearanceID = AppAppearancePreference.system.rawValue
+            } else if AppAppearancePreference(storedValue: widgetAppearanceID) == .system {
+                widgetAppearanceID = AppAppearancePreference.light.rawValue
+            }
+        }
+    }
+
+    private var widgetAppearanceManualModeBinding: Binding<String> {
+        Binding {
+            let currentAppearance = AppAppearancePreference(storedValue: widgetAppearanceID)
+            return currentAppearance == .dark
+                ? AppAppearancePreference.dark.rawValue
+                : AppAppearancePreference.light.rawValue
+        } set: { newValue in
+            widgetAppearanceID = newValue == AppAppearancePreference.dark.rawValue
+                ? AppAppearancePreference.dark.rawValue
+                : AppAppearancePreference.light.rawValue
+        }
+    }
+    #endif
 
     private func openEventColorEditor(_ colorHex: String? = nil) {
         let editorColorHex = colorHex ?? eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
@@ -907,6 +1176,16 @@ private extension View {
         navigationTitle(title)
         #endif
     }
+
+    @ViewBuilder
+    func settingsContentTopSpacing() -> some View {
+        #if os(iOS)
+        contentMargins(.top, settingsContentTopInset, for: .scrollContent)
+            .padding(.top, settingsContentTopInset)
+        #else
+        self
+        #endif
+    }
 }
 
 private struct SettingsDestinationRow: View {
@@ -943,13 +1222,21 @@ private struct SettingsDangerActionLabel: View {
             .font(.body.weight(.semibold))
             .foregroundStyle(.red)
             .lineLimit(1)
-            .padding(.vertical, 5)
-            .padding(.horizontal, 10)
-            .background(.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(.red.opacity(0.28), lineWidth: 1)
-            }
+            .padding(.vertical, 3)
+    }
+}
+
+private struct SettingsAccountActionLabel: View {
+    var title: String
+    var systemImage: String
+    var foregroundStyle: Color
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(foregroundStyle)
+            .lineLimit(1)
+            .padding(.vertical, 3)
     }
 }
 

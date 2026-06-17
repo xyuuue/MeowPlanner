@@ -10,6 +10,16 @@ struct CourseTimetableView: View {
     @Query private var sessions: [CourseSession]
     @Query private var preferences: [PlannerPreference]
 
+    #if os(iOS)
+    @ObservedObject private var iosNavigationState: IOSTimetableNavigationState
+
+    init(iosNavigationState: IOSTimetableNavigationState) {
+        self.iosNavigationState = iosNavigationState
+    }
+    #else
+    init() {}
+    #endif
+
     @State private var selectedWeek = 1
     @State private var selectedTimetableID: UUID?
     @State private var editingCourseID: UUID?
@@ -33,23 +43,7 @@ struct CourseTimetableView: View {
                 .ignoresSafeArea()
 
             if let timetable = selectedTimetable {
-                CourseTimetableGridView(
-                    timetable: timetable,
-                    timetables: timetables,
-                    periods: periods.filter { $0.timetableID == timetable.id },
-                    courses: courses.filter { $0.timetableID == timetable.id },
-                    sessions: sessions,
-                    selectedWeek: $selectedWeek,
-                    selectedTimetableID: $selectedTimetableID,
-                    onCreateTimetable: { showingTimetableCreator = true },
-                    onEditTimetable: { showingTimetableSettingsEditor = true },
-                    onEditCourse: { course in
-                        editingCourseID = course.id
-                        showingCourseEditor = true
-                    },
-                    weekStartPreference: weekStartPreference,
-                    language: appLanguage
-                )
+                timetableGridView(for: timetable)
                 .padding()
                 .onAppear {
                     if selectedTimetableID == nil {
@@ -105,6 +99,58 @@ struct CourseTimetableView: View {
             }
             .environment(\.appLanguage, appLanguage)
         }
+        #if os(iOS)
+        .onAppear {
+            if selectedTimetable == nil {
+                iosNavigationState.clear()
+            }
+        }
+        .onDisappear {
+            iosNavigationState.clear()
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private func timetableGridView(for timetable: CourseTimetable) -> some View {
+        #if os(iOS)
+        CourseTimetableGridView(
+            timetable: timetable,
+            timetables: timetables,
+            periods: periods.filter { $0.timetableID == timetable.id },
+            courses: courses.filter { $0.timetableID == timetable.id },
+            sessions: sessions,
+            selectedWeek: $selectedWeek,
+            selectedTimetableID: $selectedTimetableID,
+            onCreateTimetable: { showingTimetableCreator = true },
+            onEditTimetable: { showingTimetableSettingsEditor = true },
+            onEditCourse: { course in
+                editingCourseID = course.id
+                showingCourseEditor = true
+            },
+            weekStartPreference: weekStartPreference,
+            language: appLanguage,
+            iosNavigationState: iosNavigationState
+        )
+        #else
+        CourseTimetableGridView(
+            timetable: timetable,
+            timetables: timetables,
+            periods: periods.filter { $0.timetableID == timetable.id },
+            courses: courses.filter { $0.timetableID == timetable.id },
+            sessions: sessions,
+            selectedWeek: $selectedWeek,
+            selectedTimetableID: $selectedTimetableID,
+            onCreateTimetable: { showingTimetableCreator = true },
+            onEditTimetable: { showingTimetableSettingsEditor = true },
+            onEditCourse: { course in
+                editingCourseID = course.id
+                showingCourseEditor = true
+            },
+            weekStartPreference: weekStartPreference,
+            language: appLanguage
+        )
+        #endif
     }
 
     private var weekStartPreference: WeekStartPreference {
@@ -438,19 +484,63 @@ private struct CourseTimetableGridView: View {
     var onEditCourse: (Course) -> Void
     var weekStartPreference: WeekStartPreference
     var language: AppLanguage
+    #if os(iOS)
+    @ObservedObject var iosNavigationState: IOSTimetableNavigationState
+    #endif
 
     @State private var showingWeekPicker = false
+    @State private var showingTimetableSwitcher = false
 
-    private let timeColumnWidth: CGFloat = 72
-    private let periodRowHeight: CGFloat = 136
+    private var timeColumnWidth: CGFloat {
+        usesCompactLayout ? 50 : 72
+    }
+
+    private var periodRowHeight: CGFloat {
+        usesCompactLayout ? 104 : 136
+    }
+
+    private var contentSpacing: CGFloat {
+        usesCompactLayout ? 10 : 18
+    }
+
+    private var courseHorizontalInset: CGFloat {
+        usesCompactLayout ? 2 : 6
+    }
+
+    private var courseVerticalInset: CGFloat {
+        usesCompactLayout ? 4 : 6
+    }
+
+    private var courseCornerRadius: CGFloat {
+        usesCompactLayout ? 5 : 7
+    }
+
+    private var usesCompactLayout: Bool {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    private var showsInlineHeader: Bool {
+        #if os(iOS)
+        false
+        #else
+        true
+        #endif
+    }
+
     private var calendar: Calendar {
         weekStartPreference.configuredCalendar
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 18) {
-                header
+            VStack(alignment: .leading, spacing: contentSpacing) {
+                if showsInlineHeader {
+                    header
+                }
 
                 ScrollView(.vertical) {
                     ZStack {
@@ -475,6 +565,9 @@ private struct CourseTimetableGridView: View {
                         switchWeek(by: horizontal < 0 ? 1 : -1)
                     }
                 }
+                #if os(iOS)
+                .simultaneousGesture(timetableWeekSwipeGesture)
+                #endif
             }
 
             if showingWeekPicker {
@@ -490,8 +583,35 @@ private struct CourseTimetableGridView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(4)
             }
+
+            if showingTimetableSwitcher {
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showingTimetableSwitcher = false
+                    }
+                    .transition(.opacity)
+                    .zIndex(5)
+
+                timetableSwitcherSheet
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(6)
+            }
         }
         .animation(.snappy(duration: 0.22), value: showingWeekPicker)
+        .animation(.snappy(duration: 0.22), value: showingTimetableSwitcher)
+        #if os(iOS)
+        .onAppear(perform: syncIOSTimetableNavigationState)
+        .onChange(of: timetable.name) { _, _ in
+            syncIOSTimetableNavigationState()
+        }
+        .onChange(of: selectedWeek) { _, _ in
+            syncIOSTimetableNavigationState()
+        }
+        .onDisappear {
+            iosNavigationState.clear()
+        }
+        #endif
     }
 
     private var header: some View {
@@ -506,6 +626,18 @@ private struct CourseTimetableGridView: View {
         }
         .padding(.horizontal, 4)
     }
+
+    #if os(iOS)
+    private func syncIOSTimetableNavigationState() {
+        iosNavigationState.configure(
+            title: timetable.name,
+            subtitle: weekTitle(for: selectedWeek),
+            canEdit: true,
+            presentWeekPicker: { showingWeekPicker = true },
+            editTimetable: onEditTimetable
+        )
+    }
+    #endif
 
     private var timetableGridHeaderIdentity: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -587,13 +719,7 @@ private struct CourseTimetableGridView: View {
                 .padding(.top, 10)
 
             VStack(spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(timetable.name)
-                        .font(.title2.bold())
-                    Image(systemName: "chevron.down")
-                        .font(.caption.bold())
-                }
-                .foregroundStyle(MeowPlannerTheme.cocoa)
+                weekPickerTimetableSwitchButton
 
                 Text(semesterYearText)
                     .font(.subheadline.weight(.medium))
@@ -608,9 +734,13 @@ private struct CourseTimetableGridView: View {
                     } label: {
                         VStack(spacing: 4) {
                             Text(weekTitle(for: week))
-                                .font(.headline.weight(.semibold))
+                                .font(weekPickerTitleFont)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.62)
                             Text(weekDateRangeText(for: week))
-                                .font(.caption.weight(.medium))
+                                .font(weekPickerDateFont)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.72)
                         }
                         .foregroundStyle(week == selectedWeek ? .white : MeowPlannerTheme.cocoa)
                         .frame(maxWidth: .infinity)
@@ -625,7 +755,7 @@ private struct CourseTimetableGridView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, usesCompactLayout ? 14 : 18)
             .padding(.bottom, 22)
         }
         .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.98), in: RoundedRectangle(cornerRadius: 24))
@@ -637,7 +767,149 @@ private struct CourseTimetableGridView: View {
     }
 
     private var weekPickerColumns: [GridItem] {
+        #if os(iOS)
+        Array(repeating: GridItem(.flexible(minimum: 42), spacing: 10), count: 5)
+        #else
         Array(repeating: GridItem(.flexible(), spacing: 28), count: 5)
+        #endif
+    }
+
+    private var weekPickerTitleFont: Font {
+        usesCompactLayout ? .system(size: 15, weight: .bold) : .headline.weight(.semibold)
+    }
+
+    private var weekPickerDateFont: Font {
+        usesCompactLayout ? .system(size: 11, weight: .semibold) : .caption.weight(.medium)
+    }
+
+    private var weekPickerTimetableSwitchButton: some View {
+        Button {
+            showingTimetableSwitcher = true
+        } label: {
+            HStack(spacing: 6) {
+                Text(timetable.name)
+                    .font(usesCompactLayout ? .system(size: 26, weight: .bold) : .title2.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.bold())
+            }
+            .foregroundStyle(MeowPlannerTheme.cocoa)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(language == .chinese ? "切换课程表" : "Switch timetable")
+    }
+
+    private var timetableSwitcherSheet: some View {
+        VStack(spacing: 16) {
+            Capsule()
+                .fill(MeowPlannerTheme.caramel.opacity(0.32))
+                .frame(width: 42, height: 5)
+                .padding(.top, 10)
+
+            Text(language == .chinese ? "切换课程表" : "Switch Timetable")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+
+            ScrollView {
+                VStack(spacing: 10) {
+                    ForEach(timetables) { option in
+                        Button {
+                            selectedTimetableID = option.id
+                            selectedWeek = 1
+                            showingTimetableSwitcher = false
+                            showingWeekPicker = false
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: option.id == timetable.id ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundStyle(option.id == timetable.id ? MeowPlannerTheme.caramel : MeowPlannerTheme.caramel.opacity(0.34))
+
+                                Text(option.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.72)
+
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(
+                                option.id == timetable.id
+                                ? MeowPlannerTheme.caramel.opacity(0.16)
+                                : MeowPlannerTheme.warmCream.opacity(0.16),
+                                in: RoundedRectangle(cornerRadius: 14)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 18)
+            }
+            .frame(maxHeight: 260)
+
+            Button {
+                showingTimetableSwitcher = false
+                showingWeekPicker = false
+                onCreateTimetable()
+            } label: {
+                Label(PlannerCopy.text(.createTimetable, language: language), systemImage: "plus")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.white)
+                    .background(MeowPlannerTheme.caramel, in: RoundedRectangle(cornerRadius: 16))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 22)
+        }
+        .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.98), in: RoundedRectangle(cornerRadius: 24))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(MeowPlannerTheme.blush.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: MeowPlannerTheme.coffee.opacity(0.18), radius: 18, y: -4)
+    }
+
+    private var weekdayTitleFont: Font {
+        usesCompactLayout ? .system(size: 13, weight: .semibold) : .title3.weight(.semibold)
+    }
+
+    private var weekdayDateFont: Font {
+        usesCompactLayout ? .system(size: 16, weight: .medium) : .title2.weight(.medium)
+    }
+
+    private var holidayLabelFont: Font {
+        usesCompactLayout ? .system(size: 8, weight: .bold) : .caption2.weight(.bold)
+    }
+
+    private var sideDateMonthFont: Font {
+        usesCompactLayout ? .system(size: 15, weight: .bold) : .title3.weight(.bold)
+    }
+
+    private var sideDateWeekFont: Font {
+        usesCompactLayout ? .system(size: 10, weight: .semibold) : .caption.weight(.semibold)
+    }
+
+    private var periodIndexFont: Font {
+        usesCompactLayout ? .system(size: 16, weight: .semibold) : .title2.weight(.semibold)
+    }
+
+    private var periodTimeFont: Font {
+        usesCompactLayout ? .system(size: 10, weight: .medium) : .caption.weight(.medium)
+    }
+
+    private var courseBlockTitleFont: Font {
+        usesCompactLayout ? .system(size: 9, weight: .bold) : .caption.weight(.bold)
+    }
+
+    private var courseBlockDetailFont: Font {
+        usesCompactLayout ? .system(size: 8, weight: .semibold) : .caption2.weight(.semibold)
     }
 
     private var weekdayHeader: some View {
@@ -647,22 +919,22 @@ private struct CourseTimetableGridView: View {
             ForEach(weekdays, id: \.columnIndex) { item in
                 VStack(spacing: 7) {
                     Text(item.title)
-                        .font(.title3.weight(.semibold))
+                        .font(weekdayTitleFont)
                     Text(item.date.formatted(.dateTime.day()))
-                        .font(.title2.weight(.medium))
+                        .font(weekdayDateFont)
 
                     if timetable.skipHolidays {
                         let info = ChineseCalendarInfoProvider.info(for: item.date, calendar: calendar)
                         if info.isFestival {
                             Text(info.displayText)
-                                .font(.caption2.weight(.bold))
+                                .font(holidayLabelFont)
                                 .foregroundStyle(MeowPlannerTheme.blush)
                         }
                     }
                 }
                 .foregroundStyle(MeowPlannerTheme.caramel)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, usesCompactLayout ? 9 : 14)
                 .overlay(alignment: .trailing) {
                     Rectangle()
                         .fill(MeowPlannerTheme.caramel.opacity(0.10))
@@ -681,9 +953,9 @@ private struct CourseTimetableGridView: View {
     private var sideDateColumn: some View {
         VStack(spacing: 8) {
             Text(monthTitle)
-                .font(.title3.weight(.bold))
+                .font(sideDateMonthFont)
             Text("W\(selectedWeek)")
-                .font(.caption.weight(.semibold))
+                .font(sideDateWeekFont)
         }
         .foregroundStyle(MeowPlannerTheme.caramel)
         .frame(width: timeColumnWidth)
@@ -698,7 +970,7 @@ private struct CourseTimetableGridView: View {
     private var periodRows: some View {
         GeometryReader { proxy in
             let labelWidth = timeColumnWidth
-            let dayWidth = max(60, (proxy.size.width - labelWidth) / 7)
+            let dayWidth = dayColumnWidth(for: proxy.size.width, labelWidth: labelWidth)
 
             ZStack(alignment: .topLeading) {
                 periodGridRows
@@ -708,9 +980,9 @@ private struct CourseTimetableGridView: View {
                         ForEach(overlaySessions(weekday: weekday.courseWeekday)) { session in
                             if let course = courses.first(where: { $0.id == session.courseID }) {
                                 courseBlock(course: course, session: session)
-                                    .frame(width: max(44, dayWidth - 12), height: courseBlockHeight(session))
+                                    .frame(width: courseBlockWidth(dayWidth: dayWidth), height: courseBlockHeight(session))
                                     .offset(
-                                        x: labelWidth + CGFloat(weekday.columnIndex) * dayWidth + 6,
+                                        x: labelWidth + CGFloat(weekday.columnIndex) * dayWidth + courseHorizontalInset,
                                         y: courseBlockOffset(session)
                                     )
                                     .zIndex(3)
@@ -722,6 +994,14 @@ private struct CourseTimetableGridView: View {
             .frame(width: proxy.size.width, height: gridHeight, alignment: .topLeading)
         }
         .frame(height: gridHeight)
+    }
+
+    private func dayColumnWidth(for availableWidth: CGFloat, labelWidth: CGFloat) -> CGFloat {
+        max(1, (availableWidth - labelWidth) / 7)
+    }
+
+    private func courseBlockWidth(dayWidth: CGFloat) -> CGFloat {
+        max(1, dayWidth - courseHorizontalInset * 2)
     }
 
     private var periodGridRows: some View {
@@ -739,7 +1019,7 @@ private struct CourseTimetableGridView: View {
 
                             if skippedHoliday {
                                 Text(ChineseCalendarInfoProvider.info(for: weekday.date, calendar: calendar).displayText)
-                                    .font(.caption2.weight(.bold))
+                                    .font(holidayLabelFont)
                                     .foregroundStyle(MeowPlannerTheme.blush.opacity(0.72))
                             }
                         }
@@ -762,13 +1042,13 @@ private struct CourseTimetableGridView: View {
     }
 
     private func periodLabel(for period: CoursePeriod) -> some View {
-        VStack(spacing: 5) {
+        VStack(spacing: usesCompactLayout ? 3 : 5) {
             Text("\(period.index)")
-                .font(.title2.weight(.semibold))
+                .font(periodIndexFont)
             Text(formatMinutes(period.startMinutesFromMidnight))
             Text(formatMinutes(period.endMinutesFromMidnight))
         }
-        .font(.caption.weight(.medium))
+        .font(periodTimeFont)
         .foregroundStyle(MeowPlannerTheme.caramel)
         .frame(width: timeColumnWidth, height: periodRowHeight, alignment: .center)
         .overlay(alignment: .top) {
@@ -784,22 +1064,25 @@ private struct CourseTimetableGridView: View {
     }
 
     private func courseBlock(course: Course, session: CourseSession) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: usesCompactLayout ? 3 : 6) {
             Text(course.name)
-                .font(.caption.weight(.bold))
+                .font(courseBlockTitleFont)
                 .lineLimit(2)
+                .minimumScaleFactor(0.72)
 
             if !course.location.isEmpty {
                 Text(course.location)
-                    .font(.caption2.weight(.semibold))
+                    .font(courseBlockDetailFont)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
         }
         .foregroundStyle(.white)
-        .padding(8)
+        .padding(usesCompactLayout ? 4 : 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .background(MeowPlannerTheme.color(hex: course.colorHex).opacity(0.88), in: RoundedRectangle(cornerRadius: 7))
-        .padding(6)
+        .background(MeowPlannerTheme.color(hex: course.colorHex).opacity(0.88), in: RoundedRectangle(cornerRadius: courseCornerRadius))
+        .padding(.horizontal, courseHorizontalInset)
+        .padding(.vertical, courseVerticalInset)
         .onTapGesture(count: 2) {
             onEditCourse(course)
         }
@@ -846,11 +1129,11 @@ private struct CourseTimetableGridView: View {
         let startIndex = rowIndex(forPeriodIndex: session.startPeriodIndex)
         let maxSpan = max(1, sortedPeriods.count - startIndex)
         let span = min(max(1, session.endPeriodIndex - session.startPeriodIndex + 1), maxSpan)
-        return periodRowHeight * CGFloat(span) - 12
+        return periodRowHeight * CGFloat(span) - courseVerticalInset * 2
     }
 
     private func courseBlockOffset(_ session: CourseSession) -> CGFloat {
-        CGFloat(rowIndex(forPeriodIndex: session.startPeriodIndex)) * periodRowHeight + 6
+        CGFloat(rowIndex(forPeriodIndex: session.startPeriodIndex)) * periodRowHeight + courseVerticalInset
     }
 
     private func visibleSessions(weekday: Int, period: CoursePeriod) -> [CourseSession] {
@@ -895,8 +1178,30 @@ private struct CourseTimetableGridView: View {
     }
 
     private func switchWeek(by offset: Int) {
-        selectedWeek = min(max(selectedWeek + offset, 1), timetable.semesterWeeks)
+        let targetWeek = min(max(selectedWeek + offset, 1), timetable.semesterWeeks)
+        guard targetWeek != selectedWeek else {
+            return
+        }
+
+        withAnimation(.snappy(duration: 0.22)) {
+            selectedWeek = targetWeek
+        }
     }
+
+    #if os(iOS)
+    private var timetableWeekSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24, coordinateSpace: .local)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) > abs(vertical), abs(horizontal) >= 36 else {
+                    return
+                }
+
+                switchWeek(by: horizontal < 0 ? 1 : -1)
+            }
+    }
+    #endif
 
     private func weekDateRangeText(for week: Int) -> String {
         let dates = CourseTimetablePlanner.weekDates(forWeek: week, timetable: timetable, calendar: calendar)
@@ -1198,6 +1503,329 @@ private struct CourseEditorView: View {
     }
 
     var body: some View {
+        platformEditorBody
+            .onChange(of: startPeriodIndex) { _, newValue in
+                endPeriodIndex = max(endPeriodIndex, newValue)
+            }
+            .onChange(of: startWeek) { _, newValue in
+                endWeek = max(endWeek, newValue)
+            }
+    }
+
+    @ViewBuilder
+    private var platformEditorBody: some View {
+        #if os(iOS)
+        iosEditorBody
+        #else
+        desktopEditorBody
+        #endif
+    }
+
+    #if os(iOS)
+    private var iosEditorTitleFont: Font {
+        .system(size: 20, weight: .semibold)
+    }
+
+    private var iosEditorRowFont: Font {
+        .system(size: 15, weight: .semibold)
+    }
+
+    private var iosEditorBodyFont: Font {
+        .system(size: 14, weight: .medium)
+    }
+
+    private var iosEditorActionFont: Font {
+        .system(size: 18, weight: .semibold)
+    }
+
+    private var iosColorColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 34, maximum: 46), spacing: 10)]
+    }
+
+    private var iosWeekdayColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    }
+
+    private var iosEditorBody: some View {
+        NavigationStack {
+            ZStack {
+                MeowPlannerTheme.plannerGradient
+                    .overlay { timetableBackgroundMotifs.opacity(0.62) }
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        iosCourseNameCard
+                        iosColorCard
+                        iosScheduleCard
+                        iosDetailsCard
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .navigationTitle(editorTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PlannerCopy.text(.cancel, language: appLanguage)) {
+                        cancelCourseEdit()
+                    }
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                iosBottomSaveBar
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+    }
+
+    private var iosCourseNameCard: some View {
+        iosEditorCard {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "book.closed")
+                    .font(iosEditorTitleFont)
+                    .foregroundStyle(MeowPlannerTheme.blush.opacity(0.58))
+                    .padding(.top, 2)
+
+                TextField(PlannerCopy.text(.courseName, language: appLanguage), text: $courseName, axis: .vertical)
+                    .font(iosEditorTitleFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...3)
+                    .submitLabel(.done)
+            }
+        }
+    }
+
+    private var iosColorCard: some View {
+        iosEditorCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(PlannerCopy.text(.color, language: appLanguage), systemImage: "paintpalette")
+                    .font(iosEditorRowFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+
+                LazyVGrid(columns: iosColorColumns, spacing: 12) {
+                    ForEach(availableColors, id: \.self) { color in
+                        Button {
+                            colorHex = color
+                        } label: {
+                            Circle()
+                                .fill(MeowPlannerTheme.color(hex: color))
+                                .frame(width: 28, height: 28)
+                                .overlay {
+                                    Circle()
+                                        .stroke(colorHex == color ? MeowPlannerTheme.cocoa : Color.primary.opacity(0.12), lineWidth: colorHex == color ? 3 : 1)
+                                }
+                                .frame(width: 36, height: 36)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private var iosScheduleCard: some View {
+        iosEditorCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Label(appLanguage == .chinese ? "每周上课时间" : "Weekly class days", systemImage: "calendar")
+                    .font(iosEditorRowFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+
+                LazyVGrid(columns: iosWeekdayColumns, spacing: 8) {
+                    ForEach(1...7, id: \.self) { weekday in
+                        iosWeekdayButton(weekday)
+                    }
+                }
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                iosNumberStepperRow(
+                    title: PlannerCopy.text(.periodRange, language: appLanguage),
+                    systemImage: "clock",
+                    value: $startPeriodIndex,
+                    range: 1...timetable.periodsPerDay
+                )
+
+                iosNumberStepperRow(
+                    title: PlannerCopy.text(.endPeriod, language: appLanguage),
+                    systemImage: "clock.badge.checkmark",
+                    value: $endPeriodIndex,
+                    range: startPeriodIndex...timetable.periodsPerDay
+                )
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                iosNumberStepperRow(
+                    title: PlannerCopy.text(.weekRange, language: appLanguage),
+                    systemImage: "calendar.badge.clock",
+                    value: $startWeek,
+                    range: 1...timetable.semesterWeeks
+                )
+
+                iosNumberStepperRow(
+                    title: PlannerCopy.text(.endWeek, language: appLanguage),
+                    systemImage: "calendar.badge.checkmark",
+                    value: $endWeek,
+                    range: startWeek...timetable.semesterWeeks
+                )
+
+                Button {
+                    selectedWeekdays.insert(min(7, (selectedWeekdays.max() ?? 0) + 1))
+                } label: {
+                    Label(PlannerCopy.text(.addOtherSessions, language: appLanguage), systemImage: "plus")
+                        .font(iosEditorBodyFont)
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var iosDetailsCard: some View {
+        iosEditorCard {
+            VStack(spacing: 14) {
+                iosTextFieldRow(
+                    title: PlannerCopy.text(.teacher, language: appLanguage),
+                    systemImage: "person",
+                    text: $teacherName
+                )
+
+                Divider()
+                    .background(MeowPlannerTheme.caramel.opacity(0.12))
+
+                iosTextFieldRow(
+                    title: PlannerCopy.text(.location, language: appLanguage),
+                    systemImage: "mappin.and.ellipse",
+                    text: $location
+                )
+            }
+        }
+    }
+
+    private var iosBottomSaveBar: some View {
+        Button {
+            saveCourse()
+        } label: {
+            Text(PlannerCopy.text(.save, language: appLanguage))
+                .font(iosEditorActionFont)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(MeowPlannerTheme.pawButtonBrown, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSaveDisabled)
+        .opacity(isSaveDisabled ? 0.48 : 1)
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.94))
+    }
+
+    private func iosEditorCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.88), in: RoundedRectangle(cornerRadius: 22))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(MeowPlannerTheme.blush.opacity(0.28), lineWidth: 1.5)
+            }
+    }
+
+    private func iosWeekdayButton(_ weekday: Int) -> some View {
+        let isSelected = selectedWeekdays.contains(weekday)
+
+        return Button {
+            if isSelected {
+                selectedWeekdays.remove(weekday)
+            } else {
+                selectedWeekdays.insert(weekday)
+            }
+        } label: {
+            Text(weekdayTitle(weekday))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isSelected ? .white : MeowPlannerTheme.caramel)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
+                .background(isSelected ? MeowPlannerTheme.caramel : MeowPlannerTheme.warmCream.opacity(0.28), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iosNumberStepperRow(
+        title: String,
+        systemImage: String,
+        value: Binding<Int>,
+        range: ClosedRange<Int>
+    ) -> some View {
+        let canDecrease = value.wrappedValue > range.lowerBound
+        let canIncrease = value.wrappedValue < range.upperBound
+
+        return HStack(spacing: 12) {
+            Label(title, systemImage: systemImage)
+                .font(iosEditorBodyFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                iosNumberStepButton(systemImage: "minus", isEnabled: canDecrease) {
+                    value.wrappedValue = max(range.lowerBound, value.wrappedValue - 1)
+                }
+
+                Text("\(value.wrappedValue)")
+                    .font(iosEditorRowFont.monospacedDigit())
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .frame(width: 34)
+
+                iosNumberStepButton(systemImage: "plus", isEnabled: canIncrease) {
+                    value.wrappedValue = min(range.upperBound, value.wrappedValue + 1)
+                }
+            }
+        }
+    }
+
+    private func iosNumberStepButton(systemImage: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isEnabled ? MeowPlannerTheme.caramel : MeowPlannerTheme.caramel.opacity(0.32))
+                .frame(width: 30, height: 30)
+                .background(MeowPlannerTheme.cream.opacity(0.52), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+    }
+
+    private func iosTextFieldRow(title: String, systemImage: String, text: Binding<String>) -> some View {
+        HStack(spacing: 12) {
+            Label(title, systemImage: systemImage)
+                .font(iosEditorBodyFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+
+            TextField(title, text: text)
+                .font(iosEditorBodyFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+    #endif
+
+    private var desktopEditorBody: some View {
         ZStack {
             MeowPlannerTheme.fufuPlannerBackground
                 .overlay { MeowPlannerTheme.plannerGradient.opacity(0.82) }
@@ -1244,9 +1872,6 @@ private struct CourseEditorView: View {
                         value: $startPeriodIndex,
                         range: 1...timetable.periodsPerDay
                     )
-                        .onChange(of: startPeriodIndex) { _, newValue in
-                            endPeriodIndex = max(endPeriodIndex, newValue)
-                        }
 
                     Divider().opacity(0.35)
 
@@ -1263,9 +1888,6 @@ private struct CourseEditorView: View {
                         value: $startWeek,
                         range: 1...timetable.semesterWeeks
                     )
-                        .onChange(of: startWeek) { _, newValue in
-                            endWeek = max(endWeek, newValue)
-                        }
 
                     Divider().opacity(0.35)
 
@@ -1388,6 +2010,10 @@ private struct CourseEditorView: View {
 
     private var language: AppLanguage {
         appLanguage
+    }
+
+    private var isSaveDisabled: Bool {
+        courseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedWeekdays.isEmpty
     }
 
     private func cancelCourseEdit() {

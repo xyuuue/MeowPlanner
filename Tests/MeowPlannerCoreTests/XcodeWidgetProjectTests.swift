@@ -19,6 +19,46 @@ struct XcodeWidgetProjectTests {
         #expect(project.contains("Config/MeowPlannerWidget-Info.plist"))
     }
 
+    @Test("iOS app project embeds an iPhone WidgetKit extension")
+    func iOSAppProjectEmbedsIPhoneWidgetExtension() throws {
+        let root = try packageRoot()
+        let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
+        let projectFile = root
+            .appendingPathComponent("MeowPlanner.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+        let widgetInfoFile = root.appendingPathComponent("Config/MeowPlannerWidget-iOS-Info.plist")
+        let widgetEntitlementsFile = root.appendingPathComponent("Config/MeowPlannerWidget-iOS.entitlements")
+
+        let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
+        let project = try String(contentsOf: projectFile, encoding: .utf8)
+        let entitlements = try String(contentsOf: widgetEntitlementsFile, encoding: .utf8)
+
+        #expect(FileManager.default.fileExists(atPath: widgetInfoFile.path))
+        #expect(FileManager.default.fileExists(atPath: widgetEntitlementsFile.path))
+        #expect(generatorSource.contains("ios_widget_target = oid(\"target:MeowPlannerWidgetExtension-iOS\")"))
+        #expect(generatorSource.contains("ios_widget_product = oid(\"product:MeowPlannerWidgetExtension-iOS.appex\")"))
+        #expect(generatorSource.contains("ios_app_widget_dependency"))
+        #expect(generatorSource.contains("ios_widget_core_dependency"))
+        #expect(generatorSource.contains("MeowPlannerWidgetExtension-iOS"))
+        #expect(generatorSource.contains("\"CODE_SIGN_ENTITLEMENTS\": \"Config/MeowPlannerWidget-iOS.entitlements\""))
+        #expect(generatorSource.contains("\"INFOPLIST_FILE\": \"Config/MeowPlannerWidget-iOS-Info.plist\""))
+        #expect(generatorSource.contains("\"TARGETED_DEVICE_FAMILY\": \"1\""))
+        #expect(generatorSource.contains("ios_app_embed_extensions = copy_phase(\"MeowPlanner-iOS\", \"Embed App Extensions\", \"13\""))
+        #expect(generatorSource.contains("f\"\\t\\t\\t\\t{ios_widget_target} = {{CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; }};\""))
+        #expect(generatorSource.contains("active_targets.extend([ios_app_target, ios_core_target, ios_widget_target])"))
+        #expect(generatorSource.contains("MeowPlannerWidgetExtension-iOS.appex"))
+        #expect(project.contains("MeowPlannerWidgetExtension-iOS"))
+        #expect(project.contains("MeowPlannerWidgetExtension-iOS.appex"))
+        #expect(project.contains("Config/MeowPlannerWidget-iOS-Info.plist"))
+        #expect(project.contains("Config/MeowPlannerWidget-iOS.entitlements"))
+        #expect(project.contains("TargetAttributes = {"))
+        #expect(project.contains("ProvisioningStyle = Automatic"))
+        #expect(project.contains("SDKROOT = iphoneos"))
+        #expect(project.contains("TARGETED_DEVICE_FAMILY = 1"))
+        #expect(entitlements.contains("group.com.yuelingqiu.MeowPlanner"))
+        #expect(!entitlements.contains("com.apple.security.app-sandbox"))
+    }
+
     @Test("macOS app declares a menu bar extra")
     func macOSAppDeclaresMenuBarExtra() throws {
         let root = try packageRoot()
@@ -50,6 +90,10 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains(".systemLarge"))
         #expect(widgetSource.contains(".systemExtraLarge"))
         #expect(widgetSource.contains(".configurationDisplayName(\"MeowPlanner\")"))
+        #expect(widgetSource.contains("private static var supportedFamilies: [WidgetFamily]"))
+        #expect(widgetSource.contains("#if os(iOS)\n        return [.systemSmall, .systemMedium, .systemLarge]"))
+        #expect(widgetSource.contains("#else\n        return [.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge]"))
+        #expect(widgetSource.contains(".supportedFamilies(Self.supportedFamilies)"))
     }
 
     @Test("run script installs latest build into Applications")
@@ -212,7 +256,10 @@ struct XcodeWidgetProjectTests {
         #expect(project.contains("Config/MeowPlanner-iOS-Info.plist"))
         #expect(project.contains("Config/MeowPlanner-iOS.entitlements"))
         #expect(project.contains("IPHONEOS_DEPLOYMENT_TARGET = 17.0"))
-        #expect(project.contains("SUPPORTED_PLATFORMS = (\n\t\t\t\t\tiphoneos,\n\t\t\t\t\tiphonesimulator,"))
+        #expect(
+            project.contains("SUPPORTED_PLATFORMS = \"iphoneos iphonesimulator\"")
+                || project.contains("SUPPORTED_PLATFORMS = (\n\t\t\t\t\tiphoneos,\n\t\t\t\t\tiphonesimulator,")
+        )
         #expect(project.contains("SDKROOT = iphoneos"))
         #expect(project.contains("PRODUCT_MODULE_NAME = MeowPlannerCore"))
         #expect(!project.contains("path = MeowPlannerCore-iOS.framework"))
@@ -256,6 +303,30 @@ struct XcodeWidgetProjectTests {
         #expect(generatorSource.contains("active_config_files"))
     }
 
+    @Test("iOS app uses one full screen reference background")
+    func iOSAppUsesOneFullScreenReferenceBackground() throws {
+        let root = try packageRoot()
+        let lightBackground = root.appendingPathComponent("Resources/iOSBackground.png")
+        let darkBackground = root.appendingPathComponent("Resources/iOSBackgroundDark.png")
+        let shellFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift")
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let calendarFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let shellSource = try String(contentsOf: shellFile, encoding: .utf8)
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let calendarSource = try String(contentsOf: calendarFile, encoding: .utf8)
+
+        #expect(try pngDimensions(at: lightBackground) == CGSizePixels(width: 852, height: 1846))
+        #expect(try pngDimensions(at: darkBackground) == CGSizePixels(width: 852, height: 1846))
+        #expect(shellSource.contains("private var iosFullScreenBackground: some View"))
+        #expect(shellSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(shellSource.contains(".background { iosFullScreenBackground }"))
+        #expect(!shellSource.contains("PlannerPawStarBackground(gradientOpacity: 0.84)"))
+        #expect(settingsSource.contains("#if os(iOS)\n        PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(calendarSource.contains("#if os(iOS)\n            Color.clear\n            #else"))
+        #expect(!settingsSource.contains("PlannerPawStarBackground(gradientOpacity: 0.82)"))
+    }
+
     @Test("iOS root uses custom app navigation shell instead of system tab bar")
     func iosRootUsesCustomAppNavigationShellInsteadOfSystemTabBar() throws {
         let root = try packageRoot()
@@ -279,13 +350,33 @@ struct XcodeWidgetProjectTests {
         )
         let iosCalendarSource = try sourceWindow(
             in: rootSource,
-            from: "CalendarHomeView(iosNavigationState:",
+            from: "CalendarHomeView(",
             length: 260
         )
         let sidebarCloseButtonSource = try sourceWindow(
             in: shellSource,
             from: "Button {\n                    closeSidebar()",
             length: 460
+        )
+        let bottomOverlaySource = try sourceWindow(
+            in: shellSource,
+            from: ".overlay(alignment: .bottom)",
+            length: 420
+        )
+        let topNavigationBackgroundSource = try sourceWindow(
+            in: shellSource,
+            from: "private var topNavigationBackground",
+            length: 280
+        )
+        let bottomNavigationBackgroundSource = try sourceWindow(
+            in: shellSource,
+            from: "private var bottomNavigationBackground",
+            length: 220
+        )
+        let bottomNavigationButtonSource = try sourceWindow(
+            in: shellSource,
+            from: "private func bottomNavigationButton",
+            length: 1_000
         )
 
         #expect(rootSource.contains("@AppStorage(AppSection.iosBottomNavigationStorageKey)"))
@@ -294,16 +385,48 @@ struct XcodeWidgetProjectTests {
         #expect(iosRootSource.contains("bottomSections: iosBottomNavigationSections"))
         #expect(iosRootSource.contains("calendarNavigationState: iosCalendarNavigationState"))
         #expect(iosRootSource.contains("onSelect: selectSidebarSection"))
-        #expect(iosCalendarSource.contains("CalendarHomeView(iosNavigationState: iosCalendarNavigationState)"))
+        #expect(iosCalendarSource.contains("CalendarHomeView("))
+        #expect(iosCalendarSource.contains("iosNavigationState: iosCalendarNavigationState"))
+        #expect(iosCalendarSource.contains("newScheduleRequestToken: calendarAddScheduleRequestToken"))
         #expect(!iosRootSource.contains("TabView(selection: $selection)"))
         #expect(shellSource.contains("#if os(iOS)"))
         #expect(shellSource.contains("safeAreaInset(edge: .top"))
+        #expect(shellSource.contains("private var topNavigationBar: some View"))
+        #expect(shellSource.contains("private var topNavigationBackground: some View"))
+        #expect(shellSource.contains("private var shouldShowSidebarButton: Bool"))
+        #expect(shellSource.contains("selection != .settings"))
+        #expect(shellSource.contains("if shouldShowSidebarButton"))
+        #expect(shellSource.contains(".ignoresSafeArea(edges: .top)"))
         #expect(shellSource.contains("safeAreaInset(edge: .bottom"))
+        #expect(shellSource.contains("bottomNavigationReservation(safeAreaInsets: proxy.safeAreaInsets)"))
+        #expect(shellSource.contains(".overlay(alignment: .bottom)"))
         #expect(shellSource.contains("bottomNavigationBar(safeAreaInsets: proxy.safeAreaInsets)"))
+        #expect(bottomOverlaySource.contains("bottomNavigationBar(safeAreaInsets: proxy.safeAreaInsets)"))
+        #expect(bottomOverlaySource.contains(".offset(y: proxy.safeAreaInsets.bottom)"))
+        #expect(bottomOverlaySource.contains(".ignoresSafeArea(edges: .bottom)"))
+        #expect(shellSource.contains("private func bottomNavigationReservation(safeAreaInsets: EdgeInsets) -> some View"))
+        #expect(shellSource.contains("static func bottomNavigationReservedHeight(safeAreaInsets: EdgeInsets)"))
+        #expect(shellSource.contains("Color.clear\n            .frame(height: IOSAppNavigationMetrics.bottomNavigationReservedHeight(safeAreaInsets: safeAreaInsets))"))
         #expect(shellSource.contains("private func bottomNavigationBar(safeAreaInsets: EdgeInsets) -> some View"))
+        #expect(shellSource.contains("bottomNavigationBackground\n                .ignoresSafeArea(edges: .bottom)"))
+        #expect(!topNavigationBackgroundSource.contains("Rectangle()"))
+        #expect(!bottomNavigationBackgroundSource.contains("Rectangle()"))
         #expect(shellSource.contains("IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets)"))
-        #expect(shellSource.contains("IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)"))
-        #expect(shellSource.contains("safeAreaInsets.bottom * 0.28"))
+        #expect(shellSource.contains("static func bottomNavigationBottomPadding(for safeAreaInsets: EdgeInsets)"))
+        #expect(shellSource.contains("bottomNavigationBottomPadding(for: safeAreaInsets)"))
+        #expect(shellSource.contains("bottomNavigationMinimumBottomPadding: CGFloat = 0"))
+        #expect(shellSource.contains("max(safeAreaInsets.bottom, bottomNavigationMinimumBottomPadding)"))
+        #expect(shellSource.contains("static let bottomNavigationRaisedPadding: CGFloat = 40"))
+        #expect(shellSource.contains("+ bottomNavigationRaisedPadding"))
+        #expect(shellSource.contains(".padding(.bottom, IOSAppNavigationMetrics.bottomNavigationRaisedPadding)"))
+        #expect(!shellSource.contains("bottomNavigationButtonBottomInset"))
+        #expect(!shellSource.contains("bottomNavigationButtonVerticalOffset"))
+        #expect(!shellSource.contains(".offset(y: buttonVerticalOffset)"))
+        #expect(shellSource.contains(".frame(height: IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets), alignment: .bottom)"))
+        #expect(!shellSource.contains("safeAreaInsets.bottom * 0.28"))
+        #expect(bottomNavigationButtonSource.contains("in: Capsule()"))
+        #expect(bottomNavigationButtonSource.contains(".contentShape(Capsule())"))
+        #expect(!bottomNavigationButtonSource.contains("RoundedRectangle(cornerRadius: 8)"))
         #expect(shellSource.contains("calendarNavigationBarCenter"))
         #expect(shellSource.contains("calendarScheduleDisplayMenu"))
         #expect(shellSource.contains("calendarNavigationState.presentMonthPicker()"))
@@ -327,7 +450,7 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains(".padding(.top, sidebarListTopPadding)"))
         #expect(shellSource.contains(".frame(height: sidebarRowHeight)"))
         #expect(shellSource.contains("sidebarDecorativeBackground(width: width, safeAreaInsets: safeAreaInsets)"))
-        #expect(shellSource.contains("PlannerPawStarBackground(gradientOpacity: 0.84)"))
+        #expect(shellSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(shellSource.contains("sidebarPawWatermark("))
         #expect(shellSource.contains("sidebarStarWatermark("))
         #expect(!shellSource.contains("sidebarFufuWatermark("))
@@ -361,18 +484,22 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains("@Published var isCalendarAgendaOverlayPresented = false"))
         #expect(shellSource.contains("private var shouldShowNavigationBars"))
         #expect(shellSource.contains("if shouldShowNavigationBars"))
-        #expect(shellSource.contains("bottomNavigationBackgroundMotifs"))
-        #expect(shellSource.contains("bottomNavigationPawMotif("))
+        #expect(!shellSource.contains("bottomNavigationBackgroundMotifs"))
+        #expect(!shellSource.contains("bottomNavigationPawMotif("))
         #expect(!shellSource.contains("FuFuAssetImage(size: 34)"))
-        #expect(shellSource.contains("MeowPlannerTheme.fufuCalendarBackground.opacity(0.98)"))
+        #expect(shellSource.contains("private var bottomNavigationBackground: some View {\n        Color.clear\n    }"))
+        #expect(!shellSource.contains("MeowPlannerTheme.fufuCalendarBackground.opacity(0.98)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(true)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(false)"))
+        #expect(calendarSource.contains("private let iosCalendarBottomReserve: CGFloat = 0"))
+        #expect(!calendarSource.contains("private let iosCalendarBottomReserve: CGFloat = -IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(calendarSource.contains("private let iosAgendaCardHeight: CGFloat = 500"))
         #expect(calendarSource.contains("private let iosAgendaCardHorizontalInset: CGFloat = 28"))
-        #expect(monthGridSource.contains("private let iosAdjacentMonthPeek: CGFloat = 18"))
+        #expect(!monthGridSource.contains("private let iosAdjacentMonthPeek"))
         #expect(monthGridSource.contains("@State private var iosPagerAnchorMonth: Date?"))
         #expect(monthGridSource.contains("private func plannerDays(for month: Date, maxVisibleItems: Int)"))
         #expect(monthGridSource.contains("private func iosPagerMonths(centeredOn month: Date)"))
+        #expect(pagerSource.contains("let pageWidth = max(1, proxy.size.width)"))
         #expect(pagerSource.contains("let pagerCenterMonth = iosPagerAnchorMonth ?? displayedMonth"))
         #expect(monthGridSource.contains("iosPagerAnchorMonth = initialMonth"))
         #expect(pagerSource.contains("ScrollView(.horizontal, showsIndicators: false)"))
@@ -380,7 +507,7 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains(".scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))"))
         #expect(monthGridSource.contains(".scrollTargetBehavior(.viewAligned)"))
         #expect(pagerSource.contains(".scrollPosition(id: $iosScrollPosition)"))
-        #expect(pagerSource.contains(".contentMargins(.horizontal, iosAdjacentMonthPeek, for: .scrollContent)"))
+        #expect(!pagerSource.contains(".contentMargins(.horizontal"))
     }
 
     @Test("iOS settings customize bottom navigation membership and order")
@@ -394,13 +521,20 @@ struct XcodeWidgetProjectTests {
         let sectionSource = try sourceWindow(
             in: settingsSource,
             from: "private var iosBottomNavigationSection",
-            length: 3_200
+            length: 5_400
         )
 
         #expect(settingsSource.contains("@AppStorage(AppSection.iosBottomNavigationStorageKey)"))
         #expect(settingsSource.contains("#if os(iOS)\n            iosBottomNavigationSection"))
         #expect(sectionSource.contains("Section(PlannerCopy.text(.bottomNavigation"))
         #expect(sectionSource.contains("Toggle(isOn: iosBottomNavigationSelectionBinding"))
+        #expect(sectionSource.contains("iosBottomNavigationRowLabel(for: section)"))
+        #expect(sectionSource.contains("iosBottomNavigationActionLabel("))
+        #expect(!sectionSource.contains("Label(section.title(language: appLanguage), systemImage: section.systemImage)"))
+        #expect(!sectionSource.contains("Label(PlannerCopy.text(.restoreDefault, language: appLanguage), systemImage: \"arrow.counterclockwise\")"))
+        #expect(sectionSource.contains(".symbolRenderingMode(.monochrome)"))
+        #expect(sectionSource.contains(".foregroundStyle(MeowPlannerTheme.caramel)"))
+        #expect(sectionSource.contains(".buttonStyle(.plain)"))
         #expect(sectionSource.contains("systemImage: \"chevron.up\""))
         #expect(sectionSource.contains("systemImage: \"chevron.down\""))
         #expect(sectionSource.contains("resetIOSBottomNavigation()"))
@@ -414,6 +548,72 @@ struct XcodeWidgetProjectTests {
         #expect(languageSource.contains("case restoreDefault"))
         #expect(languageSource.contains(".restoreDefault: \"Restore default\""))
         #expect(languageSource.contains(".restoreDefault: \"恢复默认\""))
+    }
+
+    @Test("iOS settings can choose widget background image or transparent mode")
+    func iosSettingsCanChooseWidgetBackgroundImageOrTransparentMode() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let languageFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+        let widgetPreferenceFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let languageSource = try String(contentsOf: languageFile, encoding: .utf8)
+        let widgetPreferenceSource = try String(contentsOf: widgetPreferenceFile, encoding: .utf8)
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let widgetSettingsSource = try sourceWindow(
+            in: settingsSource,
+            from: "private var widgetSettingsPage",
+            length: 7_500
+        )
+
+        #expect(settingsSource.contains("import PhotosUI"))
+        #expect(settingsSource.contains("case widget"))
+        #expect(settingsSource.contains("NavigationLink(value: SettingsDestination.widget)"))
+        #expect(settingsSource.contains("@State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?"))
+        #expect(settingsSource.contains("@State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
+        #expect(settingsSource.contains("@State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue"))
+        #expect(widgetSettingsSource.contains("widgetAppearanceSection"))
+        #expect(widgetSettingsSource.contains("Section(widgetAppearanceSectionTitle)"))
+        #expect(widgetSettingsSource.contains("Picker(widgetAppearanceSystemModeTitle"))
+        #expect(widgetSettingsSource.contains("Picker(widgetAppearanceManualModeTitle"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.widgetAppearancePreference = AppAppearancePreference(storedValue: newValue)"))
+        #expect(settingsSource.contains("persistWidgetAppearancePreference(newValue)"))
+        #expect(widgetSettingsSource.contains("WidgetBackgroundStyle.allCases"))
+        #expect(widgetSettingsSource.contains("PhotosPicker("))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle = newValue"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data)"))
+        #expect(widgetSettingsSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
+        #expect(languageSource.contains("case widgetSettings"))
+        #expect(languageSource.contains("case widgetBackground"))
+        #expect(languageSource.contains("case chooseBackgroundImage"))
+        #expect(widgetPreferenceSource.contains("public enum WidgetBackgroundStyle"))
+        #expect(widgetPreferenceSource.contains("case transparent"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey"))
+        #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey"))
+        #expect(widgetPreferenceSource.contains("public static var widgetAppearancePreference: AppAppearancePreference"))
+        #expect(widgetPreferenceSource.contains("isDarkWidgetAppearance(systemIsDark:"))
+        #expect(widgetPreferenceSource.contains("customBackgroundImageURL"))
+        #expect(widgetPreferenceSource.contains("saveCustomBackgroundImageData"))
+        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
+        #expect(widgetSource.contains("case .transparent:"))
+        #expect(widgetSource.contains("@Environment(\\.showsWidgetContainerBackground)"))
+        #expect(widgetSource.contains(".meowPlannerWidgetContainerBackground()"))
+        #expect(widgetSource.contains("containerBackground(for: .widget)"))
+        #expect(!widgetSource.contains("if WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent {\n            self"))
+        #expect(widgetSource.contains(".containerBackgroundRemovable(WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent)"))
+        #expect(widgetSource.contains("!showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent"))
+        #expect(widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklyGlassFill(isDark: isDarkBackground)"))
+        #expect(widgetSource.contains("usesTransparentWidgetBackground ? WidgetPalette.weeklyTransparentSeparator(isDark: isDarkBackground) : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
+        #expect(!widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
+        #expect(widgetSource.contains("if !hasSchedules && !usesTransparentWidgetBackground"))
+        #expect(widgetSource.contains("usesTransparentBackground: usesTransparentWidgetBackground"))
+        #expect(widgetSource.contains("var usesTransparentBackground: Bool"))
+        #expect(widgetSource.contains("if day.events.isEmpty && !usesTransparentBackground"))
+        #expect(widgetSource.contains("customBackgroundImage()"))
+        #expect(widgetSource.contains("UIImage(data: data)"))
+        #expect(!widgetSource.contains("if let image = WidgetBackgroundImageLoader.image(isDark: colorScheme == .dark)"))
     }
 
     @Test("iOS settings hide inner system chrome and remove Dock personalization controls")
@@ -430,7 +630,7 @@ struct XcodeWidgetProjectTests {
         let personalizationSettingsPageSource = try #require(sourceBlock(
             in: settingsSource,
             from: "private var personalizationSettingsPage",
-            to: "    private var settingsBackButton"
+            to: "    #if os(iOS)\n    private var widgetSettingsPage"
         ))
         let personalizationSubtitleSource = try sourceWindow(
             in: settingsSource,
@@ -440,6 +640,7 @@ struct XcodeWidgetProjectTests {
 
         #expect(settingsSource.contains("private var settingsNavigationStack: some View"))
         #expect(settingsSource.contains(".toolbar(.hidden, for: .navigationBar)"))
+        #expect(settingsSource.contains(".toolbarBackground(.hidden, for: .navigationBar)"))
         #expect(settingsSource.contains(".navigationBarTitleDisplayMode(.inline)"))
         #expect(settingsSource.contains("func settingsPlatformNavigationTitle(_ title: String) -> some View"))
         #expect(settingsSource.contains("#if os(iOS)\n        self\n        #else\n        navigationTitle(title)"))
@@ -449,6 +650,18 @@ struct XcodeWidgetProjectTests {
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.settings"))
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.account"))
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.personalizationSettings"))
+        #expect(settingsFormSource.contains(".settingsContentTopSpacing()"))
+        #expect(settingsFormSource.contains(".listRowSeparator(.hidden)"))
+        #expect(settingsFormSource.contains("settingsBottomScrollExpansion"))
+        #expect(settingsSource.contains("func settingsContentTopSpacing() -> some View"))
+        #expect(settingsSource.contains("contentMargins(.top, settingsContentTopInset, for: .scrollContent)"))
+        #expect(settingsSource.contains(".padding(.top, settingsContentTopInset)"))
+        #expect(settingsSource.contains("settingsPersonalizationBottomScrollExpansion"))
+        #expect(settingsSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(settingsSource.contains(".ignoresSafeArea()"))
+        #expect(personalizationSettingsPageSource.contains("settingsForm(bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion)"))
+        #expect(personalizationSettingsPageSource.contains("iosBottomNavigationSection"))
+        #expect(!personalizationSettingsPageSource.contains("settingsBackButton"))
         #expect(settingsFormSource.contains(".tint(MeowPlannerTheme.pawButtonBrown)"))
         #expect(settingsFormSource.contains(".listRowBackground(settingsRowBackground)"))
         #expect(settingsSource.contains("private var settingsRowBackground: some View"))
@@ -544,7 +757,10 @@ struct XcodeWidgetProjectTests {
         #expect(rootView.contains("cloudAppLanguageUpdatedAt"))
         #expect(rootView.contains("cloudAppearanceUpdatedAt"))
         #expect(syncService.contains("\"appLanguageUpdatedAt\": languageUpdatedAt"))
-        #expect(syncService.contains("\"appearanceUpdatedAt\": appearanceUpdatedAt"))
+        #expect(syncService.contains("appearancePlatform.cloudIDField: appearanceID"))
+        #expect(syncService.contains("appearancePlatform.cloudUpdatedAtField: appearanceUpdatedAt"))
+        #expect(syncService.contains("AppAppearancePreference.legacyCloudIDField"))
+        #expect(syncService.contains("AppAppearancePreference.legacyCloudUpdatedAtField"))
         #expect(syncService.contains("SyncedUserDefaultMergeDecision.shouldApplyRemoteValue"))
         #expect(syncService.contains("shouldApplyRemoteAppearancePreference"))
         #expect(generatorSource.contains("FirestoreAppDataSyncService.swift"))
@@ -756,7 +972,7 @@ struct XcodeWidgetProjectTests {
         let settingsFormSource = try sourceWindow(
             in: settingsSource,
             from: "private func settingsForm",
-            length: 900
+            length: 1_500
         )
         let deleteAccountButtonSource = try sourceWindow(
             in: settingsSource,
@@ -772,6 +988,11 @@ struct XcodeWidgetProjectTests {
             in: settingsSource,
             from: "private var accountActionsSection",
             length: 900
+        )
+        let signOutButtonSource = try sourceWindow(
+            in: settingsSource,
+            from: "Button {\n                accountStore.signOut()",
+            length: 650
         )
 
         #expect(appSource.contains("AccountGatedRootView"))
@@ -830,8 +1051,15 @@ struct XcodeWidgetProjectTests {
         #expect(deleteAccountButtonSource.contains(".buttonStyle(.plain)"))
         #expect(settingsSource.contains("private struct SettingsDangerActionLabel"))
         #expect(settingsSource.contains(".foregroundStyle(.red)"))
-        #expect(settingsSource.contains(".background(.red.opacity(0.10)"))
-        #expect(settingsSource.contains(".stroke(.red.opacity(0.28)"))
+        #expect(!settingsSource.contains(".background(.red.opacity(0.10)"))
+        #expect(!settingsSource.contains(".stroke(.red.opacity(0.28)"))
+        #expect(signOutButtonSource.contains("Button {"))
+        #expect(!signOutButtonSource.contains("Button(role: .destructive)"))
+        #expect(signOutButtonSource.contains("SettingsAccountActionLabel("))
+        #expect(signOutButtonSource.contains(".buttonStyle(.plain)"))
+        #expect(settingsSource.contains("private struct SettingsAccountActionLabel"))
+        #expect(signOutButtonSource.contains("systemImage: \"rectangle.portrait.and.arrow.right\""))
+        #expect(signOutButtonSource.contains("foregroundStyle: MeowPlannerTheme.caramel"))
         #expect(languageSource.contains(".deleteAccountConfirmationMessage: \"是否确认删除账号，删除账号不可找回\""))
     }
 
@@ -931,8 +1159,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "2.0.1")
-        #expect(plist["CFBundleVersion"] as? String == "21")
+        #expect(plist["CFBundleShortVersionString"] as? String == "2.0.2")
+        #expect(plist["CFBundleVersion"] as? String == "22")
     }
 
     @Test("month widget has interactive FuFu navigation")
@@ -1032,6 +1260,206 @@ struct XcodeWidgetProjectTests {
         #expect(!makeEntrySource.contains("WidgetPlannerPreferenceStore.weekStartPreference"))
     }
 
+    @Test("today widget shows an empty state when no shared snapshot is available")
+    func todayWidgetShowsEmptyStateWhenNoSharedSnapshotIsAvailable() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let makeEntrySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "    private static func nextRefreshDate"
+        ))
+        let summarySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct SummaryWidgetView",
+            to: "private struct MonthWidgetView"
+        ))
+        let monthSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(widgetSource.contains("public let showsEmptyState: Bool"))
+        #expect(widgetSource.contains("showsEmptyState: snapshot == nil && !includeSamplePlans"))
+        #expect(makeEntrySource.contains("scheduleCount: events.count"))
+        #expect(makeEntrySource.contains("todoCount: todos.count"))
+        #expect(makeEntrySource.contains("habitCount: includeSamplePlans ? 1 : (snapshot?.habitCount ?? 0)"))
+        #expect(summarySource.contains("if entry.showsEmptyState"))
+        #expect(summarySource.contains("emptyStateSummary"))
+        #expect(summarySource.contains("Text(\"No plans yet\")"))
+        #expect(monthSource.contains("if entry.showsEmptyState"))
+        #expect(monthSource.contains("emptyStateOverlay"))
+        #expect(monthSource.contains("fufuWidgetMascot(size: family == .systemExtraLarge ? 28 : 24)"))
+        #expect(monthSource.contains("Text(\"No plans yet\")"))
+    }
+
+    @Test("medium iPhone widget shows configurable weekly schedule")
+    func mediumIPhoneWidgetShowsConfigurableWeeklySchedule() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+        let coreIntentFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/WidgetAppIntents.swift")
+        let widgetConstantsFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/WidgetConstants.swift")
+        let appFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
+        let rootViewFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let calendarHomeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let coreIntentSource = try String(contentsOf: coreIntentFile, encoding: .utf8)
+        let widgetConstantsSource = try String(contentsOf: widgetConstantsFile, encoding: .utf8)
+        let appSource = try String(contentsOf: appFile, encoding: .utf8)
+        let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
+        let widgetBodySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "public var body: some WidgetConfiguration",
+            to: "\n    }\n}"
+        ))
+        let widgetViewSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MeowPlannerTodayWidgetView",
+            to: "private struct SummaryWidgetView"
+        ))
+        let makeEntrySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "    private static func nextRefreshDate"
+        ))
+        let weeklyScheduleWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleWidgetView",
+            to: "private struct WeeklyScheduleCalendarDayColumn"
+        ))
+        let weeklyScheduleColumnSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleCalendarDayColumn",
+            to: "private struct SummaryWidgetView"
+        ))
+        let refreshButtonSource = try sourceWindow(
+            in: weeklyScheduleWidgetSource,
+            from: "Button(intent: RefreshWidgetTimelineIntent())",
+            length: 700
+        )
+        let eventPillSource = try sourceWindow(
+            in: weeklyScheduleColumnSource,
+            from: "private func eventPill",
+            length: 850
+        )
+
+        #expect(coreIntentSource.contains("public enum WidgetScheduleDisplayRule: String, AppEnum"))
+        #expect(coreIntentSource.contains("case nextSevenDays"))
+        #expect(coreIntentSource.contains("case calendarWeek"))
+        #expect(coreIntentSource.contains("DisplayRepresentation(title: \"未来七天\")"))
+        #expect(coreIntentSource.contains("DisplayRepresentation(title: \"自然周\")"))
+        #expect(coreIntentSource.contains("public struct MeowPlannerWidgetConfigurationIntent: WidgetConfigurationIntent"))
+        #expect(coreIntentSource.contains("@Parameter(title: \"显示规则\", default: WidgetScheduleDisplayRule.nextSevenDays)"))
+        #expect(coreIntentSource.contains("public struct ChangeWidgetWeekIntent: AppIntent"))
+        #expect(coreIntentSource.contains("WidgetWeekSelectionStore.adjustWeekOffset(by: weekDelta)"))
+        #expect(coreIntentSource.contains("public enum WidgetWeekSelectionStore"))
+        #expect(widgetConstantsSource.contains("public static let newScheduleURL = URL(string: \"meowplanner://schedule/new\")!"))
+        #expect(widgetConstantsSource.contains("public static let widgetWeekOffsetKey = \"widgetWeekOffset\""))
+        #expect(widgetSource.contains("public let scheduleDisplayRule: WidgetScheduleDisplayRule"))
+        #expect(widgetSource.contains("public let weeklyScheduleDays: [WidgetWeeklyScheduleDay]"))
+        #expect(widgetSource.contains("AppIntentTimelineProvider"))
+        #expect(widgetBodySource.contains("AppIntentConfiguration(kind: kind, intent: MeowPlannerWidgetConfigurationIntent.self, provider: MeowPlannerTodayProvider())"))
+        #expect(makeEntrySource.contains("displayRule: configuration.scheduleDisplayRule"))
+        #expect(makeEntrySource.contains("weekOffset: includeSamplePlans ? 0 : WidgetWeekSelectionStore.currentWeekOffset"))
+        #expect(makeEntrySource.contains("WidgetWeeklySchedulePlanner.days("))
+        #expect(widgetViewSource.contains("case .systemMedium:"))
+        #expect(widgetViewSource.contains("#if os(iOS)\n                WeeklyScheduleWidgetView(entry: entry)"))
+        #expect(widgetSource.contains("private struct WeeklyScheduleWidgetView"))
+        #expect(widgetSource.contains("weekNavigationButton(delta: -1, systemImage: \"chevron.left\")"))
+        #expect(widgetSource.contains("weekNavigationButton(delta: 1, systemImage: \"chevron.right\")"))
+        #expect(widgetSource.contains("Link(destination: WidgetConstants.newScheduleURL)"))
+        #expect(widgetSource.contains("Button(intent: RefreshWidgetTimelineIntent())"))
+        #expect(weeklyScheduleWidgetSource.contains(".frame(height: 28)"))
+        #expect(weeklyScheduleWidgetSource.contains("Image(systemName: \"arrow.clockwise\")"))
+        #expect(!weeklyScheduleWidgetSource.contains("Image(systemName: \"gearshape\")"))
+        #expect(refreshButtonSource.contains(".font(.system(size: 14, weight: .medium))"))
+        #expect(refreshButtonSource.contains(".contentShape(Circle())"))
+        #expect(!refreshButtonSource.contains(".background("))
+        #expect(!refreshButtonSource.contains(".overlay {"))
+        #expect(weeklyScheduleWidgetSource.contains(".accessibilityLabel(\"刷新小组件\")"))
+        #expect(widgetSource.contains("private struct WeeklyScheduleCalendarDayColumn"))
+        #expect(widgetSource.contains("Text(\"今\")"))
+        #expect(!weeklyScheduleColumnSource.contains("todayColumnFill"))
+        #expect(!weeklyScheduleColumnSource.contains(".background(isToday ?"))
+        #expect(weeklyScheduleColumnSource.contains("GeometryReader { proxy in"))
+        #expect(weeklyScheduleColumnSource.contains("visibleEventRows(for: proxy.size.height)"))
+        #expect(weeklyScheduleColumnSource.contains("private let eventTextSize: CGFloat = 8"))
+        #expect(weeklyScheduleColumnSource.contains("private func visibleEventRows(for columnHeight: CGFloat) -> Int"))
+        #expect(weeklyScheduleColumnSource.contains("let overflowCount = day.events.count - visibleEvents.count"))
+        #expect(!weeklyScheduleColumnSource.contains("day.events.prefix(2)"))
+        #expect(eventPillSource.contains(".font(.system(size: eventTextSize, weight: .medium))"))
+        #expect(!eventPillSource.contains(".minimumScaleFactor"))
+        #expect(weeklyScheduleColumnSource.contains(".font(.system(size: eventTextSize, weight: .bold))"))
+        #expect(widgetSource.contains("private var weekdayStrip"))
+        #expect(widgetSource.contains("private var calendarColumns"))
+        #expect(widgetSource.contains("ForEach(entry.weeklyScheduleDays)"))
+        #expect(widgetSource.contains("Text(\"No schedules this week\")"))
+        #expect(widgetSource.contains("entry.completedSchedulesUseStrikethrough"))
+        #expect(appSource.contains(".onOpenURL { url in"))
+        #expect(appSource.contains("NotificationCenter.default.post(name: .meowPlannerExternalOpenURL, object: url)"))
+        #expect(rootViewSource.contains("handleExternalURL"))
+        #expect(rootViewSource.contains("WidgetConstants.newScheduleURL.host"))
+        #expect(rootViewSource.contains("calendarAddScheduleRequestToken = UUID()"))
+        #expect(calendarHomeSource.contains("newScheduleRequestToken: UUID?"))
+        #expect(calendarHomeSource.contains("openRequestedNewScheduleIfNeeded()"))
+    }
+
+    @Test("medium iPhone widget uses light and dark image backgrounds")
+    func mediumIPhoneWidgetUsesLightAndDarkImageBackgrounds() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+        let packageFile = root.appendingPathComponent("Package.swift")
+        let generatorFile = root.appendingPathComponent("script/generate_xcode_project.py")
+        let projectFile = root
+            .appendingPathComponent("MeowPlanner.xcodeproj")
+            .appendingPathComponent("project.pbxproj")
+        let lightBackgroundFile = root.appendingPathComponent("Resources/WidgetBackgroundLight.png")
+        let darkBackgroundFile = root.appendingPathComponent("Resources/WidgetBackgroundDark.png")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let packageSource = try String(contentsOf: packageFile, encoding: .utf8)
+        let generatorSource = try String(contentsOf: generatorFile, encoding: .utf8)
+        let projectSource = try String(contentsOf: projectFile, encoding: .utf8)
+        let weeklyScheduleWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleWidgetView",
+            to: "private struct WeeklyScheduleCalendarDayColumn"
+        ))
+
+        #expect(FileManager.default.fileExists(atPath: lightBackgroundFile.path))
+        #expect(FileManager.default.fileExists(atPath: darkBackgroundFile.path))
+        #expect(packageSource.contains(".copy(\"../../Resources/WidgetBackgroundLight.png\")"))
+        #expect(packageSource.contains(".copy(\"../../Resources/WidgetBackgroundDark.png\")"))
+        #expect(generatorSource.contains("WIDGET_BACKGROUND_RESOURCE_FILES"))
+        #expect(generatorSource.contains("\"Resources/WidgetBackgroundLight.png\""))
+        #expect(generatorSource.contains("\"Resources/WidgetBackgroundDark.png\""))
+        #expect(generatorSource.contains("resources_phase(\"MeowPlannerWidgetExtension-iOS\", [build_file(\"MeowPlannerWidgetExtension-iOS\", path) for path in WIDGET_BACKGROUND_RESOURCE_FILES])"))
+        #expect(projectSource.contains("Resources/WidgetBackgroundLight.png"))
+        #expect(projectSource.contains("Resources/WidgetBackgroundDark.png"))
+        #expect(weeklyScheduleWidgetSource.contains("WidgetScheduleBackgroundView()"))
+        #expect(weeklyScheduleWidgetSource.contains("weeklyScheduleCardFill"))
+        #expect(widgetSource.contains("WidgetBackgroundImageLoader.image(\n                    style: WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
+        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)"))
+        #expect(widgetSource.contains("isDark: isDarkBackground"))
+        #expect(widgetSource.contains("case .transparent:"))
+        #expect(widgetSource.contains("forResource: isDark ? \"WidgetBackgroundDark\" : \"WidgetBackgroundLight\""))
+        #expect(!widgetSource.contains("isDark: colorScheme == .dark"))
+        #expect(!widgetSource.contains("WidgetPalette.weeklyFallbackBackground(isDark: colorScheme == .dark)"))
+    }
+
     @Test("desktop widget uses snapshots and scheduled timeline entries")
     func desktopWidgetUsesSnapshotsAndScheduledTimelineEntries() throws {
         let root = try packageRoot()
@@ -1065,7 +1493,7 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains("WidgetPlannerSnapshotStore.loadFromFiles()"))
         #expect(!widgetSource.contains("makeSnapshotFromPersistentStore()"))
         #expect(!widgetSource.contains("WidgetPlannerPreferenceStore.showChineseCalendar"))
-        #expect(widgetSource.contains("let entry = makeEntry(date: Date(), snapshot: snapshot)"))
+        #expect(widgetSource.contains("let entry = makeEntry(date: Date(), snapshot: snapshot, configuration: configuration)"))
         #expect(widgetSource.contains("Timeline(entries: [entry], policy: .after(Self.nextRefreshDate(after: entry.date)))"))
         #expect(widgetSource.contains("private static func nextRefreshDate"))
         #expect(widgetSource.contains("min(shortRefreshDate, nextMidnightRefreshDate)"))
@@ -1458,9 +1886,12 @@ struct XcodeWidgetProjectTests {
 
         #expect(appSource.contains("AccountGatedRootView("))
         #expect(appSource.contains("AccountGatedSettingsView("))
+        #expect(appSource.contains("AppAppearancePreference.migrateLegacyValueIfNeeded()"))
         #expect(appSource.contains("@AppStorage(AppAppearancePreference.storageKey)"))
         #expect(appSource.contains(".preferredColorScheme(appAppearance.preferredColorScheme)"))
         #expect(appSource.contains("AppAppearancePreferenceApplicator.apply(appAppearance)"))
+        #expect(!appSource.contains("syncWidgetAppearancePreference("))
+        #expect(!appSource.contains("WidgetPlannerPreferenceStore.widgetAppearancePreference = preference"))
         #expect(appSource.contains(".onChange(of: appearanceID)"))
         #expect(appSource.contains("AppAppearancePreferenceApplicator.apply(AppAppearancePreference(storedValue: newValue))"))
         #expect(appSource.contains("NSApp.appearance"))
@@ -1474,6 +1905,7 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("AppAppearancePreference.system.rawValue"))
         #expect(settingsSource.contains("AppAppearancePreference.light.rawValue"))
         #expect(settingsSource.contains("AppAppearancePreference.dark.rawValue"))
+        #expect(!settingsSource.contains("syncWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue))"))
         #expect(themeSource.contains("static func adaptiveColor(light: Color, dark: Color) -> Color"))
         #expect(themeSource.contains("static let cocoa = adaptiveColor"))
         #expect(themeSource.contains("static let fufuPlannerBackground = adaptiveColor"))
@@ -1699,18 +2131,15 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("@Binding private var navigationPath: [SettingsDestination]"))
         #expect(settingsSource.contains("init(navigationPath: Binding<[SettingsDestination]> = .constant([]))"))
         #expect(settingsSource.contains("NavigationStack(path: $navigationPath)"))
-        #expect(accountSettingsPageSource.contains("settingsBackButton"))
-        #expect(!accountSettingsPageSource.contains("#if os(macOS)\n            settingsBackButton"))
-        #expect(personalizationSettingsPageSource.contains("settingsBackButton"))
-        #expect(!personalizationSettingsPageSource.contains("#if os(macOS)\n            settingsBackButton"))
-        #expect(settingsSource.contains("private var settingsBackButton: some View"))
-        #expect(settingsSource.contains("@Environment(\\.dismiss) private var dismissSettingsDestination"))
-        #expect(settingsSource.contains("navigationPath.removeLast()"))
-        #expect(settingsSource.contains("dismissSettingsDestination()"))
-        #expect(settingsSource.contains("Image(systemName: \"chevron.left\")"))
-        #expect(settingsSource.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
-        #expect(settingsSource.contains(".contentShape(Rectangle())"))
-        #expect(settingsSource.contains(".accessibilityLabel(settingsBackButtonTitle)"))
+        #expect(!accountSettingsPageSource.contains("settingsBackButton"))
+        #expect(!personalizationSettingsPageSource.contains("settingsBackButton"))
+        #expect(!settingsSource.contains("private var settingsBackButton: some View"))
+        #expect(!settingsSource.contains("settingsBackButtonTitle"))
+        #expect(!settingsSource.contains("@Environment(\\.dismiss) private var dismissSettingsDestination"))
+        #expect(!settingsSource.contains("navigationPath.removeLast()"))
+        #expect(!settingsSource.contains("dismissSettingsDestination()"))
+        #expect(!settingsSource.contains("Image(systemName: \"chevron.left\")"))
+        #expect(!settingsSource.contains(".accessibilityLabel(settingsBackButtonTitle)"))
     }
 
     @Test("macOS sidebar uses custom collapse and expand controls without overflow")
@@ -1966,12 +2395,124 @@ struct XcodeWidgetProjectTests {
         #expect(plannerSource.contains("public static func reorderedTodos("))
         #expect(todoHomeSource.contains(".draggable(todo.id.uuidString)"))
         #expect(todoHomeSource.contains(".dropDestination(for: String.self)"))
+        #expect(todoHomeSource.contains("todoEndDropTarget"))
+        #expect(todoHomeSource.contains(".padding(.bottom, 6)"))
+        #expect(!todoHomeSource.contains(".frame(height: 28)"))
+        #expect(!todoHomeSource.contains(".padding(.bottom, 28)"))
         #expect(todoHomeSource.contains("private func moveTodo"))
         #expect(todoHomeSource.contains("TodoListPlanner.reorderedTodos"))
         #expect(todoHomeSource.contains("TodoListPlanner.reorderedTodosAfterCompletionChange"))
         #expect(todoEditorSource.contains("defaultSortOrder"))
         #expect(todoEditorSource.contains("sortOrder: defaultSortOrder"))
         #expect(rootSource.contains("String(todo.sortOrder ?? -1)"))
+    }
+
+    @Test("todo header uses theme icon-only actions")
+    func todoHeaderUsesThemeIconOnlyActions() throws {
+        let root = try packageRoot()
+        let todoHomeFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift")
+
+        let todoHomeSource = try String(contentsOf: todoHomeFile, encoding: .utf8)
+        let headerSource = try sourceWindow(
+            in: todoHomeSource,
+            from: "private var header",
+            length: 3_400
+        )
+        let addTodoButtonSource = try sourceWindow(
+            in: headerSource,
+            from: "Image(systemName: \"plus\")",
+            length: 520
+        )
+
+        #expect(headerSource.contains("Image(systemName: \"pencil\")"))
+        #expect(headerSource.contains("Image(systemName: \"folder.badge.plus\")"))
+        #expect(headerSource.contains("Image(systemName: \"plus\")"))
+        #expect(addTodoButtonSource.contains(".frame(width: 48, height: 48)"))
+        #expect(!addTodoButtonSource.contains(".frame(width: 58, height: 58)"))
+        #expect(headerSource.contains(".accessibilityLabel(PlannerCopy.text(.editTodoGroup"))
+        #expect(headerSource.contains(".accessibilityLabel(PlannerCopy.text(.newTodoGroup"))
+        #expect(headerSource.contains(".accessibilityLabel(PlannerCopy.text(.addTodo"))
+        #expect(!headerSource.contains("Label(PlannerCopy.text(.editTodoGroup, language: appLanguage), systemImage"))
+        #expect(!headerSource.contains("Label(PlannerCopy.text(.newTodoGroup, language: appLanguage), systemImage"))
+        #expect(!headerSource.contains("Label(PlannerCopy.text(.addTodo, language: appLanguage), systemImage"))
+    }
+
+    @Test("iOS todo group editor uses themed scroll cards with horizontal colors and delete")
+    func iosTodoGroupEditorUsesThemedScrollCardsWithHorizontalColorsAndDelete() throws {
+        let root = try packageRoot()
+        let todoHomeFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift")
+        let plannerFile = root.appendingPathComponent("Sources/MeowPlannerCore/Services/TodoListPlanner.swift")
+        let copyFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+
+        let todoHomeSource = try String(contentsOf: todoHomeFile, encoding: .utf8)
+        let plannerSource = try String(contentsOf: plannerFile, encoding: .utf8)
+        let copySource = try String(contentsOf: copyFile, encoding: .utf8)
+        let iosGroupEditorSource = try #require(sourceBlock(
+            in: todoHomeSource,
+            from: "private var iosGroupEditorBody",
+            to: "    #endif"
+        ))
+        let paletteSource = try sourceWindow(
+            in: todoHomeSource,
+            from: "private var paletteColorControls",
+            length: 2_400
+        )
+
+        #expect(todoHomeSource.contains("@State private var showingDeleteTodoGroupConfirmation = false"))
+        #expect(todoHomeSource.contains("@Query(sort: \\TodoItem.createdAt) private var todos: [TodoItem]"))
+        #expect(todoHomeSource.contains("@State private var groupEditorPresentation: TodoGroupEditorPresentation?"))
+        #expect(todoHomeSource.contains(".sheet(item: $groupEditorPresentation)"))
+        #expect(todoHomeSource.contains("TodoGroupEditorPresentation.new"))
+        #expect(todoHomeSource.contains("TodoGroupEditorPresentation.edit("))
+        #expect(todoHomeSource.contains("private var desktopGroupEditorBody"))
+        #expect(iosGroupEditorSource.contains("ScrollView"))
+        #expect(iosGroupEditorSource.contains("iosGroupEditorCard"))
+        #expect(paletteSource.contains("ScrollView(.horizontal, showsIndicators: false)"))
+        #expect(iosGroupEditorSource.contains("safeAreaInset(edge: .bottom)"))
+        #expect(iosGroupEditorSource.contains("iosGroupBottomSaveBar"))
+        #expect(iosGroupEditorSource.contains("iosDeleteGroupButton"))
+        #expect(!iosGroupEditorSource.contains("Form {"))
+        #expect(todoHomeSource.contains(".confirmationDialog(PlannerCopy.text(.deleteTodoGroup"))
+        #expect(todoHomeSource.contains("private func deleteGroup()"))
+        #expect(todoHomeSource.contains("TodoListPlanner.moveTodosToDefaultGroup"))
+        #expect(todoHomeSource.contains("modelContext.delete(group)"))
+        #expect(plannerSource.contains("public static func moveTodosToDefaultGroup"))
+        #expect(copySource.contains("case deleteTodoGroup"))
+        #expect(copySource.contains(".deleteTodoGroup: \"Delete Group\""))
+        #expect(copySource.contains(".deleteTodoGroup: \"删除组\""))
+    }
+
+    @Test("iOS todo editor uses themed scroll cards with bottom save and delete")
+    func iosTodoEditorUsesThemedScrollCardsWithBottomSaveAndDelete() throws {
+        let root = try packageRoot()
+        let todoEditorFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift")
+        let copyFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+
+        let todoEditorSource = try String(contentsOf: todoEditorFile, encoding: .utf8)
+        let copySource = try String(contentsOf: copyFile, encoding: .utf8)
+        let iosEditorSource = try sourceWindow(
+            in: todoEditorSource,
+            from: "private var iosEditorBody",
+            length: 4_600
+        )
+
+        #expect(todoEditorSource.contains("@State private var showingDeleteTodoConfirmation = false"))
+        #expect(todoEditorSource.contains("private var desktopEditorBody"))
+        #expect(todoEditorSource.contains("private var iosEditorTitleFont: Font"))
+        #expect(todoEditorSource.contains("private var iosEditorRowFont: Font"))
+        #expect(todoEditorSource.contains("private var iosEditorActionFont: Font"))
+        #expect(iosEditorSource.contains("ScrollView"))
+        #expect(iosEditorSource.contains("iosEditorCard"))
+        #expect(iosEditorSource.contains("safeAreaInset(edge: .bottom)"))
+        #expect(iosEditorSource.contains("iosBottomSaveBar"))
+        #expect(iosEditorSource.contains("iosDeleteTodoButton"))
+        #expect(!iosEditorSource.contains("Form {"))
+        #expect(todoEditorSource.contains(".confirmationDialog(PlannerCopy.text(.deleteTodo"))
+        #expect(todoEditorSource.contains("private func deleteTodo()"))
+        #expect(todoEditorSource.contains("modelContext.delete(todo)"))
+        #expect(copySource.contains("case deleteTodo"))
+        #expect(copySource.contains(".deleteTodo: \"Delete Todo\""))
+        #expect(copySource.contains(".deleteTodo: \"删除待办\""))
     }
 
     @Test("settings header localizes FuFu planner subtitle")
@@ -2213,6 +2754,131 @@ struct XcodeWidgetProjectTests {
         #expect(!source.contains("Image(systemName: \"star\""))
     }
 
+    @Test("iOS course timetable uses compact top navigation and responsive grid metrics")
+    func iOSCourseTimetableUsesCompactTopNavigationAndResponsiveGridMetrics() throws {
+        let root = try packageRoot()
+        let rootFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let shellFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift")
+        let timetableFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
+
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+        let shellSource = try String(contentsOf: shellFile, encoding: .utf8)
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
+        let timetableCaseSource = try sourceWindow(
+            in: rootSource,
+            from: "case .timetable:",
+            length: 260
+        )
+        let gridSource = try sourceWindow(
+            in: timetableSource,
+            from: "private struct CourseTimetableGridView",
+            length: 26_000
+        )
+
+        #expect(rootSource.contains("@StateObject private var iosTimetableNavigationState = IOSTimetableNavigationState()"))
+        #expect(timetableCaseSource.contains("CourseTimetableView(iosNavigationState: iosTimetableNavigationState)"))
+        #expect(shellSource.contains("final class IOSTimetableNavigationState"))
+        #expect(shellSource.contains("timetableNavigationBarCenter"))
+        #expect(shellSource.contains("selection == .timetable"))
+        #expect(gridSource.contains("@ObservedObject var iosNavigationState: IOSTimetableNavigationState"))
+        #expect(gridSource.contains("syncIOSTimetableNavigationState()"))
+        #expect(gridSource.contains("private var usesCompactLayout: Bool"))
+        #expect(gridSource.contains("private func dayColumnWidth"))
+        #expect(gridSource.contains("let dayWidth = dayColumnWidth"))
+        #expect(!gridSource.contains("max(60,"))
+    }
+
+    @Test("iOS course timetable picker separates timetable switching from week selection")
+    func iOSCourseTimetablePickerSeparatesTimetableSwitchingFromWeekSelection() throws {
+        let root = try packageRoot()
+        let timetableFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
+        let gridSource = try sourceWindow(
+            in: timetableSource,
+            from: "private struct CourseTimetableGridView",
+            length: 22_000
+        )
+
+        #expect(gridSource.contains("@State private var showingTimetableSwitcher = false"))
+        #expect(gridSource.contains("weekPickerTimetableSwitchButton"))
+        #expect(gridSource.contains("showingTimetableSwitcher = true"))
+        #expect(gridSource.contains("timetableSwitcherSheet"))
+        #expect(gridSource.contains("selectedTimetableID = option.id"))
+        #expect(gridSource.contains("selectedWeek = 1"))
+        #expect(gridSource.contains("onCreateTimetable()"))
+    }
+
+    @Test("iOS course timetable week picker keeps week labels on one line")
+    func iOSCourseTimetableWeekPickerKeepsWeekLabelsOnOneLine() throws {
+        let root = try packageRoot()
+        let timetableFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
+        let weekPickerSource = try sourceWindow(
+            in: timetableSource,
+            from: "private var weekPickerSheet",
+            length: 5_500
+        )
+
+        #expect(weekPickerSource.contains("weekPickerTitleFont"))
+        #expect(weekPickerSource.contains("weekPickerDateFont"))
+        #expect(weekPickerSource.contains("Text(weekTitle(for: week))"))
+        #expect(weekPickerSource.contains(".lineLimit(1)"))
+        #expect(weekPickerSource.contains(".minimumScaleFactor(0.62)"))
+        #expect(weekPickerSource.contains("GridItem(.flexible(minimum: 42), spacing: 10)"))
+    }
+
+    @Test("iOS horizontal swipe detector switches weeks with a real drag gesture")
+    func iOSHorizontalSwipeDetectorSwitchesWeeksWithARealDragGesture() throws {
+        let root = try packageRoot()
+        let themeFile = root.appendingPathComponent("Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift")
+        let timetableFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
+
+        let themeSource = try String(contentsOf: themeFile, encoding: .utf8)
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
+        let iOSDetectorSource = try sourceWindow(
+            in: themeSource,
+            from: "#else\nstruct HorizontalSwipeScrollDetector: View",
+            length: 1_600
+        )
+
+        #expect(iOSDetectorSource.contains("DragGesture(minimumDistance: threshold"))
+        #expect(iOSDetectorSource.contains("let horizontal = value.translation.width"))
+        #expect(iOSDetectorSource.contains("guard abs(horizontal) > abs(vertical)"))
+        #expect(iOSDetectorSource.contains("onSwipe(horizontal)"))
+        #expect(timetableSource.contains("HorizontalSwipeScrollDetector { horizontal in"))
+        #expect(timetableSource.contains("switchWeek(by: horizontal < 0 ? 1 : -1)"))
+    }
+
+    @Test("iOS course editor uses themed responsive sheet layout")
+    func iOSCourseEditorUsesThemedResponsiveSheetLayout() throws {
+        let root = try packageRoot()
+        let timetableFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
+        let courseEditorSource = try sourceWindow(
+            in: timetableSource,
+            from: "private struct CourseEditorView",
+            length: 10_000
+        )
+        let iosEditorSource = try sourceWindow(
+            in: courseEditorSource,
+            from: "private var iosEditorBody",
+            length: 8_000
+        )
+
+        #expect(courseEditorSource.contains("@ViewBuilder"))
+        #expect(courseEditorSource.contains("private var platformEditorBody"))
+        #expect(courseEditorSource.contains("private var iosEditorTitleFont: Font"))
+        #expect(iosEditorSource.contains("NavigationStack"))
+        #expect(iosEditorSource.contains("ScrollView"))
+        #expect(iosEditorSource.contains("iosEditorCard"))
+        #expect(iosEditorSource.contains("safeAreaInset(edge: .bottom)"))
+        #expect(iosEditorSource.contains("iosBottomSaveBar"))
+        #expect(iosEditorSource.contains(".presentationDetents([.large])"))
+        #expect(iosEditorSource.contains("LazyVGrid(columns: iosColorColumns"))
+        #expect(iosEditorSource.contains("LazyVGrid(columns: iosWeekdayColumns"))
+        #expect(!iosEditorSource.contains(".frame(minWidth: 560"))
+    }
+
     @Test("horizontal swipe detector fires once per gesture and ignores momentum")
     func horizontalSwipeDetectorFiresOncePerGestureAndIgnoresMomentum() throws {
         let root = try packageRoot()
@@ -2308,6 +2974,118 @@ struct XcodeWidgetProjectTests {
         #expect(!rootSource.contains("private let earlyMorningHours = Array(0..<6)"))
         #expect(!rootSource.contains("Text(\"0:00-6:00\")"))
         #expect(!rootSource.contains("dayScheduleSection(for:"))
+    }
+
+    @Test("iOS schedule agenda keeps compact fixed controls above a scrollable timeline")
+    func iosScheduleAgendaKeepsCompactFixedControlsAboveScrollableTimeline() throws {
+        let root = try packageRoot()
+        let rootSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift"),
+            encoding: .utf8
+        )
+        let scheduleBodySource = try sourceWindow(
+            in: rootSource,
+            from: "private var schedulePageContent",
+            length: 2_700
+        )
+        let scheduleIOSHeaderSource = try #require(sourceBlock(
+            in: rootSource,
+            from: "    private var scheduleHeader: some View {\n        #if os(iOS)",
+            to: "        #else"
+        ))
+        let dateButtonSource = try sourceWindow(
+            in: rootSource,
+            from: "private var scheduleDatePickerButton",
+            length: 1_500
+        )
+        let timeGridSource = try sourceWindow(
+            in: rootSource,
+            from: "private struct ScheduleTimeGridView",
+            length: 6_000
+        )
+        let earlyMorningSource = try sourceWindow(
+            in: rootSource,
+            from: "private var earlyMorningToggle",
+            length: 900
+        )
+
+        #expect(scheduleBodySource.contains("#if os(iOS)"))
+        #expect(!scheduleBodySource.contains("ScrollView(.vertical, showsIndicators: false)"))
+        #expect(scheduleBodySource.contains("schedulePageContent"))
+        #expect(scheduleBodySource.contains("scheduleTimelineContent"))
+        #expect(!scheduleBodySource.contains(".padding(.bottom, 10)"))
+        #expect(scheduleBodySource.contains(".padding()\n            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"))
+        #expect(scheduleBodySource.contains("#else"))
+        #expect(scheduleBodySource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"))
+        #expect(scheduleIOSHeaderSource.contains("scheduleModePicker"))
+        #expect(!scheduleIOSHeaderSource.contains("FuFuAssetImage(size: 44)"))
+        #expect(!scheduleIOSHeaderSource.contains("scheduleDatePickerButton"))
+        #expect(dateButtonSource.contains(".lineLimit(1)"))
+        #expect(dateButtonSource.contains(".font(scheduleIOSDateTitleFont)"))
+        #expect(dateButtonSource.contains(".font(scheduleIOSDateSubtitleFont)"))
+        #expect(dateButtonSource.contains(".layoutPriority(1)"))
+        #expect(timeGridSource.contains("private var fixedTimelineHeader"))
+        #expect(timeGridSource.contains("private var scrollableTimelineRows"))
+        #expect(timeGridSource.contains("var usesOuterVerticalScroll: Bool = false"))
+        #expect(timeGridSource.contains("if usesOuterVerticalScroll"))
+        #expect(timeGridSource.contains("ScrollView(.vertical)"))
+        #expect(timeGridSource.contains("timelineDayWidth"))
+        #expect(timeGridSource.contains("mode == .weekly"))
+        #expect(!timeGridSource.contains("max(80,"))
+        #expect(earlyMorningSource.contains("frame(minWidth: 96, alignment: .leading)"))
+        #expect(earlyMorningSource.contains(".lineLimit(1)"))
+        #expect(!earlyMorningSource.contains(".frame(width: timeColumnWidth, alignment: .leading)"))
+    }
+
+    @Test("iOS schedule reuses calendar-style top date navigation with a day wheel picker")
+    func iOSScheduleReusesCalendarStyleTopDateNavigationWithDayWheelPicker() throws {
+        let root = try packageRoot()
+        let rootViewFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let shellFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift")
+        let calendarHomeFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+
+        let rootSource = try String(contentsOf: rootViewFile, encoding: .utf8)
+        let shellSource = try String(contentsOf: shellFile, encoding: .utf8)
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
+        let scheduleCaseSource = try sourceWindow(
+            in: rootSource,
+            from: "case .schedule:",
+            length: 420
+        )
+        let scheduleSource = try sourceWindow(
+            in: rootSource,
+            from: "private struct ScheduleAgendaView",
+            length: 13_500
+        )
+        let scheduleIOSHeaderSource = try #require(sourceBlock(
+            in: rootSource,
+            from: "    private var scheduleHeader: some View {\n        #if os(iOS)",
+            to: "        #else"
+        ))
+
+        #expect(scheduleCaseSource.contains("ScheduleAgendaView(iosNavigationState: iosCalendarNavigationState)"))
+        #expect(scheduleSource.contains("@ObservedObject private var iosNavigationState: IOSCalendarNavigationState"))
+        #expect(scheduleSource.contains("syncIOSScheduleNavigationState()"))
+        #expect(scheduleSource.contains("displayedMonthTitle: scheduleIOSNavigationTitle"))
+        #expect(scheduleSource.contains("resetToToday: { resetScheduleDateToToday() }"))
+        #expect(scheduleSource.contains("presentMonthPicker: { presentIOSScheduleDatePicker() }"))
+        #expect(scheduleSource.contains("IOSScheduleWheelDatePickerSheet("))
+        #expect(scheduleSource.contains(".presentationDetents([.height(320)])"))
+        #expect(scheduleSource.contains("private var scheduleIOSNavigationTitle"))
+        #expect(rootSource.contains("String(format: \"%04d.%02d.%02d\""))
+        #expect(rootSource.contains("Picker(\"Day\", selection: $selectedDay)"))
+        #expect(rootSource.contains("@State private var selectedDay: Int"))
+        #expect(rootSource.contains("private var daysInSelectedMonth"))
+        #expect(rootSource.contains("private func dayText(for day: Int)"))
+        #expect(!scheduleSource.contains("iosNavigationState.clear()"))
+        #expect(!calendarHomeSource.contains("iosNavigationState.clear()"))
+        #expect(scheduleIOSHeaderSource.contains("scheduleModePicker"))
+        #expect(!scheduleIOSHeaderSource.contains("FuFuAssetImage(size: 44)"))
+        #expect(!scheduleIOSHeaderSource.contains("scheduleDatePickerButton"))
+        #expect(shellSource.contains("if selection == .calendar || selection == .schedule"))
+        #expect(shellSource.contains("if selection == .calendar {\n                calendarScheduleDisplayMenu"))
+        #expect(calendarHomeSource.contains("IOSCalendarWheelDatePickerSheet("))
+        #expect(!calendarHomeSource.contains("Picker(\"Day\", selection: $selectedDay)"))
     }
 
     @Test("settings exposes week start preference for app and widget")
@@ -2725,8 +3503,8 @@ struct XcodeWidgetProjectTests {
         #expect(!dayAgendaSource.contains(".background(.regularMaterial"))
     }
 
-    @Test("calendar floating add button scales with window and keeps equal edge limits")
-    func calendarFloatingAddButtonScalesWithWindowAndKeepsEqualEdgeLimits() throws {
+    @Test("calendar floating add button scales with window and clamps above bottom navigation")
+    func calendarFloatingAddButtonScalesWithWindowAndClampsAboveBottomNavigation() throws {
         let root = try packageRoot()
         let homeFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
@@ -2735,9 +3513,14 @@ struct XcodeWidgetProjectTests {
 
         #expect(homeSource.contains("let buttonSize = floatingAddButtonSize(for: proxy.size)"))
         #expect(homeSource.contains("let inset = calendarFloatingAddButtonEdgeInset(for: buttonSize)"))
+        #expect(homeSource.contains("let bottomInset = calendarFloatingAddButtonBottomInset(for: buttonSize)"))
         #expect(homeSource.contains("floatingAddScheduleButton(size: buttonSize)"))
         #expect(homeSource.contains("private func floatingAddButtonSize(for availableSize: CGSize) -> CGFloat"))
         #expect(homeSource.contains("private func calendarFloatingAddButtonEdgeInset(for buttonSize: CGFloat) -> CGFloat"))
+        #expect(homeSource.contains("private func calendarFloatingAddButtonBottomInset(for buttonSize: CGFloat) -> CGFloat"))
+        #expect(!homeSource.contains("IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
+        #expect(homeSource.contains("private func calendarFloatingAddButtonBottomInset(for buttonSize: CGFloat) -> CGFloat {\n        calendarFloatingAddButtonEdgeInset(for: buttonSize)\n    }"))
+        #expect(!homeSource.contains("calendarFloatingAddButtonEdgeInset(for: buttonSize)\n            + iosCalendarBottomReserve"))
         #expect(homeSource.contains("private func floatingAddScheduleButton(size: CGFloat) -> some View"))
         #expect(homeSource.contains("let shortSide = min(availableSize.width, availableSize.height)"))
         #expect(homeSource.contains("let iconSize = size * 24 / 62"))
@@ -2934,7 +3717,7 @@ struct XcodeWidgetProjectTests {
         #expect(!homeSource.contains("fufuBackgroundWatermark("))
         #expect(focusSource.contains("MeowPlannerTheme.plannerGradient"))
         #expect(focusSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity"))
-        #expect(settingsSource.contains("PlannerPawStarBackground(gradientOpacity: 0.82)"))
+        #expect(settingsSource.contains("#if os(iOS)\n        PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(settingsSource.contains(".scrollContentBackground(.hidden)"))
         #expect(settingsSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity"))
     }
@@ -3037,7 +3820,7 @@ struct XcodeWidgetProjectTests {
         #expect(calendarHomeSource.contains("@State private var monthTransitionDirection = 1"))
         #expect(calendarHomeSource.contains("@State private var showingIOSDatePicker = false"))
         #expect(calendarHomeSource.contains("@ObservedObject private var iosNavigationState: IOSCalendarNavigationState"))
-        #expect(calendarHomeSource.contains("init(iosNavigationState: IOSCalendarNavigationState)"))
+        #expect(calendarHomeSource.contains("init(iosNavigationState: IOSCalendarNavigationState, newScheduleRequestToken: UUID? = nil)"))
         #expect(calendarHomeSource.contains("syncIOSCalendarNavigationState()"))
         #expect(calendarHomeSource.contains("iosNavigationState.configure("))
         #expect(calendarHomeSource.contains("displayedMonthTitle: iosDisplayedMonthTitle"))
@@ -3065,9 +3848,11 @@ struct XcodeWidgetProjectTests {
         #expect(calendarHomeSource.contains("let availableGridHeight = availableSize.height - reservedHeight"))
         #expect(calendarHomeSource.contains("return max(1, availableGridHeight)"))
         #expect(calendarHomeSource.contains("private let iosCalendarHorizontalPadding: CGFloat = 0"))
+        #expect(calendarHomeSource.contains("private let iosCalendarBottomReserve: CGFloat = 0"))
+        #expect(!calendarHomeSource.contains("-IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(calendarHomeSource.contains(".padding(.horizontal, iosCalendarHorizontalPadding)"))
         #expect(!iosFullScreenCalendarSource.contains(".padding(.horizontal, 12)"))
-        #expect(calendarHomeSource.contains("let bottomInset = inset"))
+        #expect(calendarHomeSource.contains("let bottomInset = calendarFloatingAddButtonBottomInset(for: buttonSize)"))
         #expect(!calendarHomeSource.contains("safeAreaInsets.bottom - 12"))
         #expect(!calendarHomeSource.contains("+ iosCalendarToolbarHeight"))
         #expect(calendarHomeSource.contains(".frame(height: iosMonthGridHeight"))
@@ -3106,6 +3891,9 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains("private func iosContinuousMonthPager(proxy: GeometryProxy)"))
         #expect(monthGridSource.contains(".modifier(IOSMonthPagerScrollTargetBehavior())"))
         #expect(monthGridSource.contains("private func updateDisplayedMonthFromIOSScrollPosition(_ month: Date)"))
+        #expect(!monthGridSource.contains("private let iosAdjacentMonthPeek"))
+        #expect(monthGridSource.contains("let pageWidth = max(1, proxy.size.width)"))
+        #expect(!monthGridSource.contains(".contentMargins(.horizontal"))
         #expect(monthGridSource.contains(".id(displayedMonth)"))
         #expect(monthGridSource.contains(".offset(x: monthDragTranslation)"))
         #expect(monthGridSource.contains("private var monthGridTransition: AnyTransition"))
@@ -3135,6 +3923,15 @@ struct XcodeWidgetProjectTests {
         #expect(monthGridSource.contains(".minimumScaleFactor(plannerItemMinimumScaleFactor)"))
         #expect(monthGridSource.contains(".allowsTightening(true)"))
         #expect(monthGridSource.contains("private var chineseCalendarFont"))
+        #expect(monthGridSource.contains("private func shouldShowDayContent(_ day: MonthPlannerDay) -> Bool"))
+        #expect(monthGridSource.contains("#if os(iOS)\n        return day.isInSelectedMonth"))
+        #expect(monthGridSource.contains("let shouldShowContent = shouldShowDayContent(day)"))
+        #expect(monthGridSource.contains("guard shouldShowContent else {\n                return\n            }\n            selectDate(day.date)"))
+        #expect(monthGridSource.contains("if shouldShowContent {\n                        dayNumberLabel"))
+        #expect(monthGridSource.contains("if showChineseCalendar {"))
+        #expect(monthGridSource.contains("if shouldShowContent {\n                    plannerItemList(day, height: plannerItemListHeight, visibleDays: visibleDays)\n                }"))
+        #expect(monthGridSource.contains(".accessibilityHidden(!shouldShowContent)"))
+        #expect(monthGridSource.contains(".zIndex(shouldShowContent && dayStartsMultiDaySpan(day) ? 2 : 0)"))
         #expect(!monthGridSource.contains(".frame(minHeight: 58, alignment: .top)"))
 
         let agendaRowSource = try sourceWindow(
@@ -3250,6 +4047,8 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift")
         let settingsFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let shellFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift")
         let themeFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift")
 
@@ -3259,6 +4058,7 @@ struct XcodeWidgetProjectTests {
         let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
         let monthGridSource = try String(contentsOf: monthGridFile, encoding: .utf8)
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let shellSource = try String(contentsOf: shellFile, encoding: .utf8)
         let themeSource = try String(contentsOf: themeFile, encoding: .utf8)
         let floatingAddButtonStart = try #require(homeSource.range(of: "private func floatingAddScheduleButton"))
         let floatingAddButtonEnd = try #require(
@@ -3294,8 +4094,10 @@ struct XcodeWidgetProjectTests {
         #expect(project.contains("Resources/iOSBackground.png"))
         #expect(project.contains("Resources/iOSBackgroundDark.png"))
         #expect(project.contains("Resources/BackgroundDark.png"))
-        #expect(calendarBackgroundSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(shellSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(calendarBackgroundSource.contains("#if os(iOS)\n            Color.clear"))
         #expect(calendarBackgroundSource.contains("#else\n            PlannerImageBackground(gradientOpacity: 0.86)"))
+        #expect(!homeSource.contains("#if os(iOS)\n            PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(!homeSource.contains("PlannerPawStarBackground(gradientOpacity: 0.86)"))
         #expect(themeSource.contains("struct PlannerIOSImageBackground"))
         #expect(iosImageBackgroundSource.contains("@Environment(\\.colorScheme)"))
@@ -3304,7 +4106,8 @@ struct XcodeWidgetProjectTests {
         #expect(themeSource.contains("colorScheme == .dark ? \"BackgroundDark\" : \"Background\""))
         #expect(themeSource.contains("forResource: backgroundResourceName"))
         #expect(themeSource.contains("PlannerPawStarBackground(gradientOpacity: gradientOpacity)"))
-        #expect(settingsSource.contains("PlannerPawStarBackground(gradientOpacity: 0.82)"))
+        #expect(settingsSource.contains("#if os(iOS)\n        PlannerIOSImageBackground(gradientOpacity: 0.86)"))
+        #expect(!settingsSource.contains("PlannerPawStarBackground(gradientOpacity: 0.82)"))
         #expect(homeSource.contains("floatingAddScheduleButton"))
         #expect(themeSource.contains("struct PlannerPawStarBackground"))
         #expect(themeSource.contains("pawprint.fill"))
@@ -3618,6 +4421,54 @@ struct XcodeWidgetProjectTests {
         #expect(!moveMonthSource.contains("selectedDate = calendar.date(byAdding: .month"))
     }
 
+    @Test("macOS month calendar fufu avatar triggers cloud refresh without a visible badge")
+    func macOSMonthCalendarFufuAvatarTriggersCloudRefreshWithoutVisibleBadge() throws {
+        let root = try packageRoot()
+        let rootFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
+        let calendarHomeFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+        let syncServiceFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift")
+        let languageFile = root
+            .appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
+
+        let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
+        let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
+        let syncServiceSource = try String(contentsOf: syncServiceFile, encoding: .utf8)
+        let languageSource = try String(contentsOf: languageFile, encoding: .utf8)
+        let macOSCalendarSource = try sourceWindow(
+            in: rootSource,
+            from: "#else\n                CalendarHomeView(",
+            length: 360
+        )
+        let iosCalendarSource = try sourceWindow(
+            in: rootSource,
+            from: "#if os(iOS)\n                CalendarHomeView(",
+            length: 260
+        )
+        let headerSource = try #require(sourceBlock(
+            in: calendarHomeSource,
+            from: "    private var header: some View {",
+            to: "\n    }\n\n    @ViewBuilder"
+        ))
+
+        #expect(syncServiceSource.contains("func syncImmediately(for userID: String?"))
+        #expect(rootSource.contains("private func refreshCalendarFromCloud()"))
+        #expect(rootSource.contains("syncImmediately(for: accountStore.currentProfile?.remoteUserID"))
+        #expect(macOSCalendarSource.contains("onCloudRefresh: refreshCalendarFromCloud"))
+        #expect(!iosCalendarSource.contains("onCloudRefresh"))
+        #expect(calendarHomeSource.contains("private let onCloudRefresh: (() -> Void)?"))
+        #expect(headerSource.contains("Button(action: refreshFromCloud)"))
+        #expect(headerSource.contains("FuFuAssetImage(size: 58)"))
+        #expect(!headerSource.contains("arrow.clockwise.circle.fill"))
+        #expect(headerSource.contains(".help(PlannerCopy.text(.refreshCalendarFromCloud"))
+        #expect(headerSource.contains(".accessibilityLabel(PlannerCopy.text(.refreshCalendarFromCloud"))
+        #expect(languageSource.contains("case refreshCalendarFromCloud"))
+        #expect(languageSource.contains(".refreshCalendarFromCloud: \"Sync latest cloud content\""))
+        #expect(languageSource.contains(".refreshCalendarFromCloud: \"同步最新云端内容\""))
+    }
+
     @Test("event editor manages palette colors from a popup editor")
     func eventEditorSupportsCustomColorPickerAndHexInput() throws {
         let root = try packageRoot()
@@ -3799,4 +4650,29 @@ struct XcodeWidgetProjectTests {
 
         return String(source[startRange.lowerBound..<endRange.lowerBound])
     }
+
+    private func pngDimensions(at url: URL) throws -> CGSizePixels {
+        let data = try Data(contentsOf: url)
+        let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+
+        guard data.count >= 24, data.prefix(8) == pngSignature else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let width = Int(data[16]) << 24
+            | Int(data[17]) << 16
+            | Int(data[18]) << 8
+            | Int(data[19])
+        let height = Int(data[20]) << 24
+            | Int(data[21]) << 16
+            | Int(data[22]) << 8
+            | Int(data[23])
+
+        return CGSizePixels(width: width, height: height)
+    }
+}
+
+private struct CGSizePixels: Equatable {
+    var width: Int
+    var height: Int
 }

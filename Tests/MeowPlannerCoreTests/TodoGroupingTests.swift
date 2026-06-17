@@ -162,6 +162,28 @@ struct TodoGroupingTests {
         #expect(options.map(\.filter) == [.all, .group(nil), .group(life.id), .group(homework.id)])
     }
 
+    @Test("deleting a todo group moves its todos to the default group")
+    func deletingTodoGroupMovesTodosToDefaultGroup() throws {
+        let deletedAt = try date("2026-06-02 18:00")
+        let homework = TodoGroup(name: "Homework", createdAt: try date("2026-06-02 09:00"))
+        let life = TodoGroup(name: "Life", createdAt: try date("2026-06-02 10:00"))
+        let homeworkTodo = TodoItem(title: "Homework task", groupID: homework.id, createdAt: try date("2026-06-02 11:00"))
+        let lifeTodo = TodoItem(title: "Life task", groupID: life.id, createdAt: try date("2026-06-02 12:00"))
+        let defaultTodo = TodoItem(title: "Default task", createdAt: try date("2026-06-02 13:00"))
+
+        let movedTodos = TodoListPlanner.moveTodosToDefaultGroup(
+            [homeworkTodo, lifeTodo, defaultTodo],
+            from: homework.id,
+            at: deletedAt
+        )
+
+        #expect(movedTodos.map(\.title) == ["Homework task"])
+        #expect(homeworkTodo.groupID == nil)
+        #expect(homeworkTodo.updatedAt == deletedAt)
+        #expect(lifeTodo.groupID == life.id)
+        #expect(defaultTodo.groupID == nil)
+    }
+
     private func date(_ value: String) throws -> Date {
         let formatter = DateFormatter()
         formatter.calendar = calendar

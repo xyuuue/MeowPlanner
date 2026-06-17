@@ -49,7 +49,6 @@ struct MonthGridView: View {
     private let iosDayContentSpacing: CGFloat = 1
     private let iosPlannerItemRowHeight: CGFloat = 18
     private let iosPlannerItemListSpacing: CGFloat = 2
-    private let iosAdjacentMonthPeek: CGFloat = 18
     private let minimumVisiblePlannerItemRows: CGFloat = 1
 
     private var multiDaySegmentHeight: CGFloat {
@@ -421,7 +420,7 @@ struct MonthGridView: View {
 
     #if os(iOS)
     private func iosContinuousMonthPager(proxy: GeometryProxy) -> some View {
-        let pageWidth = max(1, proxy.size.width - iosAdjacentMonthPeek * 2)
+        let pageWidth = max(1, proxy.size.width)
         let pagerCenterMonth = iosPagerAnchorMonth ?? displayedMonth
 
         return ScrollView(.horizontal, showsIndicators: false) {
@@ -444,7 +443,6 @@ struct MonthGridView: View {
             }
             .scrollTargetLayout()
         }
-        .contentMargins(.horizontal, iosAdjacentMonthPeek, for: .scrollContent)
         .modifier(IOSMonthPagerScrollTargetBehavior())
         .scrollPosition(id: $iosScrollPosition)
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -657,24 +655,32 @@ struct MonthGridView: View {
     ) -> some View {
         let isSelected = calendar.isDate(day.date, inSameDayAs: selectedDate)
         let isToday = calendar.isDateInToday(day.date)
+        let shouldShowContent = shouldShowDayContent(day)
 
         return Button {
+            guard shouldShowContent else {
+                return
+            }
             selectDate(day.date)
         } label: {
             VStack(alignment: .leading, spacing: dayContentSpacing) {
                 HStack(alignment: .firstTextBaseline, spacing: dayDateHeaderSpacing) {
-                    dayNumberLabel(day.date, isToday: isToday, isSelected: isSelected, isInSelectedMonth: day.isInSelectedMonth)
+                    if shouldShowContent {
+                        dayNumberLabel(day.date, isToday: isToday, isSelected: isSelected, isInSelectedMonth: day.isInSelectedMonth)
 
-                    if showChineseCalendar {
-                        chineseCalendarBadge(day.chineseCalendarInfo)
-                            .layoutPriority(0)
+                        if showChineseCalendar {
+                            chineseCalendarBadge(day.chineseCalendarInfo)
+                                .layoutPriority(0)
+                        }
                     }
 
                     Spacer(minLength: 0)
                 }
                 .frame(height: dayDateHeaderHeight, alignment: .top)
 
-                plannerItemList(day, height: plannerItemListHeight, visibleDays: visibleDays)
+                if shouldShowContent {
+                    plannerItemList(day, height: plannerItemListHeight, visibleDays: visibleDays)
+                }
 
                 Spacer(minLength: 0)
             }
@@ -684,11 +690,15 @@ struct MonthGridView: View {
             .frame(maxWidth: .infinity)
             .background(dayCellGridBackground(isSelected: isSelected, isToday: isToday, isInSelectedMonth: day.isInSelectedMonth, isLastColumn: isLastColumn))
         }
-        .zIndex(dayStartsMultiDaySpan(day) ? 2 : 0)
+        .zIndex(shouldShowContent && dayStartsMultiDaySpan(day) ? 2 : 0)
         .buttonStyle(.plain)
+        .accessibilityHidden(!shouldShowContent)
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
+                    guard shouldShowContent else {
+                        return
+                    }
                     guard !suppressNextDayDoubleClick else {
                         suppressNextDayDoubleClick = false
                         return
@@ -698,6 +708,14 @@ struct MonthGridView: View {
                     onDayDoubleClick(day.date)
             }
         )
+    }
+
+    private func shouldShowDayContent(_ day: MonthPlannerDay) -> Bool {
+        #if os(iOS)
+        return day.isInSelectedMonth
+        #else
+        return true
+        #endif
     }
 
     private func plannerItemList(_ day: MonthPlannerDay, height: CGFloat, visibleDays: [MonthPlannerDay]) -> some View {

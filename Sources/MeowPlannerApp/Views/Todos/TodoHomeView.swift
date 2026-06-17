@@ -11,8 +11,7 @@ struct TodoHomeView: View {
     @State private var selectedFilter: TodoGroupFilter = .all
     @State private var showingTodoEditor = false
     @State private var editingTodo: TodoItem?
-    @State private var showingGroupEditor = false
-    @State private var editingGroup: TodoGroup?
+    @State private var groupEditorPresentation: TodoGroupEditorPresentation?
     @State private var dropTargetTodoID: UUID?
 
     var body: some View {
@@ -69,16 +68,9 @@ struct TodoHomeView: View {
                                 }
                             }
 
-                            Color.clear
-                                .frame(height: 28)
-                                .dropDestination(for: String.self) { itemIdentifiers, _ in
-                                    guard let draggedIdentifier = itemIdentifiers.first else {
-                                        return false
-                                    }
-                                    return moveTodo(draggedIdentifier: draggedIdentifier, before: nil)
-                                }
+                            todoEndDropTarget
                         }
-                        .padding(.bottom, 28)
+                        .padding(.bottom, 6)
                     }
                     .verticalPageScrollOnly()
                 }
@@ -107,9 +99,20 @@ struct TodoHomeView: View {
                 )
             }
         }
-        .sheet(isPresented: $showingGroupEditor, onDismiss: { editingGroup = nil }) {
-            TodoGroupEditorView(group: editingGroup)
+        .sheet(item: $groupEditorPresentation) { presentation in
+            TodoGroupEditorView(group: presentation.group)
         }
+    }
+
+    private var todoEndDropTarget: some View {
+        Color.clear
+            .frame(height: 6)
+            .dropDestination(for: String.self) { itemIdentifiers, _ in
+                guard let draggedIdentifier = itemIdentifiers.first else {
+                    return false
+                }
+                return moveTodo(draggedIdentifier: draggedIdentifier, before: nil)
+            }
     }
 
     private var header: some View {
@@ -129,29 +132,55 @@ struct TodoHomeView: View {
 
             if selectedEditableGroup != nil {
                 Button {
-                    editingGroup = selectedEditableGroup
-                    showingGroupEditor = true
+                    if let selectedEditableGroup {
+                        groupEditorPresentation = TodoGroupEditorPresentation.edit(selectedEditableGroup)
+                    }
                 } label: {
-                    Label(PlannerCopy.text(.editTodoGroup, language: appLanguage), systemImage: "pencil")
+                    Image(systemName: "pencil")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(width: 48, height: 48)
+                        .background(MeowPlannerTheme.cream.opacity(0.62), in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(MeowPlannerTheme.caramel.opacity(0.26), lineWidth: 1)
+                        }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
+                .accessibilityLabel(PlannerCopy.text(.editTodoGroup, language: appLanguage))
             }
 
             Button {
-                editingGroup = nil
-                showingGroupEditor = true
+                groupEditorPresentation = TodoGroupEditorPresentation.new
             } label: {
-                Label(PlannerCopy.text(.newTodoGroup, language: appLanguage), systemImage: "folder.badge.plus")
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                    .frame(width: 48, height: 48)
+                    .background(MeowPlannerTheme.cream.opacity(0.62), in: Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(MeowPlannerTheme.caramel.opacity(0.26), lineWidth: 1)
+                    }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+            .accessibilityLabel(PlannerCopy.text(.newTodoGroup, language: appLanguage))
 
             Button {
                 showingTodoEditor = true
             } label: {
-                Label(PlannerCopy.text(.addTodo, language: appLanguage), systemImage: "plus")
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(MeowPlannerTheme.pawButtonBrown, in: Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(MeowPlannerTheme.creamRing.opacity(0.50), lineWidth: 1)
+                    }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(MeowPlannerTheme.caramel)
+            .buttonStyle(.plain)
+            .accessibilityLabel(PlannerCopy.text(.addTodo, language: appLanguage))
         }
     }
 
@@ -184,8 +213,7 @@ struct TodoHomeView: View {
                     .contextMenu {
                         if let group = editableGroup(for: option.filter) {
                             Button(PlannerCopy.text(.editTodoGroup, language: appLanguage)) {
-                                editingGroup = group
-                                showingGroupEditor = true
+                                groupEditorPresentation = TodoGroupEditorPresentation.edit(group)
                             }
                         }
                     }
@@ -362,6 +390,29 @@ struct TodoHomeView: View {
     }
 }
 
+private enum TodoGroupEditorPresentation: Identifiable {
+    case new
+    case edit(TodoGroup)
+
+    var id: String {
+        switch self {
+        case .new:
+            "new"
+        case let .edit(group):
+            "edit-\(group.id.uuidString)"
+        }
+    }
+
+    var group: TodoGroup? {
+        switch self {
+        case .new:
+            nil
+        case let .edit(group):
+            group
+        }
+    }
+}
+
 private struct TodoDragPreviewView: View {
     var title: String
     var groupColorHex: String
@@ -470,11 +521,13 @@ private struct TodoGroupEditorView: View {
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TodoItem.createdAt) private var todos: [TodoItem]
     @Query private var preferences: [PlannerPreference]
 
     @State private var name: String
     @State private var colorHex: String
     @State private var showingPaletteColorEditor = false
+    @State private var showingDeleteTodoGroupConfirmation = false
     @State private var paletteEditorColorHex = PlannerPreference.defaultEventColorHexes[0]
     @State private var paletteEditorOriginalColorHex: String?
     private var group: TodoGroup?
@@ -488,14 +541,7 @@ private struct TodoGroupEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                TextField(PlannerCopy.text(.groupName, language: appLanguage), text: $name)
-                paletteColorControls
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .background(MeowPlannerTheme.plannerGradient)
+        platformGroupEditorBody
             .sheet(isPresented: $showingPaletteColorEditor) {
                 PaletteColorEditorView(
                     initialColorHex: paletteEditorColorHex,
@@ -513,6 +559,157 @@ private struct TodoGroupEditorView: View {
                     }
                 )
             }
+            .confirmationDialog(PlannerCopy.text(.deleteTodoGroup, language: appLanguage), isPresented: $showingDeleteTodoGroupConfirmation) {
+                Button(PlannerCopy.text(.deleteTodoGroup, language: appLanguage), role: .destructive) {
+                    deleteGroup()
+                }
+                Button(PlannerCopy.text(.cancel, language: appLanguage), role: .cancel) {}
+            }
+    }
+
+    @ViewBuilder
+    private var platformGroupEditorBody: some View {
+        #if os(iOS)
+        iosGroupEditorBody
+        #else
+        desktopGroupEditorBody
+        #endif
+    }
+
+    #if os(iOS)
+    private var iosGroupEditorTitleFont: Font {
+        .system(size: 20, weight: .semibold)
+    }
+
+    private var iosGroupEditorRowFont: Font {
+        .system(size: 16, weight: .semibold)
+    }
+
+    private var iosGroupEditorActionFont: Font {
+        .system(size: 18, weight: .semibold)
+    }
+
+    private var iosGroupEditorBody: some View {
+        NavigationStack {
+            ZStack {
+                MeowPlannerTheme.plannerGradient
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        iosGroupNameCard
+                        iosGroupPaletteCard
+                        if group != nil {
+                            iosDeleteGroupButton
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .navigationTitle(group == nil ? PlannerCopy.text(.newTodoGroup, language: appLanguage) : PlannerCopy.text(.editTodoGroup, language: appLanguage))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PlannerCopy.text(.cancel, language: appLanguage)) {
+                        dismiss()
+                    }
+                    .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                iosGroupBottomSaveBar
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+    }
+
+    private var iosGroupNameCard: some View {
+        iosGroupEditorCard {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "folder")
+                    .font(iosGroupEditorTitleFont)
+                    .foregroundStyle(MeowPlannerTheme.blush.opacity(0.58))
+                    .padding(.top, 2)
+
+                TextField(PlannerCopy.text(.groupName, language: appLanguage), text: $name, axis: .vertical)
+                    .font(iosGroupEditorTitleFont)
+                    .foregroundStyle(MeowPlannerTheme.cocoa)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...2)
+                    .submitLabel(.done)
+            }
+        }
+    }
+
+    private var iosGroupPaletteCard: some View {
+        iosGroupEditorCard {
+            paletteColorControls
+        }
+    }
+
+    private var iosGroupBottomSaveBar: some View {
+        Button {
+            save()
+        } label: {
+            Text(PlannerCopy.text(.save, language: appLanguage))
+                .font(iosGroupEditorActionFont)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(MeowPlannerTheme.pawButtonBrown, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSaveDisabled)
+        .opacity(isSaveDisabled ? 0.48 : 1)
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.94))
+    }
+
+    private var iosDeleteGroupButton: some View {
+        Button(role: .destructive) {
+            showingDeleteTodoGroupConfirmation = true
+        } label: {
+            Label(PlannerCopy.text(.deleteTodoGroup, language: appLanguage), systemImage: "trash")
+                .font(iosGroupEditorRowFont)
+                .foregroundStyle(MeowPlannerTheme.blush)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(MeowPlannerTheme.blush.opacity(0.11), in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iosGroupEditorCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(MeowPlannerTheme.fufuCalendarBackground.opacity(0.88), in: RoundedRectangle(cornerRadius: 22))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(MeowPlannerTheme.blush.opacity(0.28), lineWidth: 1.5)
+            }
+    }
+    #endif
+
+    private var desktopGroupEditorBody: some View {
+        NavigationStack {
+            Form {
+                TextField(PlannerCopy.text(.groupName, language: appLanguage), text: $name)
+                paletteColorControls
+                if group != nil {
+                    deleteGroupButton
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(MeowPlannerTheme.plannerGradient)
             .navigationTitle(group == nil ? PlannerCopy.text(.newTodoGroup, language: appLanguage) : PlannerCopy.text(.editTodoGroup, language: appLanguage))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -524,12 +721,25 @@ private struct TodoGroupEditorView: View {
                     Button(PlannerCopy.text(.save, language: appLanguage)) {
                         save()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isSaveDisabled)
                 }
             }
             .padding()
         }
         .frame(minWidth: 360, minHeight: 180)
+    }
+
+    private var deleteGroupButton: some View {
+        Button(role: .destructive) {
+            showingDeleteTodoGroupConfirmation = true
+        } label: {
+            Label(PlannerCopy.text(.deleteTodoGroup, language: appLanguage), systemImage: "trash")
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.red)
+        .padding(.vertical, 8)
     }
 
     private var paletteColorControls: some View {
@@ -550,38 +760,45 @@ private struct TodoGroupEditorView: View {
                     .accessibilityLabel(colorHex)
             }
 
-            HStack(spacing: 12) {
-                ForEach(eventColorOptions, id: \.self) { option in
-                    ColorSwatchButton(
-                        colorHex: option,
-                        isSelected: colorHex == option,
-                        canDelete: eventColorOptions.count > 1,
-                        onSelect: { applyColorHex(option) },
-                        onDelete: { deletePaletteColor(option) }
-                    )
-                }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(eventColorOptions, id: \.self) { option in
+                        ColorSwatchButton(
+                            colorHex: option,
+                            isSelected: colorHex == option,
+                            canDelete: eventColorOptions.count > 1,
+                            onSelect: { applyColorHex(option) },
+                            onDelete: { deletePaletteColor(option) }
+                        )
+                    }
 
-                Button {
-                    openPaletteColorEditor(nil)
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .frame(width: 30, height: 30)
-                        .foregroundStyle(MeowPlannerTheme.caramel)
-                        .background(MeowPlannerTheme.cream.opacity(0.72), in: Circle())
-                        .overlay {
-                            Circle()
-                                .stroke(MeowPlannerTheme.caramel.opacity(0.32), lineWidth: 1)
-                        }
+                    Button {
+                        openPaletteColorEditor(nil)
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .frame(width: 30, height: 30)
+                            .foregroundStyle(MeowPlannerTheme.caramel)
+                            .background(MeowPlannerTheme.cream.opacity(0.72), in: Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(MeowPlannerTheme.caramel.opacity(0.32), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PlannerCopy.text(.addColor, language: appLanguage))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(PlannerCopy.text(.addColor, language: appLanguage))
+                .padding(.vertical, 1)
             }
         }
     }
 
     private var eventColorOptions: [String] {
         preferences.first?.eventColorHexes ?? PlannerPreference.defaultEventColorHexes
+    }
+
+    private var isSaveDisabled: Bool {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var preference: PlannerPreference {
@@ -672,6 +889,28 @@ private struct TodoGroupEditorView: View {
             modelContext.insert(TodoGroup(name: trimmedName, colorHex: colorHex, createdAt: now, updatedAt: now))
         }
 
+        syncAfterMutation()
         dismiss()
+    }
+
+    private func deleteGroup() {
+        guard let group else {
+            return
+        }
+
+        let now = Date()
+        TodoListPlanner.moveTodosToDefaultGroup(todos, from: group.id, at: now)
+        modelContext.delete(group)
+        syncAfterMutation()
+        dismiss()
+    }
+
+    private func syncAfterMutation() {
+        try? modelContext.save()
+        WidgetTimelineSyncService.publishSnapshotAndReload(using: modelContext)
+        FirestoreAppDataSyncService.shared.scheduleSync(
+            for: AccountSessionStore.shared.currentProfile?.remoteUserID,
+            using: modelContext
+        )
     }
 }

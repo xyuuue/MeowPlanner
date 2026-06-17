@@ -246,11 +246,13 @@ struct RootView: View {
     @State private var settingsNavigationPath: [SettingsDestination] = []
     @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
     @State private var calendarRenderToken = UUID()
+    @State private var calendarAddScheduleRequestToken: UUID?
     @State private var pendingWidgetRefreshTask: Task<Void, Never>?
     @State private var isEditingSidebarOrder = false
     @State private var sidebarDropTargetSection: AppSection?
     #if os(iOS)
     @StateObject private var iosCalendarNavigationState = IOSCalendarNavigationState()
+    @StateObject private var iosTimetableNavigationState = IOSTimetableNavigationState()
     #endif
     #if os(macOS)
     private let macOSSidebarExpandButtonTopPadding: CGFloat = 72
@@ -331,6 +333,7 @@ struct RootView: View {
             bottomSections: iosBottomNavigationSections,
             language: appLanguage,
             calendarNavigationState: iosCalendarNavigationState,
+            timetableNavigationState: iosTimetableNavigationState,
             onSelect: selectSidebarSection
         ) {
             sectionView
@@ -356,12 +359,21 @@ struct RootView: View {
         .onChange(of: accountStore.currentProfile?.remoteUserID) { _, _ in
             scheduleCloudAppDataSync()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .meowPlannerExternalOpenURL)) { notification in
+            handleExternalURL(notification.object as? URL)
+        }
         #endif
     }
 
     private func scheduleCloudAppDataSync() {
         FirestoreAppDataSyncService.shared.scheduleSync(for: accountStore.currentProfile?.remoteUserID, using: modelContext)
     }
+
+    #if os(macOS)
+    private func refreshCalendarFromCloud() {
+        FirestoreAppDataSyncService.shared.syncImmediately(for: accountStore.currentProfile?.remoteUserID, using: modelContext)
+    }
+    #endif
 
     private var orderedSections: [AppSection] {
         AppSection.orderedSections(from: sidebarSectionOrderRaw)
@@ -699,6 +711,28 @@ struct RootView: View {
         }
     }
 
+    private func handleExternalURL(_ url: URL?) {
+        guard let url,
+              url.scheme?.lowercased() == "meowplanner" else {
+            refreshCalendarAfterExternalOpen()
+            return
+        }
+
+        if url.host == WidgetConstants.newScheduleURL.host,
+           url.path == WidgetConstants.newScheduleURL.path {
+            openNewScheduleFromExternalURL()
+            return
+        }
+
+        refreshCalendarAfterExternalOpen()
+    }
+
+    private func openNewScheduleFromExternalURL() {
+        settingsNavigationPath.removeAll()
+        selection = .calendar
+        calendarAddScheduleRequestToken = UUID()
+    }
+
     private func eventSignature(_ event: PlannerEvent) -> String {
         [
             event.id.uuidString,
@@ -881,21 +915,34 @@ struct RootView: View {
             switch section {
             case .calendar:
                 #if os(iOS)
-                CalendarHomeView(iosNavigationState: iosCalendarNavigationState)
+                CalendarHomeView(
+                    iosNavigationState: iosCalendarNavigationState,
+                    newScheduleRequestToken: calendarAddScheduleRequestToken
+                )
                     .id(calendarRenderToken)
                 #else
                 CalendarHomeView(
                     sidebarExpandAction: sidebarVisibility == .detailOnly ? { expandSidebar() } : nil,
-                    sidebarExpandTitle: sidebarExpandTitle
+                    sidebarExpandTitle: sidebarExpandTitle,
+                    newScheduleRequestToken: calendarAddScheduleRequestToken,
+                    onCloudRefresh: refreshCalendarFromCloud
                 )
                     .id(calendarRenderToken)
                 #endif
             case .todo:
                 TodoHomeView()
             case .schedule:
+                #if os(iOS)
+                ScheduleAgendaView(iosNavigationState: iosCalendarNavigationState)
+                #else
                 ScheduleAgendaView()
+                #endif
             case .timetable:
+                #if os(iOS)
+                CourseTimetableView(iosNavigationState: iosTimetableNavigationState)
+                #else
                 CourseTimetableView()
+                #endif
             case .focus:
                 FocusView()
             case .settings:
@@ -1005,11 +1052,24 @@ private struct ScheduleAgendaView: View {
     @Environment(\.appLanguage) private var appLanguage
     @Query(sort: \PlannerEvent.startDate) private var events: [PlannerEvent]
     @Query private var preferences: [PlannerPreference]
+    #if os(iOS)
+    @ObservedObject private var iosNavigationState: IOSCalendarNavigationState
+    #endif
 
     @State private var mode: ScheduleAgendaMode = .daily
     @State private var selectedDate = Date()
     @State private var isEarlyMorningExpanded = false
     @State private var showingScheduleDatePicker = false
+
+    #if os(iOS)
+    private let scheduleDatePickerYearRange = 1901...2099
+
+    init(iosNavigationState: IOSCalendarNavigationState) {
+        self.iosNavigationState = iosNavigationState
+    }
+    #else
+    init() {}
+    #endif
 
     private var calendar: Calendar {
         preference.weekStartPreference.configuredCalendar
@@ -1026,42 +1086,86 @@ private struct ScheduleAgendaView: View {
                 }
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 14) {
-                scheduleHeader
-
-                ScheduleTimeGridView(
-                    mode: mode,
-                    selectedDate: selectedDate,
-                    dayDates: mode == .daily ? [selectedDate] : weekDates,
-                    events: events,
-                    timeCollapseEnabled: scheduleTimeCollapseEnabled,
-                    collapsedStartHour: scheduleCollapsedStartHour,
-                    collapsedEndHour: scheduleCollapsedEndHour,
-                    timeDisplayPreference: timeDisplayPreference,
-                    showCompletedSchedules: showCompletedSchedules,
-                    completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
-                    isEarlyMorningExpanded: $isEarlyMorningExpanded,
-                    language: appLanguage,
-                    calendar: calendar
-                )
-                .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(MeowPlannerTheme.caramel.opacity(0.16), lineWidth: 1)
-                }
-                .background {
-                    HorizontalSwipeScrollDetector { horizontal in
-                        moveDate(by: horizontal < 0 ? 1 : -1)
-                    }
-                }
-            }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            schedulePageContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .sheet(isPresented: $showingScheduleDatePicker) {
+            IOSScheduleWheelDatePickerSheet(
+                selection: scheduleDatePickerSelection,
+                yearRange: scheduleDatePickerYearRange,
+                language: appLanguage,
+                calendar: calendar
+            )
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.hidden)
+        }
+        .onAppear {
+            syncIOSScheduleNavigationState()
+        }
+        .onChange(of: selectedDate) { _, _ in
+            syncIOSScheduleNavigationState()
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var schedulePageContent: some View {
+        #if os(iOS)
+        scheduleTimelineContent
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #else
+        scheduleTimelineContent
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        #endif
+    }
+
+    private var scheduleTimelineContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            scheduleHeader
+
+            ScheduleTimeGridView(
+                mode: mode,
+                selectedDate: selectedDate,
+                dayDates: mode == .daily ? [selectedDate] : weekDates,
+                events: events,
+                timeCollapseEnabled: scheduleTimeCollapseEnabled,
+                collapsedStartHour: scheduleCollapsedStartHour,
+                collapsedEndHour: scheduleCollapsedEndHour,
+                timeDisplayPreference: timeDisplayPreference,
+                showCompletedSchedules: showCompletedSchedules,
+                completedSchedulesUseStrikethrough: completedSchedulesUseStrikethrough,
+                isEarlyMorningExpanded: $isEarlyMorningExpanded,
+                language: appLanguage,
+                calendar: calendar,
+                usesOuterVerticalScroll: scheduleUsesOuterVerticalScroll
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(MeowPlannerTheme.fufuPlannerBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(MeowPlannerTheme.caramel.opacity(0.16), lineWidth: 1)
+            }
+            .background {
+                HorizontalSwipeScrollDetector { horizontal in
+                    moveDate(by: horizontal < 0 ? 1 : -1)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var scheduleUsesOuterVerticalScroll: Bool {
+        false
     }
 
     private var scheduleHeader: some View {
+        #if os(iOS)
+        scheduleModePicker
+            .frame(maxWidth: .infinity, alignment: .leading)
+        #else
         HStack(alignment: .center, spacing: 16) {
             FuFuAssetImage(size: 58)
             scheduleDatePickerButton
@@ -1070,6 +1174,31 @@ private struct ScheduleAgendaView: View {
 
             scheduleModePicker
         }
+        #endif
+    }
+
+    private var scheduleIOSDateTitleFont: Font {
+        #if os(iOS)
+        .system(size: 30, weight: .bold)
+        #else
+        .largeTitle.bold()
+        #endif
+    }
+
+    private var scheduleIOSDateSubtitleFont: Font {
+        #if os(iOS)
+        .footnote
+        #else
+        .subheadline
+        #endif
+    }
+
+    private var scheduleIOSChineseCalendarFont: Font {
+        #if os(iOS)
+        .caption2.weight(selectedChineseCalendarInfo.isFestival ? .bold : .medium)
+        #else
+        .caption.weight(selectedChineseCalendarInfo.isFestival ? .bold : .medium)
+        #endif
     }
 
     private var scheduleModePicker: some View {
@@ -1079,7 +1208,12 @@ private struct ScheduleAgendaView: View {
             }
         }
         .fufuSegmentedPickerStyle()
+        #if os(iOS)
+        .frame(maxWidth: .infinity)
+        .frame(height: 32)
+        #else
         .frame(width: 180)
+        #endif
     }
 
     private var scheduleDatePickerButton: some View {
@@ -1089,17 +1223,23 @@ private struct ScheduleAgendaView: View {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(selectedDate.formatted(.dateTime.month(.wide).year()))
-                        .font(.largeTitle.bold())
+                        .font(scheduleIOSDateTitleFont)
                         .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.62)
                     Text(selectedDate.formatted(.dateTime.weekday(.wide).month().day().year()))
-                        .font(.subheadline)
+                        .font(scheduleIOSDateSubtitleFont)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
                     if showChineseCalendar {
                         Text(selectedChineseCalendarInfo.displayText)
-                            .font(.caption.weight(selectedChineseCalendarInfo.isFestival ? .bold : .medium))
+                            .font(scheduleIOSChineseCalendarFont)
                             .foregroundStyle(selectedChineseCalendarInfo.isFestival ? MeowPlannerTheme.blush : MeowPlannerTheme.caramel)
+                            .lineLimit(1)
                     }
                 }
+                .layoutPriority(1)
 
                 Image(systemName: "chevron.down")
                     .font(.caption.bold())
@@ -1161,6 +1301,44 @@ private struct ScheduleAgendaView: View {
         ChineseCalendarInfoProvider.info(for: selectedDate, calendar: calendar)
     }
 
+    #if os(iOS)
+    private var scheduleDatePickerSelection: Binding<Date> {
+        Binding(
+            get: { selectedDate },
+            set: { newValue in
+                selectedDate = newValue
+            }
+        )
+    }
+
+    private func presentIOSScheduleDatePicker() {
+        showingScheduleDatePicker = true
+    }
+
+    private func resetScheduleDateToToday() {
+        selectedDate = Date()
+    }
+
+    private var scheduleIOSNavigationTitle: String {
+        let components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+        let year = components.year ?? 0
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        return String(format: "%04d.%02d.%02d", year, month, day)
+    }
+
+    private func syncIOSScheduleNavigationState() {
+        iosNavigationState.configure(
+            displayedMonthTitle: scheduleIOSNavigationTitle,
+            selectedTagName: nil,
+            tagNames: [],
+            resetToToday: { resetScheduleDateToToday() },
+            presentMonthPicker: { presentIOSScheduleDatePicker() },
+            selectTag: { _ in }
+        )
+    }
+    #endif
+
     private var scheduleBackgroundMotifs: some View {
         GeometryReader { proxy in
             ZStack {
@@ -1203,6 +1381,196 @@ private struct ScheduleAgendaView: View {
     }
 
 }
+
+#if os(iOS)
+private struct IOSScheduleWheelDatePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var selection: Date
+    var yearRange: ClosedRange<Int>
+    var language: AppLanguage
+    var calendar: Calendar
+
+    @State private var selectedYear: Int
+    @State private var selectedMonth: Int
+    @State private var selectedDay: Int
+
+    init(selection: Binding<Date>, yearRange: ClosedRange<Int>, language: AppLanguage, calendar: Calendar) {
+        _selection = selection
+        self.yearRange = yearRange
+        self.language = language
+        self.calendar = calendar
+
+        let components = calendar.dateComponents([.year, .month, .day], from: selection.wrappedValue)
+        let year = components.year ?? yearRange.lowerBound
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+        let clampedYear = min(max(year, yearRange.lowerBound), yearRange.upperBound)
+        let clampedMonth = min(max(month, 1), 12)
+        let clampedDay = min(max(day, 1), Self.daysInMonth(year: clampedYear, month: clampedMonth, calendar: calendar))
+        _selectedYear = State(initialValue: clampedYear)
+        _selectedMonth = State(initialValue: clampedMonth)
+        _selectedDay = State(initialValue: clampedDay)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text(PlannerCopy.text(.cancel, language: language))
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+
+                Button {
+                    selection = selectedDate
+                    dismiss()
+                } label: {
+                    Text(confirmTitle)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                }
+                .buttonStyle(.plain)
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(MeowPlannerTheme.caramel.opacity(0.12))
+                    .frame(height: 1)
+            }
+
+            HStack(spacing: 0) {
+                Picker("Year", selection: $selectedYear) {
+                    ForEach(Array(yearRange), id: \.self) { year in
+                        Text(yearText(for: year)).tag(year)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+                Picker("Month", selection: $selectedMonth) {
+                    ForEach(1...12, id: \.self) { month in
+                        Text(monthText(for: month)).tag(month)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+                Picker("Day", selection: $selectedDay) {
+                    ForEach(dayRange, id: \.self) { day in
+                        Text(dayText(for: day)).tag(day)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+            }
+            .frame(height: 224)
+            .background(MeowPlannerTheme.fufuPlannerBackground)
+        }
+        .background(MeowPlannerTheme.fufuPlannerBackground)
+        .onChange(of: selectedYear) { _, _ in
+            clampSelectedDay()
+        }
+        .onChange(of: selectedMonth) { _, _ in
+            clampSelectedDay()
+        }
+    }
+
+    private var confirmTitle: String {
+        switch language {
+        case .english:
+            return "Confirm"
+        case .chinese:
+            return "确认"
+        }
+    }
+
+    private var selectedDate: Date {
+        let time = calendar.dateComponents([.hour, .minute, .second], from: selection)
+        var components = DateComponents()
+        components.calendar = calendar
+        components.year = selectedYear
+        components.month = selectedMonth
+        components.day = min(max(selectedDay, 1), daysInSelectedMonth)
+        components.hour = time.hour
+        components.minute = time.minute
+        components.second = time.second
+        return calendar.date(from: components) ?? selection
+    }
+
+    private var dayRange: ClosedRange<Int> {
+        1...daysInSelectedMonth
+    }
+
+    private var daysInSelectedMonth: Int {
+        Self.daysInMonth(year: selectedYear, month: selectedMonth, calendar: calendar)
+    }
+
+    private func clampSelectedDay() {
+        selectedDay = min(max(selectedDay, 1), daysInSelectedMonth)
+    }
+
+    private static func daysInMonth(year: Int, month: Int, calendar: Calendar) -> Int {
+        var components = DateComponents()
+        components.calendar = calendar
+        components.year = year
+        components.month = month
+        components.day = 1
+        guard let date = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: date)
+        else {
+            return 31
+        }
+        return max(1, range.count)
+    }
+
+    private func yearText(for year: Int) -> String {
+        switch language {
+        case .english:
+            return "\(year)"
+        case .chinese:
+            return "\(year) 年"
+        }
+    }
+
+    private func monthText(for month: Int) -> String {
+        switch language {
+        case .english:
+            var components = DateComponents()
+            components.calendar = calendar
+            components.year = 2026
+            components.month = month
+            components.day = 1
+            guard let date = calendar.date(from: components) else {
+                return "\(month)"
+            }
+            return date.formatted(.dateTime.month(.twoDigits))
+        case .chinese:
+            return month < 10 ? "0\(month) 月" : "\(month) 月"
+        }
+    }
+
+    private func dayText(for day: Int) -> String {
+        switch language {
+        case .english:
+            return day < 10 ? "0\(day)" : "\(day)"
+        case .chinese:
+            return day < 10 ? "0\(day) 日" : "\(day) 日"
+        }
+    }
+}
+#endif
 
 private struct ScheduleDatePickerPanel: View {
     @Binding var selectedDate: Date
@@ -1365,8 +1733,10 @@ private struct ScheduleTimeGridView: View {
     @Binding var isEarlyMorningExpanded: Bool
     var language: AppLanguage
     var calendar: Calendar
+    var usesOuterVerticalScroll: Bool = false
 
     private let hourRowHeight: CGFloat = 64
+    private let dailyMinimumDayWidth: CGFloat = 80
     private let timeColumnWidth: CGFloat = 58
     private let allDayLaneHeight: CGFloat = 46
     private let earlyMorningCollapsedHeight: CGFloat = 44
@@ -1376,21 +1746,33 @@ private struct ScheduleTimeGridView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            weekdayHeader
-            allDayLane
+            fixedTimelineHeader
 
-            ScrollView(.vertical) {
-                VStack(spacing: 0) {
-                    if timeCollapseEnabled {
-                        earlyMorningToggle
-                    }
-                    timeGrid
+            if usesOuterVerticalScroll {
+                scrollableTimelineRows
+            } else {
+                ScrollView(.vertical) {
+                    scrollableTimelineRows
                 }
+                .verticalPageScrollOnly()
+                .scrollContentBackground(.hidden)
             }
-            .verticalPageScrollOnly()
-            .scrollContentBackground(.hidden)
         }
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var fixedTimelineHeader: some View {
+        VStack(spacing: 0) {
+            weekdayHeader
+            allDayLane
+            if timeCollapseEnabled {
+                earlyMorningToggle
+            }
+        }
+    }
+
+    private var scrollableTimelineRows: some View {
+        timeGrid
     }
 
     private var weekdayHeader: some View {
@@ -1402,9 +1784,9 @@ private struct ScheduleTimeGridView: View {
             ForEach(dayDates, id: \.self) { date in
                 VStack(spacing: 3) {
                     Text(date.formatted(.dateTime.weekday(.abbreviated)))
-                        .font(.subheadline.weight(.semibold))
+                        .font(weekdaySymbolFont)
                     Text(date.formatted(.dateTime.day()))
-                        .font(calendar.isDateInToday(date) ? .headline.bold() : .subheadline)
+                        .font(weekdayDayFont(for: date))
                         .padding(.horizontal, calendar.isDateInToday(date) ? 8 : 0)
                         .padding(.vertical, calendar.isDateInToday(date) ? 2 : 0)
                         .background(calendar.isDateInToday(date) ? MeowPlannerTheme.blush : .clear, in: Capsule())
@@ -1416,6 +1798,18 @@ private struct ScheduleTimeGridView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(MeowPlannerTheme.cream.opacity(0.46))
+    }
+
+    private var weekdaySymbolFont: Font {
+        mode == .weekly ? .caption2.weight(.semibold) : .subheadline.weight(.semibold)
+    }
+
+    private func weekdayDayFont(for date: Date) -> Font {
+        if mode == .weekly {
+            return .caption.weight(calendar.isDateInToday(date) ? .bold : .medium)
+        }
+
+        return calendar.isDateInToday(date) ? .headline.bold() : .subheadline
     }
 
     private var allDayLane: some View {
@@ -1458,7 +1852,10 @@ private struct ScheduleTimeGridView: View {
                 Text("\(formatHour(collapsedStartHour))-\(formatHour(collapsedEndHour))")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MeowPlannerTheme.caramel)
-                    .frame(width: timeColumnWidth, alignment: .leading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .layoutPriority(1)
+                    .frame(minWidth: 96, alignment: .leading)
                 Image(systemName: isEarlyMorningExpanded ? "chevron.up" : "chevron.down")
                     .font(.caption.bold())
                     .foregroundStyle(MeowPlannerTheme.caramel)
@@ -1476,7 +1873,7 @@ private struct ScheduleTimeGridView: View {
 
     private var timeGrid: some View {
         GeometryReader { proxy in
-            let dayWidth = max(80, (proxy.size.width - timeColumnWidth - 24) / CGFloat(max(dayDates.count, 1)))
+            let dayWidth = timelineDayWidth(for: proxy.size.width)
 
             ZStack(alignment: .topLeading) {
                 hourRows(dayWidth: dayWidth)
@@ -1484,9 +1881,9 @@ private struct ScheduleTimeGridView: View {
                 ForEach(Array(dayDates.enumerated()), id: \.element) { index, date in
                     ForEach(timedEvents(on: date)) { event in
                         eventBlock(event)
-                            .frame(width: max(70, dayWidth - 12), height: eventHeight(event))
+                            .frame(width: eventColumnWidth(dayWidth: dayWidth), height: eventHeight(event))
                             .offset(
-                                x: timeColumnWidth + 12 + CGFloat(index) * dayWidth + 6,
+                                x: timeColumnWidth + 12 + CGFloat(index) * dayWidth + eventHorizontalInset,
                                 y: eventOffset(event)
                             )
                     }
@@ -1497,6 +1894,29 @@ private struct ScheduleTimeGridView: View {
             .frame(height: gridHeight)
         }
         .frame(height: gridHeight)
+    }
+
+    private func timelineDayWidth(for availableWidth: CGFloat) -> CGFloat {
+        let dayCount = CGFloat(max(dayDates.count, 1))
+        let availableDayWidth = max(1, availableWidth - timeColumnWidth - 24)
+
+        if mode == .weekly {
+            return max(24, availableDayWidth / dayCount)
+        }
+
+        return max(dailyMinimumDayWidth, availableDayWidth / dayCount)
+    }
+
+    private var eventHorizontalInset: CGFloat {
+        mode == .weekly ? 2 : 6
+    }
+
+    private func eventColumnWidth(dayWidth: CGFloat) -> CGFloat {
+        if mode == .weekly {
+            return max(18, dayWidth - eventHorizontalInset * 2)
+        }
+
+        return max(70, dayWidth - 12)
     }
 
     private func hourRows(dayWidth: CGFloat) -> some View {
@@ -1533,33 +1953,41 @@ private struct ScheduleTimeGridView: View {
     private func eventBlock(_ event: PlannerEvent) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(event.title)
-                .font(.caption.weight(.bold))
+                .font(eventBlockTitleFont)
                 .lineLimit(1)
                 .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
             Text(eventTimeSummary(event))
-                .font(.caption2)
+                .font(eventBlockDetailFont)
                 .lineLimit(1)
                 .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
             if !event.tagName.isEmpty {
                 Text(event.tagName)
-                    .font(.caption2.weight(.semibold))
+                    .font(eventBlockDetailFont.weight(.semibold))
                     .lineLimit(1)
             }
         }
         .foregroundStyle(.white)
-        .padding(6)
+        .padding(mode == .weekly ? 3 : 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.86), in: RoundedRectangle(cornerRadius: 6))
+        .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.86), in: RoundedRectangle(cornerRadius: mode == .weekly ? 4 : 6))
         .shadow(color: MeowPlannerTheme.coffee.opacity(0.10), radius: 4, y: 2)
+    }
+
+    private var eventBlockTitleFont: Font {
+        mode == .weekly ? .system(size: 8, weight: .bold) : .caption.weight(.bold)
+    }
+
+    private var eventBlockDetailFont: Font {
+        mode == .weekly ? .system(size: 7, weight: .medium) : .caption2
     }
 
     private func eventPill(_ event: PlannerEvent) -> some View {
         Text(event.title)
-            .font(.caption2.weight(.semibold))
+            .font(mode == .weekly ? .system(size: 7, weight: .semibold) : .caption2.weight(.semibold))
             .lineLimit(1)
             .strikethrough(event.isCompleted && completedSchedulesUseStrikethrough)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, mode == .weekly ? 3 : 6)
+            .padding(.vertical, mode == .weekly ? 1 : 2)
             .foregroundStyle(.white)
             .background(MeowPlannerTheme.color(hex: event.colorHex).opacity(0.86), in: Capsule())
     }

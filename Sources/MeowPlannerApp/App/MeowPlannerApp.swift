@@ -161,6 +161,8 @@ struct MeowPlannerApp: App {
     #endif
 
     init() {
+        AppAppearancePreference.migrateLegacyValueIfNeeded()
+
         #if os(macOS)
         MeowPlannerSingleInstanceGuard.exitIfAnotherInstanceIsRunning()
         #endif
@@ -227,6 +229,9 @@ struct MeowPlannerApp: App {
                 .environment(\.appLanguage, appLanguage)
                 .environmentObject(focusTimerStore)
                 .preferredColorScheme(appAppearance.preferredColorScheme)
+                .onOpenURL { url in
+                    NotificationCenter.default.post(name: .meowPlannerExternalOpenURL, object: url)
+                }
         }
         #endif
 

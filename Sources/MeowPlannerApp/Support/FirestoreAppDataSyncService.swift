@@ -42,6 +42,22 @@ final class FirestoreAppDataSyncService {
         }
     }
 
+    func syncImmediately(for userID: String?, using modelContext: ModelContext) {
+        guard let userID else {
+            stopSync()
+            return
+        }
+        guard currentUserID == userID else {
+            stopSync()
+            return
+        }
+
+        syncTask?.cancel()
+        syncTask = Task { @MainActor in
+            await syncNow(for: userID, using: modelContext)
+        }
+    }
+
     func stopSync() {
         syncTask?.cancel()
         syncTask = nil
@@ -378,7 +394,9 @@ private extension FirestoreAppDataSyncService {
     func records(for preferences: [PlannerPreference]) -> [FirestoreAppDataRecord] {
         preferences.map { preference in
             let languageUpdatedAt = languageUpdatedAtDate()
-            let appearanceUpdatedAt = appearanceUpdatedAtDate()
+            let appearancePlatform = AppAppearancePreference.currentPlatform
+            let appearanceID = appearanceStorageValue(for: appearancePlatform)
+            let appearanceUpdatedAt = appearanceUpdatedAtDate(for: appearancePlatform)
 
             return baseRecord(
                 collection: .preferences,
@@ -404,8 +422,8 @@ private extension FirestoreAppDataSyncService {
                     "timeDisplayRawValue": preference.timeDisplayRawValue,
                     "appLanguageID": defaults.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue,
                     "appLanguageUpdatedAt": languageUpdatedAt,
-                    "appearanceID": defaults.string(forKey: AppAppearancePreference.storageKey) ?? AppAppearancePreference.system.rawValue,
-                    "appearanceUpdatedAt": appearanceUpdatedAt,
+                    appearancePlatform.cloudIDField: appearanceID,
+                    appearancePlatform.cloudUpdatedAtField: appearanceUpdatedAt,
                     "showDockIcon": defaults.object(forKey: AppDockIconController.storageKey) as? Bool ?? AppDockIconController.defaultShowDockIcon,
                     "sidebarSectionOrder": defaults.string(forKey: "meowplanner.sidebar.sectionOrder") ?? AppSection.defaultSidebarOrderStorageValue
                 ]
@@ -1048,10 +1066,16 @@ private extension FirestoreAppDataSyncService {
             defaults.set(appLanguageID, forKey: AppLanguage.storageKey)
             storeLanguageUpdatedAt(data.date("appLanguageUpdatedAt"))
         }
-        if let appearanceID = data.string("appearanceID"),
-           shouldApplyRemoteAppearancePreference(from: data) {
-            defaults.set(appearanceID, forKey: AppAppearancePreference.storageKey)
-            storeAppearanceUpdatedAt(data.date("appearanceUpdatedAt"))
+        let appearancePlatform = AppAppearancePreference.currentPlatform
+        if let appearanceID = data.string(appearancePlatform.cloudIDField),
+           shouldApplyRemoteAppearancePreference(from: data, platform: appearancePlatform) {
+            defaults.set(AppAppearancePreference(storedValue: appearanceID).rawValue, forKey: appearancePlatform.storageKey)
+            storeAppearanceUpdatedAt(data.date(appearancePlatform.cloudUpdatedAtField), for: appearancePlatform)
+        } else if defaults.object(forKey: appearancePlatform.storageKey) == nil,
+                  let appearanceID = data.string(AppAppearancePreference.legacyCloudIDField),
+                  shouldApplyRemoteLegacyAppearancePreference(from: data, platform: appearancePlatform) {
+            defaults.set(AppAppearancePreference(storedValue: appearanceID).rawValue, forKey: appearancePlatform.storageKey)
+            storeAppearanceUpdatedAt(data.date(AppAppearancePreference.legacyCloudUpdatedAtField), for: appearancePlatform)
         }
         if let showDockIcon = data.optionalBool("showDockIcon") {
             defaults.set(showDockIcon, forKey: AppDockIconController.storageKey)
@@ -1062,10 +1086,23 @@ private extension FirestoreAppDataSyncService {
         }
     }
 
-    func shouldApplyRemoteAppearancePreference(from data: [String: Any]) -> Bool {
+    func shouldApplyRemoteAppearancePreference(
+        from data: [String: Any],
+        platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) -> Bool {
         SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
-            localUpdatedAt: appearanceUpdatedAtDateFromDefaults(),
-            remoteUpdatedAt: data.date("appearanceUpdatedAt")
+            localUpdatedAt: appearanceUpdatedAtDateFromDefaults(for: platform),
+            remoteUpdatedAt: data.date(platform.cloudUpdatedAtField)
+        )
+    }
+
+    func shouldApplyRemoteLegacyAppearancePreference(
+        from data: [String: Any],
+        platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) -> Bool {
+        SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
+            localUpdatedAt: appearanceUpdatedAtDateFromDefaults(for: platform),
+            remoteUpdatedAt: data.date(AppAppearancePreference.legacyCloudUpdatedAtField)
         )
     }
 
@@ -1096,21 +1133,37 @@ private extension FirestoreAppDataSyncService {
         return nil
     }
 
-    func appearanceUpdatedAtDate() -> Date {
-        appearanceUpdatedAtDateFromDefaults() ?? Date(timeIntervalSince1970: 0)
+    func appearanceStorageValue(
+        for platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) -> String {
+        if let value = defaults.string(forKey: platform.storageKey) {
+            return AppAppearancePreference(storedValue: value).rawValue
+        }
+        if let value = defaults.string(forKey: AppAppearancePreference.legacyStorageKey) {
+            return AppAppearancePreference(storedValue: value).rawValue
+        }
+        return AppAppearancePreference.system.rawValue
     }
 
-    func appearanceUpdatedAtDateFromDefaults() -> Date? {
-        if let date = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? Date {
+    func appearanceUpdatedAtDate(
+        for platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) -> Date {
+        appearanceUpdatedAtDateFromDefaults(for: platform) ?? Date(timeIntervalSince1970: 0)
+    }
+
+    func appearanceUpdatedAtDateFromDefaults(
+        for platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) -> Date? {
+        if let date = defaults.dateValue(forKey: platform.updatedAtStorageKey) {
             return date
         }
-        if let number = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? NSNumber {
-            return Date(timeIntervalSince1970: number.doubleValue)
+        if defaults.object(forKey: platform.storageKey) != nil {
+            return Date(timeIntervalSince1970: 0)
         }
-        if let timeInterval = defaults.object(forKey: AppAppearancePreference.updatedAtStorageKey) as? TimeInterval {
-            return Date(timeIntervalSince1970: timeInterval)
+        if let date = defaults.dateValue(forKey: AppAppearancePreference.legacyUpdatedAtStorageKey) {
+            return date
         }
-        if defaults.object(forKey: AppAppearancePreference.storageKey) != nil {
+        if defaults.object(forKey: AppAppearancePreference.legacyStorageKey) != nil {
             return Date(timeIntervalSince1970: 0)
         }
         return nil
@@ -1121,9 +1174,12 @@ private extension FirestoreAppDataSyncService {
         defaults.set(updatedAt.timeIntervalSince1970, forKey: AppLanguage.updatedAtStorageKey)
     }
 
-    func storeAppearanceUpdatedAt(_ date: Date?) {
+    func storeAppearanceUpdatedAt(
+        _ date: Date?,
+        for platform: AppAppearancePreferencePlatform = AppAppearancePreference.currentPlatform
+    ) {
         let updatedAt = date ?? Date(timeIntervalSince1970: 0)
-        defaults.set(updatedAt.timeIntervalSince1970, forKey: AppAppearancePreference.updatedAtStorageKey)
+        defaults.set(updatedAt.timeIntervalSince1970, forKey: platform.updatedAtStorageKey)
     }
 
     func saveAfterApplyingCloudData(_ modelContext: ModelContext) {
@@ -1151,6 +1207,21 @@ private extension FirestoreAppDataSyncService {
             localUpdatedAt: existingUpdatedAt,
             remoteUpdatedAt: remoteData.date("updatedAt")
         )
+    }
+}
+
+private extension UserDefaults {
+    func dateValue(forKey key: String) -> Date? {
+        if let date = object(forKey: key) as? Date {
+            return date
+        }
+        if let number = object(forKey: key) as? NSNumber {
+            return Date(timeIntervalSince1970: number.doubleValue)
+        }
+        if let timeInterval = object(forKey: key) as? TimeInterval {
+            return Date(timeIntervalSince1970: timeInterval)
+        }
+        return nil
     }
 }
 

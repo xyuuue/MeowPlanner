@@ -109,6 +109,20 @@ public enum TodoListPlanner {
         return reorderedTodos
     }
 
+    @discardableResult
+    public static func moveTodosToDefaultGroup(
+        _ todos: [TodoItem],
+        from deletedGroupID: UUID,
+        at date: Date = Date()
+    ) -> [TodoItem] {
+        let movedTodos = todos.filter { $0.groupID == deletedGroupID }
+        for todo in movedTodos {
+            todo.groupID = nil
+            todo.updatedAt = date
+        }
+        return movedTodos
+    }
+
     public static func groupName(
         for todo: TodoItem,
         groups: [TodoGroup],

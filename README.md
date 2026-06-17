@@ -49,15 +49,19 @@ Firebase email authentication requires `Config/GoogleService-Info.plist` and the
 DEVELOPMENT_TEAM=YOURTEAMID ./script/build_and_run.sh --signed --verify
 ```
 
-## macOS Widget
+## WidgetKit Widgets
 
-The project now includes a native macOS Xcode project with:
+The native Xcode project includes shared WidgetKit source for macOS and iPhone:
 
 - `MeowPlanner` app target
 - `MeowPlannerCore` shared framework target
 - `MeowPlannerWidgetExtension` WidgetKit extension target
+- `MeowPlanner-iOS` iPhone app target
+- `MeowPlannerWidgetExtension-iOS` iPhone WidgetKit extension target
 
-CLI builds use ad-hoc signing so the app can launch locally from `dist/MeowPlanner.app`. To make the widget appear reliably in macOS's Add Widget gallery, open `MeowPlanner.xcodeproj` in Xcode, select your Development Team for both the app and widget targets, then run the `MeowPlanner` scheme once from Xcode.
+CLI builds use ad-hoc signing so the macOS app can launch locally from `dist/MeowPlanner.app`. To make the widget appear reliably in macOS's Add Widget gallery, open `MeowPlanner.xcodeproj` in Xcode, select your Development Team for both the app and widget targets, then run the `MeowPlanner` scheme once from Xcode.
+
+For iPhone widgets, open `MeowPlanner.xcodeproj`, select a Development Team for `MeowPlanner-iOS`, `MeowPlannerCore-iOS`, and `MeowPlannerWidgetExtension-iOS`, then build the `MeowPlanner-iOS` scheme for an iPhone simulator or device.
 
 ## Scope
 
@@ -70,7 +74,7 @@ Included in v1:
 - SwiftData models with CloudKit-ready private database configuration
 - Account settings with Firebase-backed email account registration and login
 - Local notification scheduling wrapper
-- WidgetKit Today widget extension source and macOS app embedding
+- WidgetKit Today widget extension source with macOS and iPhone app embedding
 - FuFu visual theme using SlackerBuddy/PastePaw assets
 
 Out of scope for v1:

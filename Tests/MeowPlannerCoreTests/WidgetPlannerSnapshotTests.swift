@@ -71,6 +71,85 @@ struct WidgetPlannerSnapshotTests {
         #expect(restored.completedSchedulesUseStrikethrough == false)
     }
 
+    @Test("widget background preference stores style and custom image data")
+    func widgetBackgroundPreferenceStoresStyleAndCustomImageData() throws {
+        let suiteName = "MeowPlannerWidgetBackgroundTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetBackground-\(UUID().uuidString).image")
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults) == .defaultArtwork)
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.transparent, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults) == .transparent)
+
+        let data = Data([0x4d, 0x65, 0x6f, 0x77])
+        try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, fileURL: fileURL)
+
+        #expect(try Data(contentsOf: fileURL) == data)
+
+        WidgetPlannerPreferenceStore.clearCustomBackgroundImage(fileURL: fileURL)
+
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
+    @Test("widget appearance preference overrides system appearance when requested")
+    func widgetAppearancePreferenceOverridesSystemAppearanceWhenRequested() throws {
+        let suiteName = "MeowPlannerWidgetAppearanceTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(defaults: defaults) == .system)
+        #expect(WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: true, defaults: defaults))
+        #expect(!WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: false, defaults: defaults))
+
+        WidgetPlannerPreferenceStore.setWidgetAppearancePreference(.dark, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(defaults: defaults) == .dark)
+        #expect(WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: false, defaults: defaults))
+
+        WidgetPlannerPreferenceStore.setWidgetAppearancePreference(.light, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(defaults: defaults) == .light)
+        #expect(!WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: true, defaults: defaults))
+    }
+
+    @Test("widget background preference falls back to mirrored style file")
+    func widgetBackgroundPreferenceFallsBackToMirroredStyleFile() throws {
+        let suiteName = "MeowPlannerWidgetBackgroundFallbackTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let styleFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetBackgroundStyle-\(UUID().uuidString).txt")
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: styleFileURL)
+        }
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .defaultArtwork)
+
+        try "transparent".write(to: styleFileURL, atomically: true, encoding: .utf8)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .transparent)
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, defaults: defaults, styleFileURLs: [styleFileURL])
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .customPhoto)
+        #expect(try String(contentsOf: styleFileURL, encoding: .utf8) == "customPhoto")
+
+        try? FileManager.default.removeItem(at: styleFileURL)
+        defaults.set(WidgetBackgroundStyle.transparent.rawValue, forKey: WidgetPlannerPreferenceStore.widgetBackgroundStyleKey)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .transparent)
+        #expect(try String(contentsOf: styleFileURL, encoding: .utf8) == "transparent")
+    }
+
     @Test("snapshot decodes older payloads with completed schedule display defaults")
     func snapshotDecodesOlderPayloadsWithCompletedScheduleDisplayDefaults() throws {
         let legacyPayload = """
@@ -88,6 +167,105 @@ struct WidgetPlannerSnapshotTests {
 
         #expect(restored.showCompletedSchedules)
         #expect(restored.completedSchedulesUseStrikethrough)
+    }
+
+    @Test("weekly schedule planner uses next seven days and filters completed schedules")
+    func weeklySchedulePlannerUsesNextSevenDaysAndFiltersCompletedSchedules() throws {
+        let visibleEvent = PlannerEvent(
+            title: "Studio review",
+            startDate: try date("2026-06-16 09:00"),
+            endDate: try date("2026-06-16 10:00")
+        )
+        let completedEvent = PlannerEvent(
+            title: "Completed meeting",
+            startDate: try date("2026-06-17 11:00"),
+            isCompleted: true,
+            completedAt: try date("2026-06-17 12:00")
+        )
+        let outsideEvent = PlannerEvent(
+            title: "Outside range",
+            startDate: try date("2026-06-23 09:00")
+        )
+
+        let days = WidgetWeeklySchedulePlanner.days(
+            anchorDate: try date("2026-06-16 08:00"),
+            displayRule: WidgetScheduleDisplayRule.nextSevenDays,
+            events: [visibleEvent, completedEvent, outsideEvent].map(WidgetPlannerSnapshot.Event.init(event:)),
+            weekStartPreference: WeekStartPreference.monday,
+            showCompletedSchedules: false,
+            calendar: calendar
+        )
+        let expectedStart = try date("2026-06-16 00:00")
+
+        #expect(days.map { calendar.startOfDay(for: $0.date) } == (0..<7).map {
+            calendar.date(byAdding: .day, value: $0, to: expectedStart)!
+        })
+        #expect(days.flatMap(\.events).map(\.title) == ["Studio review"])
+    }
+
+    @Test("weekly schedule planner uses configured week start for natural week")
+    func weeklySchedulePlannerUsesConfiguredWeekStartForNaturalWeek() throws {
+        let sundayEvent = PlannerEvent(
+            title: "Sunday planning",
+            startDate: try date("2026-06-14 10:00")
+        )
+        let mondayEvent = PlannerEvent(
+            title: "Monday class",
+            startDate: try date("2026-06-15 10:00")
+        )
+
+        let days = WidgetWeeklySchedulePlanner.days(
+            anchorDate: try date("2026-06-18 12:00"),
+            displayRule: WidgetScheduleDisplayRule.calendarWeek,
+            events: [sundayEvent, mondayEvent].map(WidgetPlannerSnapshot.Event.init(event:)),
+            weekStartPreference: WeekStartPreference.monday,
+            showCompletedSchedules: true,
+            calendar: calendar
+        )
+        let expectedWeekStart = try date("2026-06-15 00:00")
+        let expectedWeekEnd = try date("2026-06-21 00:00")
+
+        #expect(calendar.startOfDay(for: days[0].date) == expectedWeekStart)
+        #expect(calendar.startOfDay(for: days[6].date) == expectedWeekEnd)
+        #expect(days.flatMap(\.events).map(\.title) == ["Monday class"])
+    }
+
+    @Test("weekly schedule planner applies week offset to both display rules")
+    func weeklySchedulePlannerAppliesWeekOffsetToBothDisplayRules() throws {
+        let nextWeekEvent = PlannerEvent(
+            title: "Next week review",
+            startDate: try date("2026-06-23 09:00")
+        )
+        let previousNaturalWeekEvent = PlannerEvent(
+            title: "Previous week planning",
+            startDate: try date("2026-06-09 10:00")
+        )
+
+        let shiftedNextSevenDays = WidgetWeeklySchedulePlanner.days(
+            anchorDate: try date("2026-06-16 08:00"),
+            displayRule: WidgetScheduleDisplayRule.nextSevenDays,
+            events: [nextWeekEvent].map(WidgetPlannerSnapshot.Event.init(event:)),
+            weekStartPreference: WeekStartPreference.monday,
+            showCompletedSchedules: true,
+            weekOffset: 1,
+            calendar: calendar
+        )
+        let shiftedNaturalWeek = WidgetWeeklySchedulePlanner.days(
+            anchorDate: try date("2026-06-18 12:00"),
+            displayRule: WidgetScheduleDisplayRule.calendarWeek,
+            events: [previousNaturalWeekEvent].map(WidgetPlannerSnapshot.Event.init(event:)),
+            weekStartPreference: WeekStartPreference.monday,
+            showCompletedSchedules: true,
+            weekOffset: -1,
+            calendar: calendar
+        )
+        let expectedNextSevenDaysStart = try date("2026-06-23 00:00")
+        let expectedNaturalWeekStart = try date("2026-06-08 00:00")
+
+        #expect(calendar.startOfDay(for: shiftedNextSevenDays[0].date) == expectedNextSevenDaysStart)
+        #expect(shiftedNextSevenDays.flatMap(\.events).map(\.title) == ["Next week review"])
+        #expect(calendar.startOfDay(for: shiftedNaturalWeek[0].date) == expectedNaturalWeekStart)
+        #expect(shiftedNaturalWeek.flatMap(\.events).map(\.title) == ["Previous week planning"])
     }
 
     @Test("snapshot store round trips through user defaults")

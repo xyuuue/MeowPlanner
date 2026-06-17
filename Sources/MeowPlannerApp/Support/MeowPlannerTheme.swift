@@ -931,8 +931,31 @@ struct HorizontalSwipeScrollDetector: View {
     var threshold: CGFloat = 18
     var onSwipe: (CGFloat) -> Void
 
+    @State private var didTriggerForCurrentSwipe = false
+
     var body: some View {
         Color.clear
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: threshold, coordinateSpace: .local)
+                    .onChanged { value in
+                        guard !didTriggerForCurrentSwipe else {
+                            return
+                        }
+
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        guard abs(horizontal) > abs(vertical), abs(horizontal) >= threshold else {
+                            return
+                        }
+
+                        didTriggerForCurrentSwipe = true
+                        onSwipe(horizontal)
+                    }
+                    .onEnded { _ in
+                        didTriggerForCurrentSwipe = false
+                    }
+            )
     }
 }
 #endif

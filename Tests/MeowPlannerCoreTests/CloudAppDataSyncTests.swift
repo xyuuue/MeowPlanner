@@ -142,7 +142,8 @@ struct CloudAppDataSyncTests {
         let localAppearanceUpdatedAt = Date(timeIntervalSince1970: 2_000)
         let remoteAppearanceUpdatedAt = Date(timeIntervalSince1970: 1_000)
 
-        #expect(AppAppearancePreference.updatedAtStorageKey == "meowplanner.appearance.preference.updatedAt")
+        #expect(AppAppearancePreference.legacyUpdatedAtStorageKey == "meowplanner.appearance.preference.updatedAt")
+        #expect(AppAppearancePreference.updatedAtStorageKey == AppAppearancePreference.currentPlatform.updatedAtStorageKey)
         #expect(!SyncedUserDefaultMergeDecision.shouldApplyRemoteValue(
             localUpdatedAt: localAppearanceUpdatedAt,
             remoteUpdatedAt: remoteAppearanceUpdatedAt
@@ -151,5 +152,59 @@ struct CloudAppDataSyncTests {
             localUpdatedAt: nil,
             remoteUpdatedAt: remoteAppearanceUpdatedAt
         ))
+    }
+
+    @Test("appearance preference storage and cloud fields are platform specific")
+    func appearancePreferenceStorageAndCloudFieldsArePlatformSpecific() {
+        #expect(AppAppearancePreference.legacyStorageKey == "meowplanner.appearance.preference")
+        #expect(AppAppearancePreference.legacyUpdatedAtStorageKey == "meowplanner.appearance.preference.updatedAt")
+        #expect(AppAppearancePreferencePlatform.macOS.storageKey == "meowplanner.appearance.preference.macOS")
+        #expect(AppAppearancePreferencePlatform.iOS.storageKey == "meowplanner.appearance.preference.iOS")
+        #expect(AppAppearancePreferencePlatform.macOS.updatedAtStorageKey == "meowplanner.appearance.preference.macOS.updatedAt")
+        #expect(AppAppearancePreferencePlatform.iOS.updatedAtStorageKey == "meowplanner.appearance.preference.iOS.updatedAt")
+        #expect(AppAppearancePreferencePlatform.macOS.cloudIDField == "macOSAppearanceID")
+        #expect(AppAppearancePreferencePlatform.iOS.cloudIDField == "iOSAppearanceID")
+        #expect(AppAppearancePreferencePlatform.macOS.cloudUpdatedAtField == "macOSAppearanceUpdatedAt")
+        #expect(AppAppearancePreferencePlatform.iOS.cloudUpdatedAtField == "iOSAppearanceUpdatedAt")
+        #expect(AppAppearancePreferencePlatform.macOS.storageKey != AppAppearancePreferencePlatform.iOS.storageKey)
+        #expect(AppAppearancePreferencePlatform.macOS.cloudIDField != AppAppearancePreferencePlatform.iOS.cloudIDField)
+
+        #if os(macOS)
+        #expect(AppAppearancePreference.currentPlatform == .macOS)
+        #expect(AppAppearancePreference.storageKey == AppAppearancePreferencePlatform.macOS.storageKey)
+        #expect(AppAppearancePreference.updatedAtStorageKey == AppAppearancePreferencePlatform.macOS.updatedAtStorageKey)
+        #elseif os(iOS)
+        #expect(AppAppearancePreference.currentPlatform == .iOS)
+        #expect(AppAppearancePreference.storageKey == AppAppearancePreferencePlatform.iOS.storageKey)
+        #expect(AppAppearancePreference.updatedAtStorageKey == AppAppearancePreferencePlatform.iOS.updatedAtStorageKey)
+        #endif
+    }
+
+    @Test("appearance preference migration copies legacy value without overwriting platform value")
+    func appearancePreferenceMigrationCopiesLegacyValueWithoutOverwritingPlatformValue() throws {
+        let suiteName = "MeowPlannerTests.AppearanceMigration.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let platform = AppAppearancePreference.currentPlatform
+        defaults.set(AppAppearancePreference.dark.rawValue, forKey: AppAppearancePreference.legacyStorageKey)
+        defaults.set(1_234.0, forKey: AppAppearancePreference.legacyUpdatedAtStorageKey)
+
+        AppAppearancePreference.migrateLegacyValueIfNeeded(in: defaults)
+
+        #expect(defaults.string(forKey: platform.storageKey) == AppAppearancePreference.dark.rawValue)
+        #expect(defaults.double(forKey: platform.updatedAtStorageKey) == 1_234.0)
+
+        defaults.set(AppAppearancePreference.light.rawValue, forKey: platform.storageKey)
+        defaults.set(5_678.0, forKey: platform.updatedAtStorageKey)
+        defaults.set(AppAppearancePreference.system.rawValue, forKey: AppAppearancePreference.legacyStorageKey)
+        defaults.set(9_999.0, forKey: AppAppearancePreference.legacyUpdatedAtStorageKey)
+
+        AppAppearancePreference.migrateLegacyValueIfNeeded(in: defaults)
+
+        #expect(defaults.string(forKey: platform.storageKey) == AppAppearancePreference.light.rawValue)
+        #expect(defaults.double(forKey: platform.updatedAtStorageKey) == 5_678.0)
     }
 }

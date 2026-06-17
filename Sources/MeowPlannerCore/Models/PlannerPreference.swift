@@ -1,9 +1,66 @@
 import Foundation
 import SwiftData
 
+public enum AppAppearancePreferencePlatform: String, CaseIterable, Identifiable, Sendable {
+    case macOS
+    case iOS
+
+    public var id: String { rawValue }
+
+    public static var current: AppAppearancePreferencePlatform {
+        #if os(iOS)
+        .iOS
+        #else
+        .macOS
+        #endif
+    }
+
+    public var storageKey: String {
+        switch self {
+        case .macOS: "meowplanner.appearance.preference.macOS"
+        case .iOS: "meowplanner.appearance.preference.iOS"
+        }
+    }
+
+    public var updatedAtStorageKey: String {
+        switch self {
+        case .macOS: "meowplanner.appearance.preference.macOS.updatedAt"
+        case .iOS: "meowplanner.appearance.preference.iOS.updatedAt"
+        }
+    }
+
+    public var cloudIDField: String {
+        switch self {
+        case .macOS: "macOSAppearanceID"
+        case .iOS: "iOSAppearanceID"
+        }
+    }
+
+    public var cloudUpdatedAtField: String {
+        switch self {
+        case .macOS: "macOSAppearanceUpdatedAt"
+        case .iOS: "iOSAppearanceUpdatedAt"
+        }
+    }
+}
+
 public enum AppAppearancePreference: String, CaseIterable, Identifiable, Sendable {
-    public static let storageKey = "meowplanner.appearance.preference"
-    public static let updatedAtStorageKey = "meowplanner.appearance.preference.updatedAt"
+    public static let legacyStorageKey = "meowplanner.appearance.preference"
+    public static let legacyUpdatedAtStorageKey = "meowplanner.appearance.preference.updatedAt"
+    public static let legacyCloudIDField = "appearanceID"
+    public static let legacyCloudUpdatedAtField = "appearanceUpdatedAt"
+
+    public static var currentPlatform: AppAppearancePreferencePlatform {
+        AppAppearancePreferencePlatform.current
+    }
+
+    public static var storageKey: String {
+        currentPlatform.storageKey
+    }
+
+    public static var updatedAtStorageKey: String {
+        currentPlatform.updatedAtStorageKey
+    }
 
     case system
     case light
@@ -13,6 +70,22 @@ public enum AppAppearancePreference: String, CaseIterable, Identifiable, Sendabl
 
     public init(storedValue: String) {
         self = AppAppearancePreference(rawValue: storedValue) ?? .system
+    }
+
+    public static func migrateLegacyValueIfNeeded(in defaults: UserDefaults = .standard) {
+        let platform = currentPlatform
+        guard defaults.object(forKey: platform.storageKey) == nil,
+              let legacyValue = defaults.string(forKey: legacyStorageKey) else {
+            return
+        }
+
+        defaults.set(AppAppearancePreference(storedValue: legacyValue).rawValue, forKey: platform.storageKey)
+
+        guard defaults.object(forKey: platform.updatedAtStorageKey) == nil,
+              let legacyUpdatedAt = defaults.object(forKey: legacyUpdatedAtStorageKey) else {
+            return
+        }
+        defaults.set(legacyUpdatedAt, forKey: platform.updatedAtStorageKey)
     }
 
     public func title(language: AppLanguage) -> String {

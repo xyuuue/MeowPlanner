@@ -120,11 +120,13 @@ public enum PlannerTextKey: String, Sendable {
     case newTodo
     case editTodo
     case addTodo
+    case deleteTodo
     case allTodos
     case defaultTodoGroup
     case todoGroup
     case newTodoGroup
     case editTodoGroup
+    case deleteTodoGroup
     case groupName
     case noTodos
     case noTodosMessage
@@ -180,6 +182,9 @@ public enum PlannerTextKey: String, Sendable {
     case hideCompletedSchedules
     case completedScheduleStrikethrough
     case showChineseCalendar
+    case widgetSettings
+    case widgetBackground
+    case chooseBackgroundImage
     case bottomNavigation
     case restoreDefault
     case scheduleCollapsedStartHour
@@ -193,6 +198,7 @@ public enum PlannerTextKey: String, Sendable {
     case editColor
     case deleteColor
     case sync
+    case refreshCalendarFromCloud
     case icloudSync
     case icloudDescription
     case scope
@@ -324,11 +330,13 @@ public enum PlannerCopy {
         .newTodo: "New Todo",
         .editTodo: "Edit Todo",
         .addTodo: "Add Todo",
+        .deleteTodo: "Delete Todo",
         .allTodos: "All",
         .defaultTodoGroup: "Default",
         .todoGroup: "Group",
         .newTodoGroup: "New Group",
         .editTodoGroup: "Edit Group",
+        .deleteTodoGroup: "Delete Group",
         .groupName: "Group name",
         .noTodos: "No todos yet",
         .noTodosMessage: "Create a task and FuFu will keep it here.",
@@ -384,6 +392,9 @@ public enum PlannerCopy {
         .hideCompletedSchedules: "Hide completed schedules",
         .completedScheduleStrikethrough: "Strikethrough completed schedules",
         .showChineseCalendar: "Show Chinese lunar calendar and festivals",
+        .widgetSettings: "Widget settings",
+        .widgetBackground: "Widget background",
+        .chooseBackgroundImage: "Choose background image",
         .bottomNavigation: "Bottom navigation",
         .restoreDefault: "Restore default",
         .scheduleCollapsedStartHour: "Collapsed start",
@@ -397,6 +408,7 @@ public enum PlannerCopy {
         .editColor: "Edit color",
         .deleteColor: "Delete color",
         .sync: "Sync",
+        .refreshCalendarFromCloud: "Sync latest cloud content",
         .icloudSync: "Cloud account sync",
         .icloudDescription: "Signed-in account schedules, todos, habits, focus sessions, preferences, and timetables sync through Firebase Firestore.",
         .scope: "Scope",
@@ -527,11 +539,13 @@ public enum PlannerCopy {
         .newTodo: "新建待办",
         .editTodo: "编辑待办",
         .addTodo: "添加待办",
+        .deleteTodo: "删除待办",
         .allTodos: "全部",
         .defaultTodoGroup: "默认",
         .todoGroup: "分组",
         .newTodoGroup: "新建组",
         .editTodoGroup: "编辑组",
+        .deleteTodoGroup: "删除组",
         .groupName: "组名称",
         .noTodos: "还没有待办",
         .noTodosMessage: "创建一个待办，FuFu 会帮你放在这里。",
@@ -587,6 +601,9 @@ public enum PlannerCopy {
         .hideCompletedSchedules: "完成后隐藏",
         .completedScheduleStrikethrough: "完成后显示删除线",
         .showChineseCalendar: "显示中国农历和节日",
+        .widgetSettings: "小组件设置",
+        .widgetBackground: "小组件背景",
+        .chooseBackgroundImage: "选择背景图片",
         .bottomNavigation: "底部导航",
         .restoreDefault: "恢复默认",
         .scheduleCollapsedStartHour: "折叠开始",
@@ -600,6 +617,7 @@ public enum PlannerCopy {
         .editColor: "编辑颜色",
         .deleteColor: "删除颜色",
         .sync: "同步",
+        .refreshCalendarFromCloud: "同步最新云端内容",
         .icloudSync: "云端账号同步",
         .icloudDescription: "已登录账号的日程、待办、习惯、专注记录、偏好设置和课程表会通过 Firebase Firestore 同步。",
         .scope: "范围",

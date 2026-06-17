@@ -16,9 +16,12 @@ struct CalendarHomeView: View {
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionX") private var floatingAddButtonPositionX: Double = 1.0
     @AppStorage("meowplanner.calendarFloatingAddButtonPositionY") private var floatingAddButtonPositionY: Double = 1.0
 
+    private let newScheduleRequestToken: UUID?
+
     #if os(macOS)
     private let sidebarExpandAction: (() -> Void)?
     private let sidebarExpandTitle: String
+    private let onCloudRefresh: (() -> Void)?
     private let macOSTitlebarContentInset: CGFloat = 18
     private let desktopCalendarHeaderContentSpacing: CGFloat = 0
     #endif
@@ -26,13 +29,21 @@ struct CalendarHomeView: View {
     #if os(iOS)
     @ObservedObject private var iosNavigationState: IOSCalendarNavigationState
 
-    init(iosNavigationState: IOSCalendarNavigationState) {
+    init(iosNavigationState: IOSCalendarNavigationState, newScheduleRequestToken: UUID? = nil) {
         self.iosNavigationState = iosNavigationState
+        self.newScheduleRequestToken = newScheduleRequestToken
     }
     #else
-    init(sidebarExpandAction: (() -> Void)? = nil, sidebarExpandTitle: String = "") {
+    init(
+        sidebarExpandAction: (() -> Void)? = nil,
+        sidebarExpandTitle: String = "",
+        newScheduleRequestToken: UUID? = nil,
+        onCloudRefresh: (() -> Void)? = nil
+    ) {
         self.sidebarExpandAction = sidebarExpandAction
         self.sidebarExpandTitle = sidebarExpandTitle
+        self.newScheduleRequestToken = newScheduleRequestToken
+        self.onCloudRefresh = onCloudRefresh
     }
     #endif
 
@@ -46,12 +57,13 @@ struct CalendarHomeView: View {
     @State private var agendaCardDate: Date?
     @State private var agendaCardScrollAnchorDate = Date()
     @State private var showingIOSDatePicker = false
+    @State private var handledNewScheduleRequestToken: UUID?
 
     private let compactMonthGridMinHeight: CGFloat = 520
     private let regularMonthGridHeight: CGFloat = 760
     private let iosCalendarHorizontalPadding: CGFloat = 0
     private let iosCalendarVerticalPadding: CGFloat = 12
-    private let iosCalendarBottomReserve: CGFloat = 18
+    private let iosCalendarBottomReserve: CGFloat = 0
     private let iosMonthGridMinHeight: CGFloat = 620
     private let agendaCardSpacing: CGFloat = 14
     private let agendaCardSidePeek: CGFloat = 30
@@ -93,7 +105,7 @@ struct CalendarHomeView: View {
             GeometryReader { proxy in
                 let buttonSize = floatingAddButtonSize(for: proxy.size)
                 let inset = calendarFloatingAddButtonEdgeInset(for: buttonSize)
-                let bottomInset = inset
+                let bottomInset = calendarFloatingAddButtonBottomInset(for: buttonSize)
                 let minX = inset + buttonSize / 2
                 let maxX = max(minX, proxy.size.width - inset - buttonSize / 2)
                 let minY = inset + buttonSize / 2
@@ -156,7 +168,7 @@ struct CalendarHomeView: View {
         }
         .background {
             #if os(iOS)
-            PlannerIOSImageBackground(gradientOpacity: 0.86)
+            Color.clear
             #else
             PlannerImageBackground(gradientOpacity: 0.86)
             #endif
@@ -176,6 +188,12 @@ struct CalendarHomeView: View {
                 EventEditorView(defaultDate: selectedDate, event: editingEvent, localRemindersEnabled: localRemindersEnabled, defaultEventIsAllDay: defaultEventIsAllDay)
             }
         }
+        .onAppear {
+            openRequestedNewScheduleIfNeeded()
+        }
+        .onChange(of: newScheduleRequestToken) { _, _ in
+            openRequestedNewScheduleIfNeeded()
+        }
         #if os(iOS)
         .sheet(isPresented: $showingIOSDatePicker) {
             IOSCalendarWheelDatePickerSheet(
@@ -192,7 +210,6 @@ struct CalendarHomeView: View {
         }
         .onDisappear {
             iosNavigationState.setAgendaOverlayPresented(false)
-            iosNavigationState.clear()
         }
         .onChange(of: displayedMonth) { _, _ in
             syncIOSCalendarNavigationState()
@@ -574,6 +591,10 @@ struct CalendarHomeView: View {
         min(20, max(16, buttonSize * 0.28))
     }
 
+    private func calendarFloatingAddButtonBottomInset(for buttonSize: CGFloat) -> CGFloat {
+        calendarFloatingAddButtonEdgeInset(for: buttonSize)
+    }
+
     private var localRemindersEnabled: Bool {
         preferences.first?.localRemindersEnabled ?? PlannerPreference.defaults.localRemindersEnabled
     }
@@ -619,9 +640,29 @@ struct CalendarHomeView: View {
             }
     }
 
+    #if os(macOS)
+    private func refreshFromCloud() {
+        onCloudRefresh?()
+    }
+    #endif
+
     private var header: some View {
         HStack(spacing: 14) {
+            #if os(macOS)
+            if onCloudRefresh != nil {
+                Button(action: refreshFromCloud) {
+                    FuFuAssetImage(size: 58)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help(PlannerCopy.text(.refreshCalendarFromCloud, language: appLanguage))
+                .accessibilityLabel(PlannerCopy.text(.refreshCalendarFromCloud, language: appLanguage))
+            } else {
+                FuFuAssetImage(size: 58)
+            }
+            #else
             FuFuAssetImage(size: 58)
+            #endif
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(PlannerCopy.text(.fufuTimePlanner, language: appLanguage))
@@ -707,6 +748,16 @@ struct CalendarHomeView: View {
         showingEventEditor = false
         dismissAgendaCard()
         editingEvent = event
+    }
+
+    private func openRequestedNewScheduleIfNeeded() {
+        guard let newScheduleRequestToken,
+              handledNewScheduleRequestToken != newScheduleRequestToken else {
+            return
+        }
+
+        handledNewScheduleRequestToken = newScheduleRequestToken
+        openEventEditor(on: Date())
     }
 
     private func persistWidgetUpdate() {

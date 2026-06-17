@@ -58,10 +58,43 @@ public enum WeekStartPreference: Int, CaseIterable, Codable, Identifiable, Senda
     }
 }
 
+public enum WidgetBackgroundStyle: String, CaseIterable, Identifiable, Codable, Sendable {
+    case defaultArtwork
+    case customPhoto
+    case transparent
+
+    public var id: String { rawValue }
+
+    public func title(language: AppLanguage) -> String {
+        switch self {
+        case .defaultArtwork:
+            switch language {
+            case .english: "Default"
+            case .chinese: "默认背景"
+            }
+        case .customPhoto:
+            switch language {
+            case .english: "Photo"
+            case .chinese: "相册图片"
+            }
+        case .transparent:
+            switch language {
+            case .english: "Transparent"
+            case .chinese: "透明"
+            }
+        }
+    }
+}
+
 public enum WidgetPlannerPreferenceStore {
     public static let suiteName = "group.com.yuelingqiu.MeowPlanner"
     public static let weekStartPreferenceKey = "weekStartPreference"
     public static let showChineseCalendarKey = "showChineseCalendar"
+    public static let widgetAppearancePreferenceKey = "widgetAppearancePreference"
+    public static let widgetBackgroundStyleKey = "widgetBackgroundStyle"
+    public static let widgetBackgroundStyleFilename = "widget-background-style.txt"
+    public static let customBackgroundImageFilename = "widget-custom-background.image"
+    private static let widgetExtensionContainerIdentifier = "com.yuelingqiu.MeowPlanner.MeowPlannerWidget"
 
     public static var weekStartPreference: WeekStartPreference {
         get {
@@ -80,6 +113,250 @@ public enum WidgetPlannerPreferenceStore {
         set {
             defaults.set(newValue, forKey: showChineseCalendarKey)
         }
+    }
+
+    public static var widgetBackgroundStyle: WidgetBackgroundStyle {
+        get {
+            widgetBackgroundStyle(defaults: defaults, styleFileURLs: widgetBackgroundStyleFileURLs)
+        }
+        set {
+            setWidgetBackgroundStyle(newValue, defaults: defaults, styleFileURLs: widgetBackgroundStyleFileURLs)
+        }
+    }
+
+    public static var widgetAppearancePreference: AppAppearancePreference {
+        get {
+            widgetAppearancePreference(defaults: defaults)
+        }
+        set {
+            setWidgetAppearancePreference(newValue, defaults: defaults)
+        }
+    }
+
+    public static var customBackgroundImageURL: URL? {
+        customBackgroundImageURL()
+    }
+
+    public static func widgetAppearancePreference(defaults: UserDefaults) -> AppAppearancePreference {
+        guard let rawValue = defaults.string(forKey: widgetAppearancePreferenceKey) else {
+            return .system
+        }
+
+        return AppAppearancePreference(storedValue: rawValue)
+    }
+
+    public static func setWidgetAppearancePreference(_ preference: AppAppearancePreference, defaults: UserDefaults) {
+        defaults.set(preference.rawValue, forKey: widgetAppearancePreferenceKey)
+        defaults.synchronize()
+    }
+
+    public static func isDarkWidgetAppearance(systemIsDark: Bool) -> Bool {
+        isDarkWidgetAppearance(systemIsDark: systemIsDark, defaults: defaults)
+    }
+
+    public static func isDarkWidgetAppearance(systemIsDark: Bool, defaults: UserDefaults) -> Bool {
+        switch widgetAppearancePreference(defaults: defaults) {
+        case .system:
+            systemIsDark
+        case .light:
+            false
+        case .dark:
+            true
+        }
+    }
+
+    public static func widgetBackgroundStyle(defaults: UserDefaults) -> WidgetBackgroundStyle {
+        widgetBackgroundStyle(defaults: defaults, styleFileURLs: [])
+    }
+
+    public static func widgetBackgroundStyle(defaults: UserDefaults, styleFileURLs: [URL]) -> WidgetBackgroundStyle {
+        guard let rawValue = defaults.string(forKey: widgetBackgroundStyleKey) else {
+            return widgetBackgroundStyle(styleFileURLs: styleFileURLs) ?? .defaultArtwork
+        }
+
+        if let style = WidgetBackgroundStyle(rawValue: rawValue) {
+            saveWidgetBackgroundStyle(style, styleFileURLs: styleFileURLs)
+            return style
+        }
+
+        return widgetBackgroundStyle(styleFileURLs: styleFileURLs) ?? .defaultArtwork
+    }
+
+    public static func setWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, defaults: UserDefaults) {
+        setWidgetBackgroundStyle(style, defaults: defaults, styleFileURLs: [])
+    }
+
+    public static func setWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, defaults: UserDefaults, styleFileURLs: [URL]) {
+        defaults.set(style.rawValue, forKey: widgetBackgroundStyleKey)
+        defaults.synchronize()
+        saveWidgetBackgroundStyle(style, styleFileURLs: styleFileURLs)
+    }
+
+    private static func widgetBackgroundStyle(styleFileURLs: [URL]) -> WidgetBackgroundStyle? {
+        for fileURL in styleFileURLs {
+            guard let rawValue = try? String(contentsOf: fileURL, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                let style = WidgetBackgroundStyle(rawValue: rawValue)
+            else {
+                continue
+            }
+
+            return style
+        }
+
+        return nil
+    }
+
+    private static func saveWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, styleFileURLs: [URL]) {
+        for fileURL in styleFileURLs {
+            try? FileManager.default.createDirectory(
+                at: fileURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try? style.rawValue.write(to: fileURL, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private static var widgetBackgroundStyleFileURLs: [URL] {
+        widgetBackgroundStyleFileURLs(
+            appGroupContainerURL: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName),
+            homeDirectory: currentHomeDirectory,
+            accountHomeDirectory: accountHomeDirectory
+        )
+    }
+
+    static func widgetBackgroundStyleFileURLs(
+        appGroupContainerURL: URL?,
+        homeDirectory: URL,
+        accountHomeDirectory: URL?
+    ) -> [URL] {
+        var urls: [URL] = []
+        let homeStyleURL = homeDirectory
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Group Containers")
+            .appendingPathComponent(suiteName)
+            .appendingPathComponent(widgetBackgroundStyleFilename)
+        let isWidgetSandboxHome = homeDirectory.path.contains(
+            "/Library/Containers/\(widgetExtensionContainerIdentifier)/Data"
+        )
+
+        if isWidgetSandboxHome {
+            urls.append(homeStyleURL)
+        }
+
+        if let appGroupContainerURL {
+            urls.append(appGroupContainerURL.appendingPathComponent(widgetBackgroundStyleFilename))
+        }
+
+        if let accountHomeDirectory {
+            let accountGroupStyleURL = accountHomeDirectory
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Group Containers")
+                .appendingPathComponent(suiteName)
+                .appendingPathComponent(widgetBackgroundStyleFilename)
+            let widgetSandboxMirrorStyleURL = accountHomeDirectory
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Containers")
+                .appendingPathComponent(widgetExtensionContainerIdentifier)
+                .appendingPathComponent("Data")
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Group Containers")
+                .appendingPathComponent(suiteName)
+                .appendingPathComponent(widgetBackgroundStyleFilename)
+
+            urls.append(accountGroupStyleURL)
+            urls.append(widgetSandboxMirrorStyleURL)
+        }
+
+        if !isWidgetSandboxHome {
+            urls.append(homeStyleURL)
+        }
+
+        if accountHomeDirectory == nil, let userHome = NSHomeDirectoryForUser(NSUserName()) {
+            urls.append(
+                URL(fileURLWithPath: userHome)
+                    .appendingPathComponent("Library")
+                    .appendingPathComponent("Group Containers")
+                    .appendingPathComponent(suiteName)
+                    .appendingPathComponent(widgetBackgroundStyleFilename)
+            )
+        }
+
+        return urls.reduce(into: []) { uniqueURLs, url in
+            guard !uniqueURLs.contains(url) else {
+                return
+            }
+            uniqueURLs.append(url)
+        }
+    }
+
+    private static var currentHomeDirectory: URL {
+        #if os(macOS)
+        return FileManager.default.homeDirectoryForCurrentUser
+        #else
+        if let applicationSupportDirectory = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first {
+            return applicationSupportDirectory
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+        }
+
+        return URL(fileURLWithPath: NSHomeDirectory())
+        #endif
+    }
+
+    private static var accountHomeDirectory: URL? {
+        #if canImport(Darwin)
+        guard
+            let passwd = getpwuid(getuid()),
+            let homePath = passwd.pointee.pw_dir
+        else {
+            return nil
+        }
+        return URL(fileURLWithPath: String(cString: homePath))
+        #else
+        return nil
+        #endif
+    }
+
+    public static func customBackgroundImageURL(fileManager: FileManager = .default) -> URL? {
+        #if canImport(Darwin)
+        return fileManager
+            .containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+            .appendingPathComponent(customBackgroundImageFilename)
+        #else
+        return nil
+        #endif
+    }
+
+    public static func saveCustomBackgroundImageData(_ data: Data) throws {
+        guard let fileURL = customBackgroundImageURL else {
+            return
+        }
+
+        try saveCustomBackgroundImageData(data, fileURL: fileURL)
+    }
+
+    public static func saveCustomBackgroundImageData(_ data: Data, fileURL: URL) throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: fileURL, options: .atomic)
+    }
+
+    public static func clearCustomBackgroundImage() {
+        guard let fileURL = customBackgroundImageURL else {
+            return
+        }
+
+        clearCustomBackgroundImage(fileURL: fileURL)
+    }
+
+    public static func clearCustomBackgroundImage(fileURL: URL) {
+        try? FileManager.default.removeItem(at: fileURL)
     }
 
     private static var defaults: UserDefaults {
@@ -258,6 +535,82 @@ public struct WidgetPlannerSnapshot: Codable, Equatable, Sendable {
         try container.encode(showCompletedSchedules, forKey: .showCompletedSchedules)
         try container.encode(completedSchedulesUseStrikethrough, forKey: .completedSchedulesUseStrikethrough)
         try container.encode(updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct WidgetWeeklyScheduleDay: Identifiable, Equatable, Sendable {
+    public let date: Date
+    public let events: [WidgetPlannerSnapshot.Event]
+
+    public var id: Date { date }
+
+    public init(date: Date, events: [WidgetPlannerSnapshot.Event]) {
+        self.date = date
+        self.events = events
+    }
+}
+
+public enum WidgetWeeklySchedulePlanner {
+    public static func days(
+        anchorDate: Date,
+        displayRule: WidgetScheduleDisplayRule,
+        events: [WidgetPlannerSnapshot.Event],
+        weekStartPreference: WeekStartPreference,
+        showCompletedSchedules: Bool,
+        weekOffset: Int = 0,
+        calendar: Calendar = .current
+    ) -> [WidgetWeeklyScheduleDay] {
+        var workingCalendar = calendar
+        workingCalendar.firstWeekday = weekStartPreference.calendarFirstWeekday
+        let offsetAnchorDate = workingCalendar.date(
+            byAdding: .day,
+            value: weekOffset * 7,
+            to: anchorDate
+        ) ?? anchorDate
+
+        let startDate: Date
+        switch displayRule {
+        case .nextSevenDays:
+            startDate = workingCalendar.startOfDay(for: offsetAnchorDate)
+        case .calendarWeek:
+            startDate = workingCalendar.dateInterval(of: .weekOfYear, for: offsetAnchorDate)?.start
+                ?? workingCalendar.startOfDay(for: offsetAnchorDate)
+        }
+
+        let visibleEvents = events
+            .filter { showCompletedSchedules || !$0.isCompleted }
+            .sorted(by: eventSort)
+
+        return (0..<7).compactMap { offset in
+            guard let date = workingCalendar.date(byAdding: .day, value: offset, to: startDate) else {
+                return nil
+            }
+
+            let dayEvents = visibleEvents.filter { event in
+                event.plannerEvent.occurs(on: date, calendar: workingCalendar)
+            }
+
+            return WidgetWeeklyScheduleDay(date: date, events: dayEvents)
+        }
+    }
+
+    private static func eventSort(
+        _ lhs: WidgetPlannerSnapshot.Event,
+        _ rhs: WidgetPlannerSnapshot.Event
+    ) -> Bool {
+        if lhs.isCompleted != rhs.isCompleted {
+            return !lhs.isCompleted
+        }
+
+        if lhs.isAllDay != rhs.isAllDay {
+            return lhs.isAllDay
+        }
+
+        if lhs.startDate != rhs.startDate {
+            return lhs.startDate < rhs.startDate
+        }
+
+        return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
     }
 }
 
