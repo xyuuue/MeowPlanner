@@ -16,14 +16,7 @@ struct TodoHomeView: View {
 
     var body: some View {
         ZStack {
-            MeowPlannerTheme.fufuPlannerBackground
-                .overlay {
-                    MeowPlannerTheme.plannerGradient.opacity(0.88)
-                }
-                .overlay {
-                    todoBackgroundMotifs
-                }
-                .ignoresSafeArea()
+            todoPageBackground
 
             VStack(alignment: .leading, spacing: 16) {
                 header
@@ -102,6 +95,23 @@ struct TodoHomeView: View {
         .sheet(item: $groupEditorPresentation) { presentation in
             TodoGroupEditorView(group: presentation.group)
         }
+    }
+
+    @ViewBuilder
+    private var todoPageBackground: some View {
+        #if os(iOS)
+        Color.clear
+            .ignoresSafeArea()
+        #else
+        MeowPlannerTheme.fufuPlannerBackground
+            .overlay {
+                MeowPlannerTheme.plannerGradient.opacity(0.88)
+            }
+            .overlay {
+                todoBackgroundMotifs
+            }
+            .ignoresSafeArea()
+        #endif
     }
 
     private var todoEndDropTarget: some View {

@@ -73,8 +73,11 @@ def file_ref(path: str, *, name: str | None = None, explicit: str | None = None,
     return oid(f"file:{path}:{name or ''}:{explicit or ''}:{folder}")
 
 
-def build_file(target: str, path: str, suffix: str = "") -> str:
-    return oid(f"build:{target}:{path}:{suffix}")
+def build_file(target: str, path: str, suffix: str = "", *, folder: bool = False) -> str:
+    key = f"build:{target}:{path}:{suffix}"
+    if folder:
+        key += ":folder"
+    return oid(key)
 
 
 def group_id(name: str) -> str:
@@ -191,6 +194,10 @@ WIDGET_BACKGROUND_RESOURCE_FILES = [
     "Resources/WidgetBackgroundDark.png",
 ]
 
+WIDGET_RESOURCE_FOLDERS = [
+    "Resources/FuFu",
+]
+
 APP_RESOURCE_FILES = RESOURCE_FILES + [
     "Config/GoogleService-Info.plist",
     *APP_BACKGROUND_RESOURCE_FILES,
@@ -250,7 +257,7 @@ def main() -> None:
         (RESOURCE_FILES if INCLUDE_MACOS else [])
         + (APP_BACKGROUND_RESOURCE_FILES if INCLUDE_MACOS or INCLUDE_IOS else [])
         + (IOS_BACKGROUND_RESOURCE_FILES if INCLUDE_IOS else [])
-        + (WIDGET_BACKGROUND_RESOURCE_FILES if INCLUDE_IOS else [])
+        + (WIDGET_BACKGROUND_RESOURCE_FILES if INCLUDE_MACOS or INCLUDE_IOS else [])
         + (IOS_ASSET_CATALOGS if INCLUDE_IOS else [])
     )
     active_source_files = CORE_SOURCES + APP_SOURCES + (WIDGET_SOURCES if INCLUDE_MACOS or INCLUDE_IOS else [])
@@ -388,6 +395,12 @@ def main() -> None:
                 objects,
                 build_file("MeowPlanner", path),
                 f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path, folder=path in RESOURCE_FOLDERS)};",
+            )
+        for path in WIDGET_BACKGROUND_RESOURCE_FILES + WIDGET_RESOURCE_FOLDERS:
+            add_object(
+                objects,
+                build_file("MeowPlannerWidgetExtension", path, folder=path in WIDGET_RESOURCE_FOLDERS),
+                f"\t\tisa = PBXBuildFile;\n\t\tfileRef = {file_ref(path, folder=path in WIDGET_RESOURCE_FOLDERS)};",
             )
 
     if INCLUDE_IOS:
@@ -549,7 +562,7 @@ def main() -> None:
 
         sources_phase("MeowPlannerWidgetExtension", WIDGET_SOURCES)
         frameworks_phase("MeowPlannerWidgetExtension", [core_widget_framework])
-        resources_phase("MeowPlannerWidgetExtension", [])
+        resources_phase("MeowPlannerWidgetExtension", [build_file("MeowPlannerWidgetExtension", path, folder=path in WIDGET_RESOURCE_FOLDERS) for path in WIDGET_BACKGROUND_RESOURCE_FILES + WIDGET_RESOURCE_FOLDERS])
         widget_embed_frameworks = copy_phase("MeowPlannerWidgetExtension", "Embed Frameworks", "10", [core_widget_embed])
 
     if INCLUDE_IOS:

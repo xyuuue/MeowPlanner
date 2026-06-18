@@ -25,7 +25,7 @@ private enum SettingsSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-private let settingsContentTopInset: CGFloat = 24
+private let settingsContentTopInset: CGFloat = 0
 #if os(iOS)
 private let settingsPersonalizationBottomScrollExpansion: CGFloat = 260
 #else
@@ -60,8 +60,8 @@ struct SettingsView: View {
     @State private var eventColorHexes = PlannerPreference.defaultEventColorHexes
     #if os(iOS)
     @State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?
-    @State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle
-    @State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue
+    @State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+    @State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
     @State private var widgetPhotoImportError: String?
     #endif
     @State private var showingTimeCollapsePanel = false
@@ -358,12 +358,12 @@ struct SettingsView: View {
     }
 
     private func persistWidgetBackgroundStyle(_ newValue: WidgetBackgroundStyle) {
-        WidgetPlannerPreferenceStore.widgetBackgroundStyle = newValue
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(newValue, platform: .iOS)
         reloadWidgetTimelines()
     }
 
     private func persistWidgetAppearancePreference(_ newValue: String) {
-        WidgetPlannerPreferenceStore.widgetAppearancePreference = AppAppearancePreference(storedValue: newValue)
+        WidgetPlannerPreferenceStore.setWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue), platform: .iOS)
         reloadWidgetTimelines()
     }
 
@@ -378,10 +378,10 @@ struct SettingsView: View {
                 return
             }
 
-            try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data)
+            try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, platform: .iOS)
             widgetPhotoImportError = nil
             widgetBackgroundStyle = .customPhoto
-            WidgetPlannerPreferenceStore.widgetBackgroundStyle = .customPhoto
+            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, platform: .iOS)
             reloadWidgetTimelines()
         } catch {
             widgetPhotoImportError = widgetPhotoImportFailureMessage
@@ -859,7 +859,7 @@ struct SettingsView: View {
     }
 
     private var widgetAppearanceSectionTitle: String {
-        appLanguage == .chinese ? "外观" : "Appearance"
+        appLanguage == .chinese ? "小组件外观" : "Widget appearance"
     }
 
     private var widgetAppearanceSystemModeTitle: String {
@@ -933,8 +933,8 @@ struct SettingsView: View {
         eventColorHexes = preference.eventColorHexes
         eventColorEditorHex = eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
         #if os(iOS)
-        widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle
-        widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue
+        widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+        widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
         #endif
         WidgetPlannerPreferenceStore.weekStartPreference = preference.weekStartPreference
         WidgetPlannerPreferenceStore.showChineseCalendar = preference.showChineseCalendar
@@ -1179,12 +1179,7 @@ private extension View {
 
     @ViewBuilder
     func settingsContentTopSpacing() -> some View {
-        #if os(iOS)
-        contentMargins(.top, settingsContentTopInset, for: .scrollContent)
-            .padding(.top, settingsContentTopInset)
-        #else
         self
-        #endif
     }
 }
 

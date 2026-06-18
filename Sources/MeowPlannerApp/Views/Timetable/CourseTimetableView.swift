@@ -37,10 +37,7 @@ struct CourseTimetableView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            MeowPlannerTheme.fufuPlannerBackground
-                .overlay { MeowPlannerTheme.plannerGradient.opacity(0.86) }
-                .overlay { timetableBackgroundMotifs }
-                .ignoresSafeArea()
+            timetablePageBackground
 
             if let timetable = selectedTimetable {
                 timetableGridView(for: timetable)
@@ -108,6 +105,19 @@ struct CourseTimetableView: View {
         .onDisappear {
             iosNavigationState.clear()
         }
+        #endif
+    }
+
+    @ViewBuilder
+    private var timetablePageBackground: some View {
+        #if os(iOS)
+        Color.clear
+            .ignoresSafeArea()
+        #else
+        MeowPlannerTheme.fufuPlannerBackground
+            .overlay { MeowPlannerTheme.plannerGradient.opacity(0.86) }
+            .overlay { timetableBackgroundMotifs }
+            .ignoresSafeArea()
         #endif
     }
 

@@ -86,7 +86,7 @@ struct WidgetPlannerSnapshotTests {
 
         WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.transparent, defaults: defaults)
 
-        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults) == .transparent)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults) == .defaultArtwork)
 
         let data = Data([0x4d, 0x65, 0x6f, 0x77])
         try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, fileURL: fileURL)
@@ -121,6 +121,39 @@ struct WidgetPlannerSnapshotTests {
         #expect(!WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: true, defaults: defaults))
     }
 
+    @Test("widget visual preferences stay separate between macOS and iOS")
+    func widgetVisualPreferencesStaySeparateBetweenMacOSAndIOS() throws {
+        let suiteName = "MeowPlannerWidgetPlatformPreferenceTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        defaults.set(WidgetBackgroundStyle.defaultArtwork.rawValue, forKey: WidgetPlannerPreferenceStore.widgetBackgroundStyleKey)
+        defaults.set(AppAppearancePreference.dark.rawValue, forKey: WidgetPlannerPreferenceStore.widgetAppearancePreferenceKey)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS, defaults: defaults) == .defaultArtwork)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS, defaults: defaults) == .dark)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .macOS, defaults: defaults) == .system)
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, platform: .iOS, defaults: defaults)
+        WidgetPlannerPreferenceStore.setWidgetAppearancePreference(.light, platform: .iOS, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS, defaults: defaults) == .customPhoto)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS, defaults: defaults) == .light)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .macOS, defaults: defaults) == .system)
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.defaultArtwork, platform: .macOS, defaults: defaults)
+        WidgetPlannerPreferenceStore.setWidgetAppearancePreference(.dark, platform: .macOS, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS, defaults: defaults) == .customPhoto)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS, defaults: defaults) == .light)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+        #expect(WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .macOS, defaults: defaults) == .dark)
+    }
+
     @Test("widget background preference falls back to mirrored style file")
     func widgetBackgroundPreferenceFallsBackToMirroredStyleFile() throws {
         let suiteName = "MeowPlannerWidgetBackgroundFallbackTests-\(UUID().uuidString)"
@@ -134,9 +167,9 @@ struct WidgetPlannerSnapshotTests {
 
         #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .defaultArtwork)
 
-        try "transparent".write(to: styleFileURL, atomically: true, encoding: .utf8)
+        try "defaultArtwork".write(to: styleFileURL, atomically: true, encoding: .utf8)
 
-        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .transparent)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .defaultArtwork)
 
         WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, defaults: defaults, styleFileURLs: [styleFileURL])
 
@@ -144,10 +177,48 @@ struct WidgetPlannerSnapshotTests {
         #expect(try String(contentsOf: styleFileURL, encoding: .utf8) == "customPhoto")
 
         try? FileManager.default.removeItem(at: styleFileURL)
-        defaults.set(WidgetBackgroundStyle.transparent.rawValue, forKey: WidgetPlannerPreferenceStore.widgetBackgroundStyleKey)
+        defaults.set(WidgetBackgroundStyle.defaultArtwork.rawValue, forKey: WidgetPreferencePlatform.macOS.widgetBackgroundStyleKey)
 
-        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .transparent)
-        #expect(try String(contentsOf: styleFileURL, encoding: .utf8) == "transparent")
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(defaults: defaults, styleFileURLs: [styleFileURL]) == .defaultArtwork)
+        #expect(try String(contentsOf: styleFileURL, encoding: .utf8) == "defaultArtwork")
+    }
+
+    @Test("macOS widget background does not use transparent style")
+    func macOSWidgetBackgroundDoesNotUseTransparentStyle() throws {
+        let suiteName = "MeowPlannerWidgetMacOSSolidBackgroundTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let styleFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerMacOSWidgetBackgroundStyle-\(UUID().uuidString).txt")
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: styleFileURL)
+        }
+
+        #expect(WidgetPreferencePlatform.macOS.defaultWidgetBackgroundStyle == .defaultArtwork)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+
+        defaults.set(
+            WidgetBackgroundStyle.transparent.rawValue,
+            forKey: WidgetPreferencePlatform.macOS.widgetBackgroundStyleKey
+        )
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+
+        defaults.removeObject(forKey: WidgetPreferencePlatform.macOS.widgetBackgroundStyleKey)
+        try WidgetBackgroundStyle.transparent.rawValue.write(to: styleFileURL, atomically: true, encoding: .utf8)
+
+        #expect(
+            WidgetPlannerPreferenceStore.widgetBackgroundStyle(
+                platform: .macOS,
+                defaults: defaults,
+                styleFileURLs: [styleFileURL]
+            ) == .defaultArtwork
+        )
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.transparent, platform: .iOS, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS, defaults: defaults) == .transparent)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
     }
 
     @Test("snapshot decodes older payloads with completed schedule display defaults")

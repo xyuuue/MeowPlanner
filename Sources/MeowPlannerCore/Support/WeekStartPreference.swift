@@ -86,6 +86,65 @@ public enum WidgetBackgroundStyle: String, CaseIterable, Identifiable, Codable, 
     }
 }
 
+public enum WidgetPreferencePlatform: String, CaseIterable, Identifiable, Sendable {
+    case macOS
+    case iOS
+
+    public var id: String { rawValue }
+
+    public static var current: WidgetPreferencePlatform {
+        #if os(iOS)
+        .iOS
+        #else
+        .macOS
+        #endif
+    }
+
+    public var widgetAppearancePreferenceKey: String {
+        switch self {
+        case .macOS: "widgetAppearancePreference.macOS"
+        case .iOS: "widgetAppearancePreference"
+        }
+    }
+
+    public var widgetBackgroundStyleKey: String {
+        switch self {
+        case .macOS: "widgetBackgroundStyle.macOS"
+        case .iOS: "widgetBackgroundStyle"
+        }
+    }
+
+    public var widgetBackgroundStyleFilename: String {
+        switch self {
+        case .macOS: "widget-background-style.macOS.txt"
+        case .iOS: "widget-background-style.txt"
+        }
+    }
+
+    public var customBackgroundImageFilename: String {
+        switch self {
+        case .macOS: "widget-custom-background.macOS.image"
+        case .iOS: "widget-custom-background.image"
+        }
+    }
+
+    public var defaultWidgetBackgroundStyle: WidgetBackgroundStyle {
+        switch self {
+        case .macOS: .defaultArtwork
+        case .iOS: .defaultArtwork
+        }
+    }
+
+    func normalizedWidgetBackgroundStyle(_ style: WidgetBackgroundStyle) -> WidgetBackgroundStyle {
+        switch (self, style) {
+        case (.macOS, .transparent):
+            .defaultArtwork
+        default:
+            style
+        }
+    }
+}
+
 public enum WidgetPlannerPreferenceStore {
     public static let suiteName = "group.com.yuelingqiu.MeowPlanner"
     public static let weekStartPreferenceKey = "weekStartPreference"
@@ -117,45 +176,103 @@ public enum WidgetPlannerPreferenceStore {
 
     public static var widgetBackgroundStyle: WidgetBackgroundStyle {
         get {
-            widgetBackgroundStyle(defaults: defaults, styleFileURLs: widgetBackgroundStyleFileURLs)
+            widgetBackgroundStyle(platform: .current)
         }
         set {
-            setWidgetBackgroundStyle(newValue, defaults: defaults, styleFileURLs: widgetBackgroundStyleFileURLs)
+            setWidgetBackgroundStyle(newValue, platform: .current)
         }
     }
 
     public static var widgetAppearancePreference: AppAppearancePreference {
         get {
-            widgetAppearancePreference(defaults: defaults)
+            widgetAppearancePreference(platform: .current)
         }
         set {
-            setWidgetAppearancePreference(newValue, defaults: defaults)
+            setWidgetAppearancePreference(newValue, platform: .current)
         }
     }
 
     public static var customBackgroundImageURL: URL? {
-        customBackgroundImageURL()
+        customBackgroundImageURL(platform: .current)
+    }
+
+    public static func widgetAppearancePreferenceKey(for platform: WidgetPreferencePlatform) -> String {
+        platform.widgetAppearancePreferenceKey
+    }
+
+    public static func widgetBackgroundStyleKey(for platform: WidgetPreferencePlatform) -> String {
+        platform.widgetBackgroundStyleKey
+    }
+
+    public static func widgetBackgroundStyleFilename(for platform: WidgetPreferencePlatform) -> String {
+        platform.widgetBackgroundStyleFilename
+    }
+
+    public static func customBackgroundImageFilename(for platform: WidgetPreferencePlatform) -> String {
+        platform.customBackgroundImageFilename
+    }
+
+    public static func widgetAppearancePreference(platform: WidgetPreferencePlatform) -> AppAppearancePreference {
+        widgetAppearancePreference(platform: platform, defaults: defaults)
     }
 
     public static func widgetAppearancePreference(defaults: UserDefaults) -> AppAppearancePreference {
-        guard let rawValue = defaults.string(forKey: widgetAppearancePreferenceKey) else {
+        widgetAppearancePreference(platform: .current, defaults: defaults)
+    }
+
+    public static func widgetAppearancePreference(
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults
+    ) -> AppAppearancePreference {
+        let key = widgetAppearancePreferenceKey(for: platform)
+        guard let rawValue = defaults.string(forKey: key) else {
             return .system
         }
 
         return AppAppearancePreference(storedValue: rawValue)
     }
 
+    public static func setWidgetAppearancePreference(
+        _ preference: AppAppearancePreference,
+        platform: WidgetPreferencePlatform
+    ) {
+        setWidgetAppearancePreference(preference, platform: platform, defaults: defaults)
+    }
+
     public static func setWidgetAppearancePreference(_ preference: AppAppearancePreference, defaults: UserDefaults) {
-        defaults.set(preference.rawValue, forKey: widgetAppearancePreferenceKey)
+        setWidgetAppearancePreference(preference, platform: .current, defaults: defaults)
+    }
+
+    public static func setWidgetAppearancePreference(
+        _ preference: AppAppearancePreference,
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults
+    ) {
+        defaults.set(preference.rawValue, forKey: widgetAppearancePreferenceKey(for: platform))
         defaults.synchronize()
     }
 
     public static func isDarkWidgetAppearance(systemIsDark: Bool) -> Bool {
-        isDarkWidgetAppearance(systemIsDark: systemIsDark, defaults: defaults)
+        isDarkWidgetAppearance(systemIsDark: systemIsDark, platform: .current)
     }
 
     public static func isDarkWidgetAppearance(systemIsDark: Bool, defaults: UserDefaults) -> Bool {
-        switch widgetAppearancePreference(defaults: defaults) {
+        isDarkWidgetAppearance(systemIsDark: systemIsDark, platform: .current, defaults: defaults)
+    }
+
+    public static func isDarkWidgetAppearance(
+        systemIsDark: Bool,
+        platform: WidgetPreferencePlatform
+    ) -> Bool {
+        isDarkWidgetAppearance(systemIsDark: systemIsDark, platform: platform, defaults: defaults)
+    }
+
+    public static func isDarkWidgetAppearance(
+        systemIsDark: Bool,
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults
+    ) -> Bool {
+        switch widgetAppearancePreference(platform: platform, defaults: defaults) {
         case .system:
             systemIsDark
         case .light:
@@ -165,31 +282,92 @@ public enum WidgetPlannerPreferenceStore {
         }
     }
 
+    public static func widgetBackgroundStyle(platform: WidgetPreferencePlatform) -> WidgetBackgroundStyle {
+        widgetBackgroundStyle(
+            platform: platform,
+            defaults: defaults,
+            styleFileURLs: widgetBackgroundStyleFileURLs(platform: platform)
+        )
+    }
+
     public static func widgetBackgroundStyle(defaults: UserDefaults) -> WidgetBackgroundStyle {
-        widgetBackgroundStyle(defaults: defaults, styleFileURLs: [])
+        widgetBackgroundStyle(platform: .current, defaults: defaults)
     }
 
     public static func widgetBackgroundStyle(defaults: UserDefaults, styleFileURLs: [URL]) -> WidgetBackgroundStyle {
-        guard let rawValue = defaults.string(forKey: widgetBackgroundStyleKey) else {
-            return widgetBackgroundStyle(styleFileURLs: styleFileURLs) ?? .defaultArtwork
+        widgetBackgroundStyle(platform: .current, defaults: defaults, styleFileURLs: styleFileURLs)
+    }
+
+    public static func widgetBackgroundStyle(
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults
+    ) -> WidgetBackgroundStyle {
+        widgetBackgroundStyle(platform: platform, defaults: defaults, styleFileURLs: [])
+    }
+
+    public static func widgetBackgroundStyle(
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults,
+        styleFileURLs: [URL]
+    ) -> WidgetBackgroundStyle {
+        let key = widgetBackgroundStyleKey(for: platform)
+        if let rawValue = defaults.string(forKey: key),
+           let style = WidgetBackgroundStyle(rawValue: rawValue) {
+            let normalizedStyle = platform.normalizedWidgetBackgroundStyle(style)
+            if normalizedStyle != style {
+                defaults.set(normalizedStyle.rawValue, forKey: key)
+                defaults.synchronize()
+            }
+            saveWidgetBackgroundStyle(normalizedStyle, styleFileURLs: styleFileURLs)
+            return normalizedStyle
         }
 
-        if let style = WidgetBackgroundStyle(rawValue: rawValue) {
-            saveWidgetBackgroundStyle(style, styleFileURLs: styleFileURLs)
-            return style
+        if let style = widgetBackgroundStyle(styleFileURLs: styleFileURLs) {
+            let normalizedStyle = platform.normalizedWidgetBackgroundStyle(style)
+            if normalizedStyle != style {
+                saveWidgetBackgroundStyle(normalizedStyle, styleFileURLs: styleFileURLs)
+            }
+            return normalizedStyle
         }
 
-        return widgetBackgroundStyle(styleFileURLs: styleFileURLs) ?? .defaultArtwork
+        return platform.defaultWidgetBackgroundStyle
+    }
+
+    public static func setWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, platform: WidgetPreferencePlatform) {
+        setWidgetBackgroundStyle(
+            style,
+            platform: platform,
+            defaults: defaults,
+            styleFileURLs: widgetBackgroundStyleFileURLs(platform: platform)
+        )
     }
 
     public static func setWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, defaults: UserDefaults) {
-        setWidgetBackgroundStyle(style, defaults: defaults, styleFileURLs: [])
+        setWidgetBackgroundStyle(style, platform: .current, defaults: defaults)
     }
 
     public static func setWidgetBackgroundStyle(_ style: WidgetBackgroundStyle, defaults: UserDefaults, styleFileURLs: [URL]) {
-        defaults.set(style.rawValue, forKey: widgetBackgroundStyleKey)
+        setWidgetBackgroundStyle(style, platform: .current, defaults: defaults, styleFileURLs: styleFileURLs)
+    }
+
+    public static func setWidgetBackgroundStyle(
+        _ style: WidgetBackgroundStyle,
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults
+    ) {
+        setWidgetBackgroundStyle(style, platform: platform, defaults: defaults, styleFileURLs: [])
+    }
+
+    public static func setWidgetBackgroundStyle(
+        _ style: WidgetBackgroundStyle,
+        platform: WidgetPreferencePlatform,
+        defaults: UserDefaults,
+        styleFileURLs: [URL]
+    ) {
+        let normalizedStyle = platform.normalizedWidgetBackgroundStyle(style)
+        defaults.set(normalizedStyle.rawValue, forKey: widgetBackgroundStyleKey(for: platform))
         defaults.synchronize()
-        saveWidgetBackgroundStyle(style, styleFileURLs: styleFileURLs)
+        saveWidgetBackgroundStyle(normalizedStyle, styleFileURLs: styleFileURLs)
     }
 
     private static func widgetBackgroundStyle(styleFileURLs: [URL]) -> WidgetBackgroundStyle? {
@@ -217,8 +395,9 @@ public enum WidgetPlannerPreferenceStore {
         }
     }
 
-    private static var widgetBackgroundStyleFileURLs: [URL] {
+    private static func widgetBackgroundStyleFileURLs(platform: WidgetPreferencePlatform) -> [URL] {
         widgetBackgroundStyleFileURLs(
+            platform: platform,
             appGroupContainerURL: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName),
             homeDirectory: currentHomeDirectory,
             accountHomeDirectory: accountHomeDirectory
@@ -226,16 +405,18 @@ public enum WidgetPlannerPreferenceStore {
     }
 
     static func widgetBackgroundStyleFileURLs(
+        platform: WidgetPreferencePlatform,
         appGroupContainerURL: URL?,
         homeDirectory: URL,
         accountHomeDirectory: URL?
     ) -> [URL] {
         var urls: [URL] = []
+        let filename = widgetBackgroundStyleFilename(for: platform)
         let homeStyleURL = homeDirectory
             .appendingPathComponent("Library")
             .appendingPathComponent("Group Containers")
             .appendingPathComponent(suiteName)
-            .appendingPathComponent(widgetBackgroundStyleFilename)
+            .appendingPathComponent(filename)
         let isWidgetSandboxHome = homeDirectory.path.contains(
             "/Library/Containers/\(widgetExtensionContainerIdentifier)/Data"
         )
@@ -245,7 +426,7 @@ public enum WidgetPlannerPreferenceStore {
         }
 
         if let appGroupContainerURL {
-            urls.append(appGroupContainerURL.appendingPathComponent(widgetBackgroundStyleFilename))
+            urls.append(appGroupContainerURL.appendingPathComponent(filename))
         }
 
         if let accountHomeDirectory {
@@ -253,7 +434,7 @@ public enum WidgetPlannerPreferenceStore {
                 .appendingPathComponent("Library")
                 .appendingPathComponent("Group Containers")
                 .appendingPathComponent(suiteName)
-                .appendingPathComponent(widgetBackgroundStyleFilename)
+                .appendingPathComponent(filename)
             let widgetSandboxMirrorStyleURL = accountHomeDirectory
                 .appendingPathComponent("Library")
                 .appendingPathComponent("Containers")
@@ -262,7 +443,7 @@ public enum WidgetPlannerPreferenceStore {
                 .appendingPathComponent("Library")
                 .appendingPathComponent("Group Containers")
                 .appendingPathComponent(suiteName)
-                .appendingPathComponent(widgetBackgroundStyleFilename)
+                .appendingPathComponent(filename)
 
             urls.append(accountGroupStyleURL)
             urls.append(widgetSandboxMirrorStyleURL)
@@ -278,7 +459,7 @@ public enum WidgetPlannerPreferenceStore {
                     .appendingPathComponent("Library")
                     .appendingPathComponent("Group Containers")
                     .appendingPathComponent(suiteName)
-                    .appendingPathComponent(widgetBackgroundStyleFilename)
+                    .appendingPathComponent(filename)
             )
         }
 
@@ -322,17 +503,31 @@ public enum WidgetPlannerPreferenceStore {
     }
 
     public static func customBackgroundImageURL(fileManager: FileManager = .default) -> URL? {
+        customBackgroundImageURL(platform: .current, fileManager: fileManager)
+    }
+
+    public static func customBackgroundImageURL(
+        platform: WidgetPreferencePlatform,
+        fileManager: FileManager = .default
+    ) -> URL? {
         #if canImport(Darwin)
         return fileManager
             .containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
-            .appendingPathComponent(customBackgroundImageFilename)
+            .appendingPathComponent(customBackgroundImageFilename(for: platform))
         #else
         return nil
         #endif
     }
 
     public static func saveCustomBackgroundImageData(_ data: Data) throws {
-        guard let fileURL = customBackgroundImageURL else {
+        try saveCustomBackgroundImageData(data, platform: .current)
+    }
+
+    public static func saveCustomBackgroundImageData(
+        _ data: Data,
+        platform: WidgetPreferencePlatform
+    ) throws {
+        guard let fileURL = customBackgroundImageURL(platform: platform) else {
             return
         }
 
@@ -348,7 +543,11 @@ public enum WidgetPlannerPreferenceStore {
     }
 
     public static func clearCustomBackgroundImage() {
-        guard let fileURL = customBackgroundImageURL else {
+        clearCustomBackgroundImage(platform: .current)
+    }
+
+    public static func clearCustomBackgroundImage(platform: WidgetPreferencePlatform) {
+        guard let fileURL = customBackgroundImageURL(platform: platform) else {
             return
         }
 

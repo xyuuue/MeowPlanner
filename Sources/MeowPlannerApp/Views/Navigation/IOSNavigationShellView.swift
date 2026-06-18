@@ -249,8 +249,12 @@ struct IOSNavigationShellView<Content: View>: View {
     }
 
     private var topNavigationBackground: some View {
-        Color.clear
+        navigationContentShield
             .ignoresSafeArea(edges: .top)
+    }
+
+    private var navigationContentShield: some View {
+        MeowPlannerTheme.fufuCalendarBackground
     }
 
     private var calendarNavigationBarCenter: some View {
@@ -379,7 +383,7 @@ struct IOSNavigationShellView<Content: View>: View {
     }
 
     private var bottomNavigationBackground: some View {
-        Color.clear
+        navigationContentShield
     }
 
     private func bottomNavigationButton(for section: AppSection, width: CGFloat) -> some View {

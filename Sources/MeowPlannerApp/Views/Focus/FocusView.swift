@@ -169,7 +169,7 @@ struct FocusView: View {
 
     var body: some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: focusPageContentSpacing) {
                 focusHeader
                 focusSectionPicker
 
@@ -182,17 +182,17 @@ struct FocusView: View {
                     focusInsightsView
                 }
             }
-            .padding()
-            .padding(.top, 8)
+            .padding(.horizontal, focusPageHorizontalPadding)
+            .padding(.top, focusPageTopPadding)
+            .padding(.bottom, focusPageBottomPadding)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .verticalPageScrollOnly()
         .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
-            focusDurationOutsideCommitLayer
+            focusPageBackground
         }
-        .background(MeowPlannerTheme.plannerGradient)
         .onAppear {
             syncCustomDurationWithPreference()
             syncTimerDurationWithPreference()
@@ -212,15 +212,230 @@ struct FocusView: View {
         }
     }
 
+    private var focusPageContentSpacing: CGFloat {
+        #if os(iOS)
+        return 14
+        #else
+        return 18
+        #endif
+    }
+
+    private var focusPageHorizontalPadding: CGFloat {
+        #if os(iOS)
+        return 16
+        #else
+        return 16
+        #endif
+    }
+
+    private var focusPageTopPadding: CGFloat {
+        #if os(iOS)
+        return 24
+        #else
+        return 24
+        #endif
+    }
+
+    private var focusPageBottomPadding: CGFloat {
+        #if os(iOS)
+        return IOSAppNavigationMetrics.bottomNavigationContentHeight
+            + IOSAppNavigationMetrics.bottomNavigationTopPadding
+            + IOSAppNavigationMetrics.bottomNavigationRaisedPadding
+            + 16
+        #else
+        return 16
+        #endif
+    }
+
+    @ViewBuilder
+    private var focusPageBackground: some View {
+        ZStack {
+            #if os(iOS)
+            Color.clear
+            #else
+            MeowPlannerTheme.plannerGradient
+            #endif
+            focusDurationOutsideCommitLayer
+        }
+    }
+
+    private var focusTimerPanelBackgroundOpacity: Double {
+        #if os(iOS)
+        return 0.18
+        #else
+        return 0.42
+        #endif
+    }
+
+    private var focusHeaderAvatarSize: CGFloat {
+        #if os(iOS)
+        return 58
+        #else
+        return 72
+        #endif
+    }
+
+    private var focusHeaderTitleFont: Font {
+        #if os(iOS)
+        return .title3.bold()
+        #else
+        return .title2.bold()
+        #endif
+    }
+
+    private var focusHeaderSubtitleFont: Font {
+        #if os(iOS)
+        return .footnote
+        #else
+        return .subheadline
+        #endif
+    }
+
+    private var focusTimerPanelSpacing: CGFloat {
+        #if os(iOS)
+        return 12
+        #else
+        return 18
+        #endif
+    }
+
+    private var focusTimerPanelPadding: CGFloat {
+        #if os(iOS)
+        return 18
+        #else
+        return 26
+        #endif
+    }
+
+    private var focusTimerCircleSize: CGFloat {
+        #if os(iOS)
+        return 212
+        #else
+        return 240
+        #endif
+    }
+
+    private var focusTimerCircleLineWidth: CGFloat {
+        #if os(iOS)
+        return 11
+        #else
+        return 14
+        #endif
+    }
+
+    private var focusTimerDisplayFontSize: CGFloat {
+        #if os(iOS)
+        return 46
+        #else
+        return 54
+        #endif
+    }
+
+    private var focusDurationFaceWidth: CGFloat {
+        #if os(iOS)
+        return 170
+        #else
+        return 190
+        #endif
+    }
+
+    private var focusDurationFaceHeight: CGFloat {
+        #if os(iOS)
+        return 86
+        #else
+        return 96
+        #endif
+    }
+
+    private var focusDurationTextHeight: CGFloat {
+        #if os(iOS)
+        return 64
+        #else
+        return 72
+        #endif
+    }
+
+    private var focusDurationEditingMinuteWidth: CGFloat {
+        #if os(iOS)
+        return 82
+        #else
+        return 92
+        #endif
+    }
+
+    private var focusDurationEditingSuffixWidth: CGFloat {
+        #if os(iOS)
+        return 88
+        #else
+        return 98
+        #endif
+    }
+
+    private var focusControlButtonSpacing: CGFloat {
+        #if os(iOS)
+        return 24
+        #else
+        return 28
+        #endif
+    }
+
+    private var focusControlButtonSize: CGFloat {
+        #if os(iOS)
+        return 64
+        #else
+        return 74
+        #endif
+    }
+
+    private var focusPrimaryControlIconSize: CGFloat {
+        #if os(iOS)
+        return 24
+        #else
+        return 28
+        #endif
+    }
+
+    private var focusSecondaryControlIconSize: CGFloat {
+        #if os(iOS)
+        return 22
+        #else
+        return 25
+        #endif
+    }
+
+    private var focusRecentSessionsTitleFont: Font {
+        #if os(iOS)
+        return .subheadline.bold()
+        #else
+        return .headline
+        #endif
+    }
+
+    private var focusRecentEmptyTitleFont: Font {
+        #if os(iOS)
+        return .footnote.weight(.semibold)
+        #else
+        return .headline
+        #endif
+    }
+
+    private var focusRecentEmptyMessageFont: Font {
+        #if os(iOS)
+        return .caption2
+        #else
+        return .subheadline
+        #endif
+    }
+
     private var focusHeader: some View {
         HStack(spacing: 14) {
-            FuFuAssetImage(size: 72)
+            FuFuAssetImage(size: focusHeaderAvatarSize)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(PlannerCopy.text(.focusWithFuFu, language: appLanguage))
-                    .font(.title2.bold())
+                    .font(focusHeaderTitleFont)
                 Text(focusSubtitle)
-                    .font(.subheadline)
+                    .font(focusHeaderSubtitleFont)
                     .foregroundStyle(.secondary)
             }
 
@@ -239,7 +454,7 @@ struct FocusView: View {
     }
 
     private var focusTimerContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: focusTimerPanelSpacing) {
             focusTimerPanel
             recentSessions.simultaneousGesture(focusDurationOutsideTapGesture)
         }
@@ -282,7 +497,7 @@ struct FocusView: View {
     }
 
     private var focusTimerPanel: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: focusTimerPanelSpacing) {
             focusTitleField.simultaneousGesture(focusDurationOutsideTapGesture)
 
             ViewThatFits(in: .horizontal) {
@@ -302,10 +517,10 @@ struct FocusView: View {
             focusControlButtons.simultaneousGesture(focusDurationOutsideTapGesture)
         }
         .frame(maxWidth: .infinity)
-        .padding(26)
+        .padding(focusTimerPanelPadding)
         .background(
             ZStack {
-                MeowPlannerTheme.monthGridHeaderBackground.opacity(0.42)
+                MeowPlannerTheme.monthGridHeaderBackground.opacity(focusTimerPanelBackgroundOpacity)
                 focusTimerPanelOutsideCommitLayer
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: 150, weight: .bold))
@@ -428,12 +643,12 @@ struct FocusView: View {
     private var focusCircularTimer: some View {
         ZStack {
             Circle()
-                .stroke(MeowPlannerTheme.warmCream.opacity(0.38), lineWidth: 14)
+                .stroke(MeowPlannerTheme.warmCream.opacity(0.38), lineWidth: focusTimerCircleLineWidth)
 
             Circle().trim(from: 0, to: focusProgress)
                 .stroke(
                     MeowPlannerTheme.blush,
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
+                    style: StrokeStyle(lineWidth: focusTimerCircleLineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
 
@@ -447,7 +662,7 @@ struct FocusView: View {
                     .frame(maxWidth: 180)
             }
         }
-        .frame(width: 240, height: 240)
+        .frame(width: focusTimerCircleSize, height: focusTimerCircleSize)
     }
 
     private var focusDurationFace: some View {
@@ -458,10 +673,10 @@ struct FocusView: View {
                 focusDurationEditingFace
             } else {
                 Text(displayedFocusTime)
-                    .font(.system(size: 54, weight: .bold, design: .rounded))
+                    .font(.system(size: focusTimerDisplayFontSize, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(MeowPlannerTheme.cocoa)
-                    .frame(width: 190, height: 72)
+                    .frame(width: focusDurationFaceWidth, height: focusDurationTextHeight)
                     .offset(y: durationDragOffset)
                     .contentShape(Rectangle())
                     .animation(.spring(response: 0.22, dampingFraction: 0.76), value: durationDragOffset)
@@ -487,18 +702,18 @@ struct FocusView: View {
             .disabled(focusTimerStore.hasActiveSession)
             .allowsHitTesting(!isEditingFocusDuration && !focusTimerStore.hasActiveSession)
         }
-        .frame(width: 190, height: 96)
+        .frame(width: focusDurationFaceWidth, height: focusDurationFaceHeight)
     }
 
     private var focusDurationEditingFace: some View {
         HStack(spacing: 0) {
             TextField("", text: $draftFocusMinutes)
                 .textFieldStyle(.plain)
-                .font(.system(size: 54, weight: .bold, design: .rounded))
+                .font(.system(size: focusTimerDisplayFontSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
                 .foregroundStyle(MeowPlannerTheme.cocoa)
-                .frame(width: 92, alignment: .trailing)
+                .frame(width: focusDurationEditingMinuteWidth, alignment: .trailing)
                 .focused($isFocusDurationFieldFocused)
                 .onSubmit {
                     commitFocusDurationEdit()
@@ -513,12 +728,12 @@ struct FocusView: View {
                 }
 
             Text(":00")
-                .font(.system(size: 54, weight: .bold, design: .rounded))
+                .font(.system(size: focusTimerDisplayFontSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(MeowPlannerTheme.cocoa)
-                .frame(width: 98, alignment: .leading)
+                .frame(width: focusDurationEditingSuffixWidth, alignment: .leading)
         }
-        .frame(width: 190, height: 72)
+        .frame(width: focusDurationFaceWidth, height: focusDurationTextHeight)
     }
 
     private var durationAdjustmentPreview: some View {
@@ -540,13 +755,13 @@ struct FocusView: View {
     }
 
     private var focusControlButtons: some View {
-        HStack(spacing: 28) {
+        HStack(spacing: focusControlButtonSpacing) {
             Button {
                 pauseOrStartFocus()
             } label: {
                 Image(systemName: focusTimerStore.isRunning ? "pause.fill" : "play.fill")
-                    .font(.system(size: 28, weight: .bold))
-                    .frame(width: 74, height: 74)
+                    .font(.system(size: focusPrimaryControlIconSize, weight: .bold))
+                    .frame(width: focusControlButtonSize, height: focusControlButtonSize)
                     .foregroundStyle(MeowPlannerTheme.warmCream)
                     .background(MeowPlannerTheme.cocoa, in: Circle())
             }
@@ -557,8 +772,8 @@ struct FocusView: View {
                 finish()
             } label: {
                 Image(systemName: "stop.fill")
-                    .font(.system(size: 25, weight: .bold))
-                    .frame(width: 74, height: 74)
+                    .font(.system(size: focusSecondaryControlIconSize, weight: .bold))
+                    .frame(width: focusControlButtonSize, height: focusControlButtonSize)
                     .foregroundStyle(MeowPlannerTheme.warmCream)
                     .background(MeowPlannerTheme.cocoa, in: Circle())
                     .opacity(focusTimerStore.hasActiveSession ? 1 : 0.35)
@@ -620,14 +835,10 @@ struct FocusView: View {
     private var recentSessions: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(PlannerCopy.text(.recentFocus, language: appLanguage))
-                .font(.headline)
+                .font(focusRecentSessionsTitleFont)
 
             if sessions.isEmpty {
-                FuFuEmptyStateView(
-                    title: PlannerCopy.text(.noFocusSessions, language: appLanguage),
-                    message: PlannerCopy.text(.noFocusSessionsMessage, language: appLanguage)
-                )
-                .frame(maxWidth: .infinity)
+                focusRecentSessionsEmptyState
             } else {
                 ForEach(sessions.prefix(6)) { session in
                     HStack(spacing: 12) {
@@ -674,6 +885,29 @@ struct FocusView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var focusRecentSessionsEmptyState: some View {
+        #if os(iOS)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(PlannerCopy.text(.noFocusSessions, language: appLanguage))
+                .font(focusRecentEmptyTitleFont)
+                .foregroundStyle(MeowPlannerTheme.cocoa)
+            Text(PlannerCopy.text(.noFocusSessionsMessage, language: appLanguage))
+                .font(focusRecentEmptyMessageFont)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
+        FuFuEmptyStateView(
+            title: PlannerCopy.text(.noFocusSessions, language: appLanguage),
+            message: PlannerCopy.text(.noFocusSessionsMessage, language: appLanguage)
+        )
+        .frame(maxWidth: .infinity)
+        #endif
     }
 
     private var focusTimelineView: some View {
@@ -1361,7 +1595,9 @@ private struct FocusTagEditorView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .background(MeowPlannerTheme.plannerGradient)
+            .background {
+                MeowPlannerTheme.plannerGradient
+            }
             .sheet(isPresented: $showingPaletteColorEditor) {
                 PaletteColorEditorView(
                     initialColorHex: paletteEditorColorHex,

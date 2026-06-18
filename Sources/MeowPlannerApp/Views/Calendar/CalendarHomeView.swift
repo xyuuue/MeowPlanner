@@ -63,7 +63,11 @@ struct CalendarHomeView: View {
     private let regularMonthGridHeight: CGFloat = 760
     private let iosCalendarHorizontalPadding: CGFloat = 0
     private let iosCalendarVerticalPadding: CGFloat = 12
+    #if os(iOS)
+    private let iosCalendarBottomReserve: CGFloat = IOSAppNavigationMetrics.bottomNavigationRaisedPadding
+    #else
     private let iosCalendarBottomReserve: CGFloat = 0
+    #endif
     private let iosMonthGridMinHeight: CGFloat = 620
     private let agendaCardSpacing: CGFloat = 14
     private let agendaCardSidePeek: CGFloat = 30

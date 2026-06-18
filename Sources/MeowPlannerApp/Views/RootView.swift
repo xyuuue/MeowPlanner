@@ -1077,14 +1077,7 @@ private struct ScheduleAgendaView: View {
 
     var body: some View {
         ZStack {
-            MeowPlannerTheme.fufuPlannerBackground
-                .overlay {
-                    MeowPlannerTheme.plannerGradient.opacity(0.88)
-                }
-                .overlay {
-                    scheduleBackgroundMotifs
-                }
-                .ignoresSafeArea()
+            schedulePageBackground
 
             schedulePageContent
         }
@@ -1106,6 +1099,23 @@ private struct ScheduleAgendaView: View {
         .onChange(of: selectedDate) { _, _ in
             syncIOSScheduleNavigationState()
         }
+        #endif
+    }
+
+    @ViewBuilder
+    private var schedulePageBackground: some View {
+        #if os(iOS)
+        Color.clear
+            .ignoresSafeArea()
+        #else
+        MeowPlannerTheme.fufuPlannerBackground
+            .overlay {
+                MeowPlannerTheme.plannerGradient.opacity(0.88)
+            }
+            .overlay {
+                scheduleBackgroundMotifs
+            }
+            .ignoresSafeArea()
         #endif
     }
 

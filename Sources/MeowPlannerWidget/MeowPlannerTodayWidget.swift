@@ -223,6 +223,16 @@ private extension View {
 }
 
 @available(iOS 17.0, macOS 14.0, *)
+@ViewBuilder
+private func widgetFullColorImage(_ image: Image) -> some View {
+    if #available(iOS 18.0, macOS 15.0, *) {
+        image.widgetAccentedRenderingMode(.fullColor)
+    } else {
+        image
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
 private struct WidgetContainerBackgroundView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.showsWidgetContainerBackground) private var showsWidgetContainerBackground
@@ -233,20 +243,24 @@ private struct WidgetContainerBackgroundView: View {
         } else {
             switch WidgetPlannerPreferenceStore.widgetBackgroundStyle {
             case .defaultArtwork:
-                defaultGradient
+                defaultBackground
             case .customPhoto:
                 if let image = WidgetBackgroundImageLoader.customBackgroundImage() {
                     #if os(iOS)
-                    Image(uiImage: image)
-                        .resizable()
+                    widgetFullColorImage(
+                        Image(uiImage: image)
+                            .resizable()
+                    )
                         .scaledToFill()
                     #else
-                    Image(nsImage: image)
-                        .resizable()
+                    widgetFullColorImage(
+                        Image(nsImage: image)
+                            .resizable()
+                    )
                         .scaledToFill()
                     #endif
                 } else {
-                    defaultGradient
+                    defaultBackground
                 }
             case .transparent:
                 Color.clear
@@ -257,6 +271,36 @@ private struct WidgetContainerBackgroundView: View {
     private var shouldHideMeowPlannerBackground: Bool {
         !showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent
     }
+
+    private var defaultBackground: some View {
+        #if os(macOS)
+        macOSSystemWidgetBackground
+        #else
+        defaultGradient
+        #endif
+    }
+
+    #if os(macOS)
+    private var macOSSystemWidgetBackground: some View {
+        ZStack {
+            Rectangle()
+                .fill(.regularMaterial)
+
+            LinearGradient(
+                colors: [
+                    Color(red: 0.47, green: 0.55, blue: 0.57).opacity(colorScheme == .dark ? 0.46 : 0.34),
+                    Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28),
+                    Color(red: 0.31, green: 0.38, blue: 0.40).opacity(colorScheme == .dark ? 0.24 : 0.10)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Color.white
+                .opacity(colorScheme == .dark ? 0.04 : 0.10)
+        }
+    }
+    #endif
 
     private var defaultGradient: some View {
         LinearGradient(
@@ -485,12 +529,16 @@ private struct WidgetScheduleBackgroundView: View {
                     isDark: isDarkBackground
                 ) {
                     #if os(iOS)
-                    Image(uiImage: image)
-                        .resizable()
+                    widgetFullColorImage(
+                        Image(uiImage: image)
+                            .resizable()
+                    )
                         .scaledToFill()
                     #else
-                    Image(nsImage: image)
-                        .resizable()
+                    widgetFullColorImage(
+                        Image(nsImage: image)
+                            .resizable()
+                    )
                         .scaledToFill()
                     #endif
                 } else {
@@ -799,6 +847,54 @@ private struct MonthWidgetView: View {
         widgetRenderingMode == .fullColor
     }
 
+    private var usesMacOSGlassBackground: Bool {
+        #if os(macOS)
+        showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork
+        #else
+        false
+        #endif
+    }
+
+    private var monthPrimaryTextColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.94) : WidgetPalette.cocoa
+    }
+
+    private var monthSecondaryTextColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.76) : WidgetPalette.caramel
+    }
+
+    private var monthMutedTextColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.52) : Color.secondary
+    }
+
+    private var monthFestivalTextColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.90) : WidgetPalette.blush
+    }
+
+    private var monthGridLineColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.24) : WidgetPalette.caramel.opacity(0.12)
+    }
+
+    private var monthGridBorderColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.38) : WidgetPalette.caramel.opacity(0.18)
+    }
+
+    private var monthTodayIndicatorColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.92) : WidgetPalette.blush
+    }
+
+    private var monthTodayBackgroundColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.14) : WidgetPalette.blue.opacity(0.18)
+    }
+
+    private var fufuPawPrimaryWatermarkColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.09) : WidgetPalette.caramel.opacity(0.10)
+    }
+
+    private var fufuPawSecondaryWatermarkColor: Color {
+        usesMacOSGlassBackground ? Color.white.opacity(0.07) : WidgetPalette.blue.opacity(0.10)
+    }
+
     private var completedEventPillOpacity: Double {
         usesFullColorRendering ? 0.52 : 0.76
     }
@@ -809,11 +905,11 @@ private struct MonthWidgetView: View {
 
             Text("No plans yet")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(WidgetPalette.cocoa)
+                .foregroundStyle(monthPrimaryTextColor)
 
             Text("Open MeowPlanner to sync")
                 .font(.caption2.weight(.medium))
-                .foregroundStyle(WidgetPalette.caramel)
+                .foregroundStyle(monthSecondaryTextColor)
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
@@ -821,7 +917,7 @@ private struct MonthWidgetView: View {
         .background(WidgetPalette.cream.opacity(0.84), in: RoundedRectangle(cornerRadius: 7))
         .overlay {
             RoundedRectangle(cornerRadius: 7)
-                .stroke(WidgetPalette.caramel.opacity(0.20), lineWidth: 1)
+                .stroke(monthGridBorderColor, lineWidth: 1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .allowsHitTesting(false)
@@ -836,11 +932,11 @@ private struct MonthWidgetView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(WidgetPalette.cocoa)
+            .foregroundStyle(monthPrimaryTextColor)
 
             Label(monthTitle, systemImage: "pawprint.fill")
                 .font((family == .systemExtraLarge ? Font.subheadline : Font.caption2).weight(.bold))
-                .foregroundStyle(WidgetPalette.cocoa)
+                .foregroundStyle(monthPrimaryTextColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
 
@@ -851,7 +947,7 @@ private struct MonthWidgetView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(WidgetPalette.cocoa)
+            .foregroundStyle(monthPrimaryTextColor)
 
             Spacer(minLength: 4)
 
@@ -876,18 +972,18 @@ private struct MonthWidgetView: View {
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay {
             RoundedRectangle(cornerRadius: 7)
-                .stroke(WidgetPalette.caramel.opacity(0.18), lineWidth: 1)
+                .stroke(monthGridBorderColor, lineWidth: 1)
         }
     }
 
     private var weekdaySeparatorColor: Color {
-        WidgetPalette.caramel.opacity(0.12)
+        monthGridLineColor
     }
 
     private func weekdayHeaderCell(_ weekday: String, height: CGFloat) -> some View {
         Text(weekday)
             .font(.caption2.weight(.bold))
-            .foregroundStyle(WidgetPalette.caramel)
+            .foregroundStyle(monthSecondaryTextColor)
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .overlay(alignment: .bottom) {
@@ -907,19 +1003,19 @@ private struct MonthWidgetView: View {
             HStack(spacing: 3) {
                 Text(day.date.formatted(.dateTime.day()))
                     .font(.caption.weight(calendar.isDate(day.date, inSameDayAs: entry.date) ? .bold : .semibold))
-                    .foregroundStyle(day.isInSelectedMonth ? WidgetPalette.cocoa : .secondary)
+                    .foregroundStyle(day.isInSelectedMonth ? monthPrimaryTextColor : monthMutedTextColor)
 
                 if entry.showChineseCalendar {
                     Text(day.chineseCalendarInfo.displayText)
                         .font(.caption2.weight(day.chineseCalendarInfo.isFestival ? .bold : .medium))
-                        .foregroundStyle(day.chineseCalendarInfo.isFestival ? WidgetPalette.blush : WidgetPalette.caramel)
+                        .foregroundStyle(day.chineseCalendarInfo.isFestival ? monthFestivalTextColor : monthSecondaryTextColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.60)
                 }
 
                 if calendar.isDateInToday(day.date) {
                     Circle()
-                        .fill(WidgetPalette.blush)
+                        .fill(monthTodayIndicatorColor)
                         .frame(width: 4, height: 4)
                 }
 
@@ -939,19 +1035,19 @@ private struct MonthWidgetView: View {
         .background(dayBackground(day), in: Rectangle())
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(WidgetPalette.caramel.opacity(0.12))
+                .fill(weekdaySeparatorColor)
                 .frame(height: 1)
         }
         .overlay(alignment: .trailing) {
             Rectangle()
-                .fill(WidgetPalette.caramel.opacity(0.12))
+                .fill(weekdaySeparatorColor)
                 .frame(width: 1)
         }
     }
 
     private func dayBackground(_ day: MonthPlannerDay) -> some ShapeStyle {
         if calendar.isDateInToday(day.date) {
-            return AnyShapeStyle(WidgetPalette.blue.opacity(0.18))
+            return AnyShapeStyle(monthTodayBackgroundColor)
         }
         return AnyShapeStyle(Color.clear)
     }
@@ -968,30 +1064,21 @@ private struct MonthWidgetView: View {
             .background {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(eventPillBackground(item))
-                    .widgetAccentable(!usesFullColorRendering)
             }
             .opacity(item.isCompleted ? completedEventPillOpacity : 1)
     }
 
     private func eventPillTitleColor() -> some ShapeStyle {
-        if usesFullColorRendering {
-            return AnyShapeStyle(WidgetPalette.cocoa)
-        }
-
-        return AnyShapeStyle(Color.primary)
+        usesMacOSGlassBackground ? AnyShapeStyle(Color.white.opacity(0.94)) : AnyShapeStyle(WidgetPalette.cocoa)
     }
 
     private func eventPillBackground(_ item: MonthPlannerItem) -> some ShapeStyle {
-        if usesFullColorRendering {
-            return AnyShapeStyle(
-                widgetColor(
-                    hex: item.colorHex,
-                    fallback: item.kind == .event ? WidgetPalette.blue : WidgetPalette.caramel
-                )
+        AnyShapeStyle(
+            widgetColor(
+                hex: item.colorHex,
+                fallback: item.kind == .event ? WidgetPalette.blue : WidgetPalette.caramel
             )
-        }
-
-        return AnyShapeStyle(Color.primary.opacity(0.14))
+        )
     }
 
     private func widgetColor(hex: String, fallback: Color) -> Color {
@@ -1013,7 +1100,7 @@ private struct MonthWidgetView: View {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: family == .systemExtraLarge ? 74 : 46, weight: .bold))
                     .rotationEffect(.degrees(-16))
-                    .foregroundStyle(WidgetPalette.caramel.opacity(0.10))
+                    .foregroundStyle(fufuPawPrimaryWatermarkColor)
                 Spacer()
             }
 
@@ -1024,7 +1111,7 @@ private struct MonthWidgetView: View {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: family == .systemExtraLarge ? 92 : 56, weight: .bold))
                     .rotationEffect(.degrees(18))
-                    .foregroundStyle(WidgetPalette.blue.opacity(0.10))
+                    .foregroundStyle(fufuPawSecondaryWatermarkColor)
             }
         }
         .allowsHitTesting(false)
@@ -1037,15 +1124,19 @@ private struct MonthWidgetView: View {
 
             if let image = WidgetFuFuImageLoader.image() {
                 #if os(macOS)
-                Image(nsImage: image)
-                    .interpolation(.none)
-                    .resizable()
+                widgetFullColorImage(
+                    Image(nsImage: image)
+                        .interpolation(.none)
+                        .resizable()
+                )
                     .scaledToFit()
                     .padding(size * 0.14)
                 #else
-                Image(uiImage: image)
-                    .interpolation(.none)
-                    .resizable()
+                widgetFullColorImage(
+                    Image(uiImage: image)
+                        .interpolation(.none)
+                        .resizable()
+                )
                     .scaledToFit()
                     .padding(size * 0.14)
                 #endif

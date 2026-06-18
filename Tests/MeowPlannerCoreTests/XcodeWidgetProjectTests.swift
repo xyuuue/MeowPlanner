@@ -396,6 +396,7 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains("private var shouldShowSidebarButton: Bool"))
         #expect(shellSource.contains("selection != .settings"))
         #expect(shellSource.contains("if shouldShowSidebarButton"))
+        #expect(shellSource.contains("private var navigationContentShield: some View"))
         #expect(shellSource.contains(".ignoresSafeArea(edges: .top)"))
         #expect(shellSource.contains("safeAreaInset(edge: .bottom"))
         #expect(shellSource.contains("bottomNavigationReservation(safeAreaInsets: proxy.safeAreaInsets)"))
@@ -409,8 +410,10 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains("Color.clear\n            .frame(height: IOSAppNavigationMetrics.bottomNavigationReservedHeight(safeAreaInsets: safeAreaInsets))"))
         #expect(shellSource.contains("private func bottomNavigationBar(safeAreaInsets: EdgeInsets) -> some View"))
         #expect(shellSource.contains("bottomNavigationBackground\n                .ignoresSafeArea(edges: .bottom)"))
-        #expect(!topNavigationBackgroundSource.contains("Rectangle()"))
-        #expect(!bottomNavigationBackgroundSource.contains("Rectangle()"))
+        #expect(topNavigationBackgroundSource.contains("navigationContentShield"))
+        #expect(bottomNavigationBackgroundSource.contains("navigationContentShield"))
+        #expect(!topNavigationBackgroundSource.contains("Color.clear"))
+        #expect(!bottomNavigationBackgroundSource.contains("Color.clear"))
         #expect(shellSource.contains("IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets)"))
         #expect(shellSource.contains("static func bottomNavigationBottomPadding(for safeAreaInsets: EdgeInsets)"))
         #expect(shellSource.contains("bottomNavigationBottomPadding(for: safeAreaInsets)"))
@@ -487,11 +490,11 @@ struct XcodeWidgetProjectTests {
         #expect(!shellSource.contains("bottomNavigationBackgroundMotifs"))
         #expect(!shellSource.contains("bottomNavigationPawMotif("))
         #expect(!shellSource.contains("FuFuAssetImage(size: 34)"))
-        #expect(shellSource.contains("private var bottomNavigationBackground: some View {\n        Color.clear\n    }"))
+        #expect(shellSource.contains("private var bottomNavigationBackground: some View {\n        navigationContentShield\n    }"))
         #expect(!shellSource.contains("MeowPlannerTheme.fufuCalendarBackground.opacity(0.98)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(true)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(false)"))
-        #expect(calendarSource.contains("private let iosCalendarBottomReserve: CGFloat = 0"))
+        #expect(calendarSource.contains("private let iosCalendarBottomReserve: CGFloat = IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(!calendarSource.contains("private let iosCalendarBottomReserve: CGFloat = -IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(calendarSource.contains("private let iosAgendaCardHeight: CGFloat = 500"))
         #expect(calendarSource.contains("private let iosAgendaCardHorizontalInset: CGFloat = 28"))
@@ -572,26 +575,33 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("case widget"))
         #expect(settingsSource.contains("NavigationLink(value: SettingsDestination.widget)"))
         #expect(settingsSource.contains("@State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?"))
-        #expect(settingsSource.contains("@State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
-        #expect(settingsSource.contains("@State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference.rawValue"))
+        #expect(settingsSource.contains("@State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)"))
+        #expect(settingsSource.contains("@State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue"))
         #expect(widgetSettingsSource.contains("widgetAppearanceSection"))
         #expect(widgetSettingsSource.contains("Section(widgetAppearanceSectionTitle)"))
+        #expect(settingsSource.contains("appLanguage == .chinese ? \"小组件外观\" : \"Widget appearance\""))
+        #expect(!settingsSource.contains("appLanguage == .chinese ? \"外观\" : \"Appearance\"\n    }\n\n    private var widgetAppearanceSystemModeTitle"))
         #expect(widgetSettingsSource.contains("Picker(widgetAppearanceSystemModeTitle"))
         #expect(widgetSettingsSource.contains("Picker(widgetAppearanceManualModeTitle"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.widgetAppearancePreference = AppAppearancePreference(storedValue: newValue)"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue), platform: .iOS)"))
         #expect(settingsSource.contains("persistWidgetAppearancePreference(newValue)"))
         #expect(widgetSettingsSource.contains("WidgetBackgroundStyle.allCases"))
         #expect(widgetSettingsSource.contains("PhotosPicker("))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle = newValue"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data)"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(newValue, platform: .iOS)"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, platform: .iOS)"))
         #expect(widgetSettingsSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
         #expect(languageSource.contains("case widgetSettings"))
         #expect(languageSource.contains("case widgetBackground"))
         #expect(languageSource.contains("case chooseBackgroundImage"))
         #expect(widgetPreferenceSource.contains("public enum WidgetBackgroundStyle"))
         #expect(widgetPreferenceSource.contains("case transparent"))
+        #expect(widgetPreferenceSource.contains("public enum WidgetPreferencePlatform"))
+        #expect(widgetPreferenceSource.contains("case .macOS: .defaultArtwork"))
+        #expect(widgetPreferenceSource.contains("case .iOS: .defaultArtwork"))
         #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey(for: platform)"))
         #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey"))
+        #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey(for: platform)"))
         #expect(widgetPreferenceSource.contains("public static var widgetAppearancePreference: AppAppearancePreference"))
         #expect(widgetPreferenceSource.contains("isDarkWidgetAppearance(systemIsDark:"))
         #expect(widgetPreferenceSource.contains("customBackgroundImageURL"))
@@ -654,8 +664,9 @@ struct XcodeWidgetProjectTests {
         #expect(settingsFormSource.contains(".listRowSeparator(.hidden)"))
         #expect(settingsFormSource.contains("settingsBottomScrollExpansion"))
         #expect(settingsSource.contains("func settingsContentTopSpacing() -> some View"))
-        #expect(settingsSource.contains("contentMargins(.top, settingsContentTopInset, for: .scrollContent)"))
-        #expect(settingsSource.contains(".padding(.top, settingsContentTopInset)"))
+        #expect(settingsSource.contains("private let settingsContentTopInset: CGFloat = 0"))
+        #expect(!settingsSource.contains("contentMargins(.top, settingsContentTopInset, for: .scrollContent)"))
+        #expect(!settingsSource.contains(".padding(.top, settingsContentTopInset)"))
         #expect(settingsSource.contains("settingsPersonalizationBottomScrollExpansion"))
         #expect(settingsSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(settingsSource.contains(".ignoresSafeArea()"))
@@ -1438,6 +1449,11 @@ struct XcodeWidgetProjectTests {
             from: "private struct WeeklyScheduleWidgetView",
             to: "private struct WeeklyScheduleCalendarDayColumn"
         ))
+        let macOSWidgetResourcesPhase = try #require(sourceBlock(
+            in: projectSource,
+            from: "1939428BF237C1AFB440C3B2 = {",
+            to: "\n\t};"
+        ))
 
         #expect(FileManager.default.fileExists(atPath: lightBackgroundFile.path))
         #expect(FileManager.default.fileExists(atPath: darkBackgroundFile.path))
@@ -1446,9 +1462,15 @@ struct XcodeWidgetProjectTests {
         #expect(generatorSource.contains("WIDGET_BACKGROUND_RESOURCE_FILES"))
         #expect(generatorSource.contains("\"Resources/WidgetBackgroundLight.png\""))
         #expect(generatorSource.contains("\"Resources/WidgetBackgroundDark.png\""))
+        #expect(generatorSource.contains("WIDGET_RESOURCE_FOLDERS"))
+        #expect(generatorSource.contains("resources_phase(\"MeowPlannerWidgetExtension\", [build_file(\"MeowPlannerWidgetExtension\", path, folder=path in WIDGET_RESOURCE_FOLDERS) for path in WIDGET_BACKGROUND_RESOURCE_FILES + WIDGET_RESOURCE_FOLDERS])"))
         #expect(generatorSource.contains("resources_phase(\"MeowPlannerWidgetExtension-iOS\", [build_file(\"MeowPlannerWidgetExtension-iOS\", path) for path in WIDGET_BACKGROUND_RESOURCE_FILES])"))
         #expect(projectSource.contains("Resources/WidgetBackgroundLight.png"))
         #expect(projectSource.contains("Resources/WidgetBackgroundDark.png"))
+        #expect(projectSource.contains("Resources/FuFu"))
+        #expect(macOSWidgetResourcesPhase.contains("22C1DF4C09ECAF7DDA3D2736"))
+        #expect(macOSWidgetResourcesPhase.contains("1ABF2C0AD136C89DBA5FBA41"))
+        #expect(macOSWidgetResourcesPhase.contains("6C98680694770A7E7E373EBF"))
         #expect(weeklyScheduleWidgetSource.contains("WidgetScheduleBackgroundView()"))
         #expect(weeklyScheduleWidgetSource.contains("weeklyScheduleCardFill"))
         #expect(widgetSource.contains("WidgetBackgroundImageLoader.image(\n                    style: WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
@@ -1458,6 +1480,32 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains("forResource: isDark ? \"WidgetBackgroundDark\" : \"WidgetBackgroundLight\""))
         #expect(!widgetSource.contains("isDark: colorScheme == .dark"))
         #expect(!widgetSource.contains("WidgetPalette.weeklyFallbackBackground(isDark: colorScheme == .dark)"))
+    }
+
+    @Test("macOS default widget background uses system material glass")
+    func macOSDefaultWidgetBackgroundUsesSystemMaterialGlass() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let containerSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContainerBackgroundView",
+            to: "private struct WeeklyScheduleWidgetView"
+        ))
+
+        #expect(containerSource.contains("case .defaultArtwork:\n                defaultBackground"))
+        #expect(containerSource.contains("private var defaultBackground: some View"))
+        #expect(containerSource.contains("#if os(macOS)\n        macOSSystemWidgetBackground"))
+        #expect(containerSource.contains("private var macOSSystemWidgetBackground: some View"))
+        #expect(containerSource.contains("Rectangle()\n                .fill(.regularMaterial)"))
+        #expect(containerSource.contains("Color(red: 0.47, green: 0.55, blue: 0.57).opacity(colorScheme == .dark ? 0.46 : 0.34)"))
+        #expect(containerSource.contains("Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28)"))
+        #expect(containerSource.contains("Color(red: 0.31, green: 0.38, blue: 0.40).opacity(colorScheme == .dark ? 0.24 : 0.10)"))
+        #expect(containerSource.contains("private var defaultGradient: some View"))
+        #expect(!containerSource.contains("case .defaultArtwork:\n                defaultGradient"))
+        #expect(!containerSource.contains("#if os(iOS)\n        macOSSystemWidgetBackground"))
     }
 
     @Test("desktop widget uses snapshots and scheduled timeline entries")
@@ -1510,8 +1558,8 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains("WidgetTimelineSyncService.publishSnapshotAndReload(using: context)"))
     }
 
-    @Test("desktop widget event pills adapt text and background for non full color rendering")
-    func desktopWidgetEventPillsAdaptTextAndBackgroundForNonFullColorRendering() throws {
+    @Test("desktop widget event pills keep planner colors in non full color rendering")
+    func desktopWidgetEventPillsKeepPlannerColorsInNonFullColorRendering() throws {
         let root = try packageRoot()
         let widgetFile = root
             .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
@@ -1526,9 +1574,50 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains("widgetRenderingMode == .fullColor"))
         #expect(widgetSource.contains("private func eventPillTitleColor"))
         #expect(widgetSource.contains("private func eventPillBackground"))
-        #expect(widgetSource.contains(".widgetAccentable(!usesFullColorRendering)"))
-        #expect(widgetSource.contains("AnyShapeStyle(Color.primary)"))
-        #expect(widgetSource.contains("Color.primary.opacity(0.14)"))
+        #expect(widgetSource.contains("widgetAccentedRenderingMode(.fullColor)"))
+        #expect(!widgetSource.contains(".widgetAccentable(!usesFullColorRendering)"))
+        #expect(!widgetSource.contains("AnyShapeStyle(Color.primary)"))
+        #expect(!widgetSource.contains("Color.primary.opacity(0.14)"))
+        #expect(widgetSource.contains("widgetColor(\n                hex: item.colorHex"))
+    }
+
+    @Test("macOS month widget keeps readable glass text and paw watermark")
+    func macOSMonthWidgetKeepsReadableGlassTextAndPawWatermark() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let monthSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(monthSource.contains("if showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork"))
+        #expect(monthSource.contains("private var usesMacOSGlassBackground: Bool"))
+        #expect(monthSource.contains("#if os(macOS)\n        showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork"))
+        #expect(monthSource.contains("private var monthPrimaryTextColor: Color"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.94) : WidgetPalette.cocoa"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.76) : WidgetPalette.caramel"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.52) : Color.secondary"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.90) : WidgetPalette.blush"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.24) : WidgetPalette.caramel.opacity(0.12)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.38) : WidgetPalette.caramel.opacity(0.18)"))
+        #expect(monthSource.contains(".foregroundStyle(monthPrimaryTextColor)"))
+        #expect(monthSource.contains(".foregroundStyle(day.isInSelectedMonth ? monthPrimaryTextColor : monthMutedTextColor)"))
+        #expect(monthSource.contains("day.chineseCalendarInfo.isFestival ? monthFestivalTextColor : monthSecondaryTextColor"))
+        #expect(monthSource.contains("RoundedRectangle(cornerRadius: 7)\n                .stroke(monthGridBorderColor, lineWidth: 1)"))
+        #expect(monthSource.contains("private func eventPillTitleColor"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? AnyShapeStyle(Color.white.opacity(0.94)) : AnyShapeStyle(WidgetPalette.cocoa)"))
+        #expect(monthSource.contains("widgetColor(\n                hex: item.colorHex"))
+        #expect(monthSource.contains("private var fufuPawPrimaryWatermarkColor: Color"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.09) : WidgetPalette.caramel.opacity(0.10)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.07) : WidgetPalette.blue.opacity(0.10)"))
+        #expect(!monthSource.contains(".foregroundStyle(day.isInSelectedMonth ? WidgetPalette.cocoa : .secondary)"))
+        #expect(!monthSource.contains("day.chineseCalendarInfo.isFestival ? WidgetPalette.blush : WidgetPalette.caramel"))
+        #expect(!monthSource.contains("Rectangle()\n                .fill(WidgetPalette.caramel.opacity(0.12))"))
+        #expect(!monthSource.contains("AnyShapeStyle(Color.black.opacity(0.24))"))
     }
 
     @Test("today widget opens MeowPlanner when tapped")
@@ -1656,6 +1745,46 @@ struct XcodeWidgetProjectTests {
         #expect(!focusSource.contains("一次只做一件事的 \\(defaultFocusMinutes) 分钟安静计时器。"))
     }
 
+    @Test("iOS focus timer uses compact content above bottom navigation")
+    func iOSFocusTimerUsesCompactContentAboveBottomNavigation() throws {
+        let root = try packageRoot()
+        let focusFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Focus/FocusView.swift")
+
+        let focusSource = try String(contentsOf: focusFile, encoding: .utf8)
+        let recentSessionsSource = try sourceWindow(
+            in: focusSource,
+            from: "private var recentSessions",
+            length: 1_200
+        )
+
+        #expect(focusSource.contains("private var focusPageBottomPadding: CGFloat"))
+        #expect(focusSource.contains("IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
+        #expect(focusSource.contains("IOSAppNavigationMetrics.bottomNavigationContentHeight"))
+        #expect(focusSource.contains("+ IOSAppNavigationMetrics.bottomNavigationTopPadding"))
+        #expect(focusSource.contains(".padding(.bottom, focusPageBottomPadding)"))
+        #expect(focusSource.contains("private var focusPageTopPadding: CGFloat"))
+        #expect(focusSource.contains("return 24"))
+        #expect(focusSource.contains("private var focusHeaderAvatarSize: CGFloat"))
+        #expect(focusSource.contains("return 58"))
+        #expect(focusSource.contains("private var focusHeaderTitleFont: Font"))
+        #expect(focusSource.contains("return .title3.bold()"))
+        #expect(focusSource.contains("FuFuAssetImage(size: focusHeaderAvatarSize)"))
+        #expect(focusSource.contains(".font(focusHeaderTitleFont)"))
+        #expect(focusSource.contains(".font(focusHeaderSubtitleFont)"))
+        #expect(focusSource.contains("private var focusTimerCircleSize: CGFloat"))
+        #expect(focusSource.contains("return 212"))
+        #expect(focusSource.contains(".frame(width: focusTimerCircleSize, height: focusTimerCircleSize)"))
+        #expect(focusSource.contains("private var focusTimerDisplayFontSize: CGFloat"))
+        #expect(focusSource.contains("return 46"))
+        #expect(focusSource.contains(".font(.system(size: focusTimerDisplayFontSize"))
+        #expect(focusSource.contains("private var focusControlButtonSize: CGFloat"))
+        #expect(focusSource.contains("return 64"))
+        #expect(focusSource.contains(".frame(width: focusControlButtonSize, height: focusControlButtonSize)"))
+        #expect(focusSource.contains("private var focusRecentSessionsEmptyState: some View"))
+        #expect(recentSessionsSource.contains("focusRecentSessionsEmptyState"))
+        #expect(!recentSessionsSource.contains("FuFuEmptyStateView("))
+    }
+
     @Test("focus duration edits from themed timer face with throttled drag feedback")
     func focusDurationEditsFromThemedTimerFaceWithThrottledDragFeedback() throws {
         let root = try packageRoot()
@@ -1686,7 +1815,7 @@ struct XcodeWidgetProjectTests {
         #expect(focusSource.contains("focusDurationEditingFace"))
         #expect(focusSource.contains("draftFocusMinutes = draftFocusMinutes.filter(\\.isNumber)"))
         #expect(focusSource.contains("Text(\":00\")"))
-        #expect(focusSource.contains(".frame(width: 92, alignment: .trailing)"))
+        #expect(focusSource.contains(".frame(width: focusDurationEditingMinuteWidth, alignment: .trailing)"))
         #expect(focusSource.contains("durationAdjustmentPreview"))
         #expect(focusSource.contains("FocusDurationScrollView("))
         #expect(focusSource.contains("onEditRequested: {"))
@@ -3518,7 +3647,7 @@ struct XcodeWidgetProjectTests {
         #expect(homeSource.contains("private func floatingAddButtonSize(for availableSize: CGSize) -> CGFloat"))
         #expect(homeSource.contains("private func calendarFloatingAddButtonEdgeInset(for buttonSize: CGFloat) -> CGFloat"))
         #expect(homeSource.contains("private func calendarFloatingAddButtonBottomInset(for buttonSize: CGFloat) -> CGFloat"))
-        #expect(!homeSource.contains("IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
+        #expect(!homeSource.contains("calendarFloatingAddButtonEdgeInset(for: buttonSize)\n            + IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(homeSource.contains("private func calendarFloatingAddButtonBottomInset(for buttonSize: CGFloat) -> CGFloat {\n        calendarFloatingAddButtonEdgeInset(for: buttonSize)\n    }"))
         #expect(!homeSource.contains("calendarFloatingAddButtonEdgeInset(for: buttonSize)\n            + iosCalendarBottomReserve"))
         #expect(homeSource.contains("private func floatingAddScheduleButton(size: CGFloat) -> some View"))
@@ -3697,6 +3826,10 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
         let homeFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift")
+        let todoFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift")
+        let timetableFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift")
         let focusFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Focus/FocusView.swift")
         let settingsFile = root
@@ -3704,10 +3837,14 @@ struct XcodeWidgetProjectTests {
 
         let rootSource = try String(contentsOf: rootFile, encoding: .utf8)
         let homeSource = try String(contentsOf: homeFile, encoding: .utf8)
+        let todoSource = try String(contentsOf: todoFile, encoding: .utf8)
+        let timetableSource = try String(contentsOf: timetableFile, encoding: .utf8)
         let focusSource = try String(contentsOf: focusFile, encoding: .utf8)
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
 
-        #expect(rootSource.contains("MeowPlannerTheme.plannerGradient"))
+        #expect(rootSource.contains("private var schedulePageBackground"))
+        #expect(rootSource.contains("#if os(iOS)\n        Color.clear"))
+        #expect(rootSource.contains("schedulePageBackground"))
         #expect(rootSource.contains(".scrollContentBackground(.hidden)"))
         #expect(rootSource.contains(".ignoresSafeArea()"))
         #expect(rootSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity"))
@@ -3715,7 +3852,17 @@ struct XcodeWidgetProjectTests {
         #expect(homeSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity"))
         #expect(!homeSource.contains("mainBackgroundMotifs"))
         #expect(!homeSource.contains("fufuBackgroundWatermark("))
-        #expect(focusSource.contains("MeowPlannerTheme.plannerGradient"))
+        #expect(todoSource.contains("private var todoPageBackground"))
+        #expect(todoSource.contains("#if os(iOS)\n        Color.clear"))
+        #expect(todoSource.contains("todoPageBackground"))
+        #expect(timetableSource.contains("private var timetablePageBackground"))
+        #expect(timetableSource.contains("#if os(iOS)\n        Color.clear"))
+        #expect(timetableSource.contains("timetablePageBackground"))
+        #expect(focusSource.contains("private var focusPageBackground"))
+        #expect(focusSource.contains("#if os(iOS)\n            Color.clear"))
+        #expect(focusSource.contains("focusTimerPanelBackgroundOpacity"))
+        #expect(focusSource.contains("return 0.18"))
+        #expect(!focusSource.contains(".background(MeowPlannerTheme.plannerGradient)"))
         #expect(focusSource.contains(".frame(maxWidth: .infinity, maxHeight: .infinity"))
         #expect(settingsSource.contains("#if os(iOS)\n        PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(settingsSource.contains(".scrollContentBackground(.hidden)"))
@@ -3848,7 +3995,7 @@ struct XcodeWidgetProjectTests {
         #expect(calendarHomeSource.contains("let availableGridHeight = availableSize.height - reservedHeight"))
         #expect(calendarHomeSource.contains("return max(1, availableGridHeight)"))
         #expect(calendarHomeSource.contains("private let iosCalendarHorizontalPadding: CGFloat = 0"))
-        #expect(calendarHomeSource.contains("private let iosCalendarBottomReserve: CGFloat = 0"))
+        #expect(calendarHomeSource.contains("private let iosCalendarBottomReserve: CGFloat = IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(!calendarHomeSource.contains("-IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
         #expect(calendarHomeSource.contains(".padding(.horizontal, iosCalendarHorizontalPadding)"))
         #expect(!iosFullScreenCalendarSource.contains(".padding(.horizontal, 12)"))
