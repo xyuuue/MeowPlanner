@@ -4,6 +4,7 @@ import SwiftUI
 import WidgetKit
 #if os(iOS)
 import PhotosUI
+import UIKit
 #endif
 
 enum SettingsDestination: Hashable {
@@ -67,8 +68,13 @@ struct SettingsView: View {
     @State private var eventColorHexes = PlannerPreference.defaultEventColorHexes
     #if os(iOS)
     @State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?
+    @State private var selectedWidgetWallpaperPhotoItem: PhotosPickerItem?
     @State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
     @State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
+    @State private var widgetWallpaperHorizontalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).horizontalOffset
+    @State private var widgetWallpaperVerticalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).verticalOffset
+    @State private var widgetWallpaperScale = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).scale
+    @State private var widgetWallpaperPlacement = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).placement
     @State private var widgetPhotoImportError: String?
     #endif
     @State private var showingTimeCollapsePanel = false
@@ -180,6 +186,23 @@ struct SettingsView: View {
                 Task {
                     await importWidgetBackgroundPhoto(from: newValue)
                 }
+            }
+            .onChange(of: selectedWidgetWallpaperPhotoItem) { _, newValue in
+                Task {
+                    await importWidgetWallpaperBackgroundPhoto(from: newValue)
+                }
+            }
+            .onChange(of: widgetWallpaperHorizontalOffset) { _, _ in
+                persistWidgetWallpaperBackgroundAdjustment()
+            }
+            .onChange(of: widgetWallpaperVerticalOffset) { _, _ in
+                persistWidgetWallpaperBackgroundAdjustment()
+            }
+            .onChange(of: widgetWallpaperScale) { _, _ in
+                persistWidgetWallpaperBackgroundAdjustment()
+            }
+            .onChange(of: widgetWallpaperPlacement) { _, _ in
+                persistWidgetWallpaperBackgroundAdjustment()
             }
     }
     #endif
@@ -349,7 +372,7 @@ struct SettingsView: View {
                     Text(style.title(language: appLanguage)).tag(style)
                 }
             }
-            .fufuSegmentedPickerStyle()
+            .pickerStyle(.menu)
 
             if widgetBackgroundStyle == .customPhoto {
                 PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images) {
@@ -368,6 +391,10 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
 
+            if widgetBackgroundStyle == .wallpaperPhoto {
+                widgetWallpaperBackgroundControls
+            }
+
             if let widgetPhotoImportError {
                 Text(widgetPhotoImportError)
                     .font(.caption)
@@ -377,6 +404,85 @@ struct SettingsView: View {
             Text(widgetBackgroundDescription)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var widgetWallpaperBackgroundControls: some View {
+        let wallpaperChooseTitle = widgetWallpaperChooseTitle
+
+        return VStack(alignment: .leading, spacing: 12) {
+            PhotosPicker(selection: $selectedWidgetWallpaperPhotoItem, matching: .images) {
+                HStack(spacing: 12) {
+                    Image(systemName: "photo.badge.checkmark")
+                        .font(.system(size: 18, weight: .semibold))
+                        .symbolRenderingMode(.monochrome)
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                        .frame(width: 28, height: 28)
+
+                    Text(wallpaperChooseTitle)
+                        .foregroundStyle(MeowPlannerTheme.caramel)
+                }
+                .padding(.vertical, 2)
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Picker(widgetWallpaperPlacementTitle, selection: $widgetWallpaperPlacement) {
+                    ForEach(WidgetWallpaperBackgroundPlacement.allCases) { placement in
+                        Text(placement.title(language: appLanguage)).tag(placement)
+                    }
+                }
+                .fufuSegmentedPickerStyle()
+
+                widgetWallpaperSlider(
+                    title: widgetWallpaperHorizontalOffsetTitle,
+                    value: widgetWallpaperHorizontalOffset
+                ) {
+                    Slider(value: $widgetWallpaperHorizontalOffset, in: -160...160, step: 1)
+                }
+
+                widgetWallpaperSlider(
+                    title: widgetWallpaperVerticalOffsetTitle,
+                    value: widgetWallpaperVerticalOffset
+                ) {
+                    Slider(value: $widgetWallpaperVerticalOffset, in: -160...160, step: 1)
+                }
+
+                widgetWallpaperSlider(
+                    title: widgetWallpaperScaleTitle,
+                    value: widgetWallpaperScale,
+                    format: .number.precision(.fractionLength(2))
+                ) {
+                    Slider(value: $widgetWallpaperScale, in: 0.8...2, step: 0.01)
+                }
+            }
+
+            Button(widgetWallpaperResetTitle) {
+                resetWidgetWallpaperBackgroundAdjustment()
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(MeowPlannerTheme.caramel)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func widgetWallpaperSlider<SliderContent: View>(
+        title: String,
+        value: Double,
+        format: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0)),
+        @ViewBuilder slider: () -> SliderContent
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(value.formatted(format))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+            slider()
+                .tint(MeowPlannerTheme.caramel)
         }
     }
 
@@ -409,6 +515,58 @@ struct SettingsView: View {
         } catch {
             widgetPhotoImportError = widgetPhotoImportFailureMessage
         }
+    }
+
+    @MainActor
+    private func importWidgetWallpaperBackgroundPhoto(from item: PhotosPickerItem?) async {
+        guard let item else {
+            return
+        }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                return
+            }
+
+            try WidgetPlannerPreferenceStore.saveWallpaperBackgroundImageData(data, platform: .iOS)
+            WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundScreenMetrics(
+                WidgetWallpaperBackgroundScreenMetrics(
+                    width: UIScreen.main.bounds.width,
+                    height: UIScreen.main.bounds.height,
+                    scale: UIScreen.main.scale
+                ),
+                platform: .iOS
+            )
+            widgetPhotoImportError = nil
+            widgetBackgroundStyle = .wallpaperPhoto
+            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.wallpaperPhoto, platform: .iOS)
+            reloadWidgetTimelines()
+        } catch {
+            widgetPhotoImportError = widgetPhotoImportFailureMessage
+        }
+    }
+
+    private func persistWidgetWallpaperBackgroundAdjustment() {
+        WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment(
+            WidgetWallpaperBackgroundAdjustment(
+                placement: widgetWallpaperPlacement,
+                horizontalOffset: widgetWallpaperHorizontalOffset,
+                verticalOffset: widgetWallpaperVerticalOffset,
+                scale: widgetWallpaperScale
+            ),
+            platform: .iOS
+        )
+        reloadWidgetTimelines()
+    }
+
+    private func resetWidgetWallpaperBackgroundAdjustment() {
+        WidgetPlannerPreferenceStore.resetWidgetWallpaperBackgroundAdjustment(platform: .iOS)
+        let adjustment = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS)
+        widgetWallpaperPlacement = adjustment.placement
+        widgetWallpaperHorizontalOffset = adjustment.horizontalOffset
+        widgetWallpaperVerticalOffset = adjustment.verticalOffset
+        widgetWallpaperScale = adjustment.scale
+        reloadWidgetTimelines()
     }
 
     private func reloadWidgetTimelines() {
@@ -910,7 +1068,35 @@ struct SettingsView: View {
             appLanguage == .chinese
                 ? "不绘制 MeowPlanner 自带背景图案，只保留小组件内容。"
                 : "Do not draw MeowPlanner's background artwork; keep the widget content visible."
+        case .wallpaperPhoto:
+            appLanguage == .chinese
+                ? "使用桌面壁纸截图并通过位置微调模拟透明，同时保持其他 App 原本颜色。"
+                : "Use a Home Screen wallpaper screenshot with alignment controls to simulate transparency while keeping other apps in their original colors."
         }
+    }
+
+    private var widgetWallpaperChooseTitle: String {
+        appLanguage == .chinese ? "选择桌面壁纸截图" : "Choose Home Screen wallpaper"
+    }
+
+    private var widgetWallpaperHorizontalOffsetTitle: String {
+        appLanguage == .chinese ? "水平位置" : "Horizontal position"
+    }
+
+    private var widgetWallpaperPlacementTitle: String {
+        appLanguage == .chinese ? "小组件位置" : "Widget position"
+    }
+
+    private var widgetWallpaperVerticalOffsetTitle: String {
+        appLanguage == .chinese ? "垂直位置" : "Vertical position"
+    }
+
+    private var widgetWallpaperScaleTitle: String {
+        appLanguage == .chinese ? "缩放" : "Scale"
+    }
+
+    private var widgetWallpaperResetTitle: String {
+        appLanguage == .chinese ? "重置壁纸位置" : "Reset wallpaper position"
     }
 
     private var widgetPhotoImportFailureMessage: String {
@@ -961,6 +1147,11 @@ struct SettingsView: View {
         #if os(iOS)
         widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
         widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
+        let wallpaperAdjustment = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS)
+        widgetWallpaperPlacement = wallpaperAdjustment.placement
+        widgetWallpaperHorizontalOffset = wallpaperAdjustment.horizontalOffset
+        widgetWallpaperVerticalOffset = wallpaperAdjustment.verticalOffset
+        widgetWallpaperScale = wallpaperAdjustment.scale
         #endif
         WidgetPlannerPreferenceStore.weekStartPreference = preference.weekStartPreference
         WidgetPlannerPreferenceStore.showChineseCalendar = preference.showChineseCalendar

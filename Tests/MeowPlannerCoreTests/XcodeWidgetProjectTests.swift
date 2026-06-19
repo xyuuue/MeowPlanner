@@ -571,15 +571,25 @@ struct XcodeWidgetProjectTests {
         let widgetSettingsSource = try sourceWindow(
             in: settingsSource,
             from: "private var widgetSettingsPage",
-            length: 7_500
+            length: 10_500
         )
+        let widgetConfigurationSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "public var body: some WidgetConfiguration",
+            to: "private struct MeowPlannerTodayWidgetView"
+        ))
 
         #expect(settingsSource.contains("import PhotosUI"))
         #expect(settingsSource.contains("case widget"))
         #expect(settingsSource.contains("NavigationLink(value: SettingsDestination.widget)"))
         #expect(settingsSource.contains("@State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?"))
+        #expect(settingsSource.contains("@State private var selectedWidgetWallpaperPhotoItem: PhotosPickerItem?"))
         #expect(settingsSource.contains("@State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)"))
         #expect(settingsSource.contains("@State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue"))
+        #expect(settingsSource.contains("@State private var widgetWallpaperHorizontalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).horizontalOffset"))
+        #expect(settingsSource.contains("@State private var widgetWallpaperVerticalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).verticalOffset"))
+        #expect(settingsSource.contains("@State private var widgetWallpaperScale = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).scale"))
+        #expect(settingsSource.contains("@State private var widgetWallpaperPlacement = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).placement"))
         #expect(widgetSettingsSource.contains("widgetAppearanceSection"))
         #expect(widgetSettingsSource.contains("Section(widgetAppearanceSectionTitle)"))
         #expect(settingsSource.contains("appLanguage == .chinese ? \"小组件外观\" : \"Widget appearance\""))
@@ -589,18 +599,37 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue), platform: .iOS)"))
         #expect(settingsSource.contains("persistWidgetAppearancePreference(newValue)"))
         #expect(widgetSettingsSource.contains("WidgetBackgroundStyle.allCases"))
+        #expect(widgetSettingsSource.contains(".pickerStyle(.menu)"))
         #expect(widgetSettingsSource.contains("PhotosPicker("))
+        #expect(widgetSettingsSource.contains("PhotosPicker(selection: $selectedWidgetWallpaperPhotoItem, matching: .images)"))
+        #expect(widgetSettingsSource.contains("Picker(widgetWallpaperPlacementTitle, selection: $widgetWallpaperPlacement)"))
+        #expect(widgetSettingsSource.contains("WidgetWallpaperBackgroundPlacement.allCases"))
+        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperHorizontalOffset, in: -160...160, step: 1)"))
+        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperVerticalOffset, in: -160...160, step: 1)"))
+        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperScale, in: 0.8...2, step: 0.01)"))
+        #expect(widgetSettingsSource.contains("Button(widgetWallpaperResetTitle)"))
         #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(newValue, platform: .iOS)"))
         #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, platform: .iOS)"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveWallpaperBackgroundImageData(data, platform: .iOS)"))
+        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundScreenMetrics("))
+        #expect(widgetSettingsSource.contains("UIScreen.main.bounds"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment("))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.resetWidgetWallpaperBackgroundAdjustment(platform: .iOS)"))
         #expect(widgetSettingsSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
         #expect(languageSource.contains("case widgetSettings"))
         #expect(languageSource.contains("case widgetBackground"))
         #expect(languageSource.contains("case chooseBackgroundImage"))
         #expect(widgetPreferenceSource.contains("public enum WidgetBackgroundStyle"))
         #expect(widgetPreferenceSource.contains("case transparent"))
+        #expect(widgetPreferenceSource.contains("case wallpaperPhoto"))
+        #expect(widgetPreferenceSource.contains("public var isSeeThroughWidgetBackground: Bool"))
+        #expect(widgetPreferenceSource.contains("public struct WidgetWallpaperBackgroundAdjustment"))
+        #expect(widgetPreferenceSource.contains("public enum WidgetWallpaperBackgroundPlacement"))
+        #expect(widgetPreferenceSource.contains("public struct WidgetWallpaperBackgroundScreenMetrics"))
         #expect(widgetPreferenceSource.contains("public enum WidgetPreferencePlatform"))
         #expect(widgetPreferenceSource.contains("case .macOS: .defaultArtwork"))
         #expect(widgetPreferenceSource.contains("case .iOS: .defaultArtwork"))
+        #expect(widgetPreferenceSource.contains("case (.macOS, .transparent), (.macOS, .wallpaperPhoto):"))
         #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey"))
         #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey(for: platform)"))
         #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey"))
@@ -609,14 +638,33 @@ struct XcodeWidgetProjectTests {
         #expect(widgetPreferenceSource.contains("isDarkWidgetAppearance(systemIsDark:"))
         #expect(widgetPreferenceSource.contains("customBackgroundImageURL"))
         #expect(widgetPreferenceSource.contains("saveCustomBackgroundImageData"))
+        #expect(widgetPreferenceSource.contains("wallpaperBackgroundImageURL"))
+        #expect(widgetPreferenceSource.contains("saveWallpaperBackgroundImageData"))
+        #expect(widgetPreferenceSource.contains("widgetWallpaperBackgroundAdjustment"))
+        #expect(widgetPreferenceSource.contains("widgetWallpaperBackgroundScreenMetrics"))
         #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
         #expect(widgetSource.contains("case .transparent:"))
+        #expect(widgetSource.contains("case .wallpaperPhoto:"))
         #expect(widgetSource.contains("@Environment(\\.showsWidgetContainerBackground)"))
         #expect(widgetSource.contains(".meowPlannerWidgetContainerBackground()"))
         #expect(widgetSource.contains("containerBackground(for: .widget)"))
         #expect(!widgetSource.contains("if WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent {\n            self"))
-        #expect(widgetSource.contains(".containerBackgroundRemovable(WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent)"))
-        #expect(widgetSource.contains("!showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent"))
+        #expect(widgetConfigurationSource.contains("#if os(iOS)\n        .containerBackgroundRemovable(true)\n        #else"))
+        #expect(widgetConfigurationSource.contains(".containerBackgroundRemovable(WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent)\n        #endif"))
+        #expect(widgetSource.contains("!showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle.isSeeThroughWidgetBackground"))
+        #expect(widgetSource.contains("WidgetWallpaperBackgroundImageView(image: Image(uiImage: image))"))
+        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment"))
+        let wallpaperImageViewSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetWallpaperBackgroundImageView",
+            to: "private struct WidgetContainerBackgroundView"
+        ))
+        #expect(wallpaperImageViewSource.contains("let screenMetrics = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundScreenMetrics"))
+        #expect(wallpaperImageViewSource.contains("let screenSize = CGSize("))
+        #expect(wallpaperImageViewSource.contains("let widgetOrigin = widgetOrigin(in: screenSize, widgetSize: proxy.size, adjustment: adjustment)"))
+        #expect(wallpaperImageViewSource.contains(".frame(width: screenSize.width, height: screenSize.height)"))
+        #expect(wallpaperImageViewSource.contains(".offset(x: -widgetOrigin.x * adjustmentScale, y: -widgetOrigin.y * adjustmentScale)"))
+        #expect(!wallpaperImageViewSource.contains(".scaledToFill()"))
         #expect(widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklyGlassFill(isDark: isDarkBackground)"))
         #expect(widgetSource.contains("usesTransparentWidgetBackground ? WidgetPalette.weeklyTransparentSeparator(isDark: isDarkBackground) : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
         #expect(!widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
@@ -625,6 +673,7 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains("var usesTransparentBackground: Bool"))
         #expect(widgetSource.contains("if day.events.isEmpty && !usesTransparentBackground"))
         #expect(widgetSource.contains("customBackgroundImage()"))
+        #expect(widgetSource.contains("wallpaperBackgroundImage()"))
         #expect(widgetSource.contains("UIImage(data: data)"))
         #expect(!widgetSource.contains("if let image = WidgetBackgroundImageLoader.image(isDark: colorScheme == .dark)"))
     }
@@ -1647,6 +1696,47 @@ struct XcodeWidgetProjectTests {
         #expect(eventPillSource.contains(".fill(Color.black.opacity(activeEventPillDarkeningOpacity))"))
         #expect(eventPillSource.contains(".opacity(item.isCompleted ? completedEventPillOpacity : 1)"))
         #expect(widgetSource.contains("widgetColor(\n                hex: item.colorHex"))
+    }
+
+    @Test("macOS month widget highlights today with a stronger full cell background and dot")
+    func macOSMonthWidgetHighlightsTodayWithStrongerFullCellBackgroundAndDot() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let monthSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+        let dayCellSource = try sourceWindow(
+            in: monthSource,
+            from: "private func dayCell(_ day: MonthPlannerDay, rowHeight: CGFloat)",
+            length: 1600
+        )
+        let dayBackgroundSource = try sourceWindow(
+            in: monthSource,
+            from: "private func dayBackground(_ day: MonthPlannerDay)",
+            length: 420
+        )
+
+        #expect(monthSource.contains("private var monthTodayCellHighlightColor: Color"))
+        #expect(monthSource.contains("#if os(macOS)\n        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayCellHighlight(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.16)\n        #else\n        return WidgetPalette.blue.opacity(0.12)\n        #endif"))
+        #expect(monthSource.contains("private var showsTodayIndicator: Bool"))
+        #expect(monthSource.contains("#if os(macOS)\n        return true\n        #else\n        return false\n        #endif"))
+        #expect(monthSource.contains("private var monthTodayIndicatorColor: Color"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush"))
+        #expect(widgetSource.contains("static func macOSGlassTodayCellHighlight(isDark: Bool) -> Color"))
+        #expect(widgetSource.contains("static func macOSGlassTodayIndicator(isDark: Bool) -> Color"))
+        #expect(widgetSource.contains("isDark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)"))
+        #expect(widgetSource.contains("isDark ? Color.white.opacity(0.78) : Color.black.opacity(0.46)"))
+        #expect(dayBackgroundSource.contains("if calendar.isDateInToday(day.date)"))
+        #expect(dayBackgroundSource.contains("return AnyShapeStyle(monthTodayCellHighlightColor)"))
+        #expect(dayCellSource.contains(".background(dayBackground(day), in: Rectangle())"))
+        #expect(dayCellSource.contains("if showsTodayIndicator && calendar.isDateInToday(day.date)"))
+        #expect(dayCellSource.contains("Circle()\n                        .fill(monthTodayIndicatorColor)"))
+        #expect(dayCellSource.contains(".frame(width: 4, height: 4)"))
     }
 
     @Test("macOS month widget keeps readable glass text and paw watermark")

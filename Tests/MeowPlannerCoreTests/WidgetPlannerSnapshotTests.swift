@@ -98,6 +98,65 @@ struct WidgetPlannerSnapshotTests {
         #expect(!FileManager.default.fileExists(atPath: fileURL.path))
     }
 
+    @Test("iOS wallpaper widget background stores image and adjustment separately from macOS")
+    func iosWallpaperWidgetBackgroundStoresImageAndAdjustmentSeparatelyFromMacOS() throws {
+        let suiteName = "MeowPlannerWidgetWallpaperBackgroundTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MeowPlannerWidgetWallpaperBackground-\(UUID().uuidString).image")
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+
+        #expect(WidgetBackgroundStyle.wallpaperPhoto.title(language: .chinese) == "壁纸透明")
+        #expect(WidgetBackgroundStyle.wallpaperPhoto.title(language: .english) == "Wallpaper")
+        #expect(WidgetWallpaperBackgroundPlacement.middle.title(language: .chinese) == "中间")
+        #expect(WidgetWallpaperBackgroundPlacement.middle.title(language: .english) == "Middle")
+
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.wallpaperPhoto, platform: .iOS, defaults: defaults)
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.wallpaperPhoto, platform: .macOS, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS, defaults: defaults) == .wallpaperPhoto)
+        #expect(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .macOS, defaults: defaults) == .defaultArtwork)
+
+        let adjustment = WidgetWallpaperBackgroundAdjustment(
+            placement: .bottom,
+            horizontalOffset: 32,
+            verticalOffset: -18,
+            scale: 1.24
+        )
+        WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment(adjustment, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(defaults: defaults) == adjustment)
+
+        let outOfRangeAdjustment = WidgetWallpaperBackgroundAdjustment(horizontalOffset: 500, verticalOffset: -500, scale: 4)
+        WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment(outOfRangeAdjustment, defaults: defaults)
+
+        #expect(
+            WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(defaults: defaults)
+            == WidgetWallpaperBackgroundAdjustment(placement: .middle, horizontalOffset: 160, verticalOffset: -160, scale: 2)
+        )
+
+        WidgetPlannerPreferenceStore.resetWidgetWallpaperBackgroundAdjustment(defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(defaults: defaults) == .defaultValue)
+
+        let screenMetrics = WidgetWallpaperBackgroundScreenMetrics(width: 402, height: 874, scale: 3)
+        WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundScreenMetrics(screenMetrics, defaults: defaults)
+
+        #expect(WidgetPlannerPreferenceStore.widgetWallpaperBackgroundScreenMetrics(defaults: defaults) == screenMetrics)
+
+        let data = Data([0x57, 0x61, 0x6c, 0x6c])
+        try WidgetPlannerPreferenceStore.saveWallpaperBackgroundImageData(data, fileURL: fileURL)
+
+        #expect(try Data(contentsOf: fileURL) == data)
+
+        WidgetPlannerPreferenceStore.clearWallpaperBackgroundImage(fileURL: fileURL)
+
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
     @Test("widget appearance preference overrides system appearance when requested")
     func widgetAppearancePreferenceOverridesSystemAppearanceWhenRequested() throws {
         let suiteName = "MeowPlannerWidgetAppearanceTests-\(UUID().uuidString)"

@@ -62,6 +62,7 @@ public enum WidgetBackgroundStyle: String, CaseIterable, Identifiable, Codable, 
     case defaultArtwork
     case customPhoto
     case transparent
+    case wallpaperPhoto
 
     public var id: String { rawValue }
 
@@ -82,7 +83,100 @@ public enum WidgetBackgroundStyle: String, CaseIterable, Identifiable, Codable, 
             case .english: "Transparent"
             case .chinese: "透明"
             }
+        case .wallpaperPhoto:
+            switch language {
+            case .english: "Wallpaper"
+            case .chinese: "壁纸透明"
+            }
         }
+    }
+
+    public var isSeeThroughWidgetBackground: Bool {
+        switch self {
+        case .transparent, .wallpaperPhoto:
+            true
+        case .defaultArtwork, .customPhoto:
+            false
+        }
+    }
+}
+
+public struct WidgetWallpaperBackgroundAdjustment: Codable, Equatable, Sendable {
+    public static let defaultValue = WidgetWallpaperBackgroundAdjustment()
+    public static let minimumOffset = -160.0
+    public static let maximumOffset = 160.0
+    public static let minimumScale = 0.8
+    public static let maximumScale = 2.0
+
+    public var placement: WidgetWallpaperBackgroundPlacement
+    public var horizontalOffset: Double
+    public var verticalOffset: Double
+    public var scale: Double
+
+    public init(
+        placement: WidgetWallpaperBackgroundPlacement = .middle,
+        horizontalOffset: Double = 0,
+        verticalOffset: Double = 0,
+        scale: Double = 1
+    ) {
+        self.placement = placement
+        self.horizontalOffset = Self.clamped(horizontalOffset, minimum: Self.minimumOffset, maximum: Self.maximumOffset)
+        self.verticalOffset = Self.clamped(verticalOffset, minimum: Self.minimumOffset, maximum: Self.maximumOffset)
+        self.scale = Self.clamped(scale, minimum: Self.minimumScale, maximum: Self.maximumScale)
+    }
+
+    private static func clamped(_ value: Double, minimum: Double, maximum: Double) -> Double {
+        min(max(value, minimum), maximum)
+    }
+}
+
+public enum WidgetWallpaperBackgroundPlacement: String, CaseIterable, Identifiable, Codable, Sendable {
+    case top
+    case middle
+    case bottom
+
+    public var id: String { rawValue }
+
+    public func title(language: AppLanguage) -> String {
+        switch self {
+        case .top:
+            switch language {
+            case .english: "Top"
+            case .chinese: "上方"
+            }
+        case .middle:
+            switch language {
+            case .english: "Middle"
+            case .chinese: "中间"
+            }
+        case .bottom:
+            switch language {
+            case .english: "Bottom"
+            case .chinese: "下方"
+            }
+        }
+    }
+
+    public var verticalOriginRatio: Double {
+        switch self {
+        case .top: 0.25
+        case .middle: 0.45
+        case .bottom: 0.65
+        }
+    }
+}
+
+public struct WidgetWallpaperBackgroundScreenMetrics: Codable, Equatable, Sendable {
+    public static let defaultValue = WidgetWallpaperBackgroundScreenMetrics(width: 402, height: 874, scale: 3)
+
+    public var width: Double
+    public var height: Double
+    public var scale: Double
+
+    public init(width: Double, height: Double, scale: Double) {
+        self.width = max(1, width)
+        self.height = max(1, height)
+        self.scale = max(1, scale)
     }
 }
 
@@ -137,7 +231,7 @@ public enum WidgetPreferencePlatform: String, CaseIterable, Identifiable, Sendab
 
     func normalizedWidgetBackgroundStyle(_ style: WidgetBackgroundStyle) -> WidgetBackgroundStyle {
         switch (self, style) {
-        case (.macOS, .transparent):
+        case (.macOS, .transparent), (.macOS, .wallpaperPhoto):
             .defaultArtwork
         default:
             style
@@ -153,6 +247,14 @@ public enum WidgetPlannerPreferenceStore {
     public static let widgetBackgroundStyleKey = "widgetBackgroundStyle"
     public static let widgetBackgroundStyleFilename = "widget-background-style.txt"
     public static let customBackgroundImageFilename = "widget-custom-background.image"
+    public static let wallpaperBackgroundImageFilename = "widget-wallpaper-background.image"
+    public static let widgetWallpaperHorizontalOffsetKey = "widgetWallpaperHorizontalOffset"
+    public static let widgetWallpaperVerticalOffsetKey = "widgetWallpaperVerticalOffset"
+    public static let widgetWallpaperScaleKey = "widgetWallpaperScale"
+    public static let widgetWallpaperPlacementKey = "widgetWallpaperPlacement"
+    public static let widgetWallpaperScreenWidthKey = "widgetWallpaperScreenWidth"
+    public static let widgetWallpaperScreenHeightKey = "widgetWallpaperScreenHeight"
+    public static let widgetWallpaperScreenScaleKey = "widgetWallpaperScreenScale"
     private static let widgetExtensionContainerIdentifier = "com.yuelingqiu.MeowPlanner.MeowPlannerWidget"
 
     public static var weekStartPreference: WeekStartPreference {
@@ -194,6 +296,28 @@ public enum WidgetPlannerPreferenceStore {
 
     public static var customBackgroundImageURL: URL? {
         customBackgroundImageURL(platform: .current)
+    }
+
+    public static var wallpaperBackgroundImageURL: URL? {
+        wallpaperBackgroundImageURL(platform: .current)
+    }
+
+    public static var widgetWallpaperBackgroundAdjustment: WidgetWallpaperBackgroundAdjustment {
+        get {
+            widgetWallpaperBackgroundAdjustment(platform: .current)
+        }
+        set {
+            setWidgetWallpaperBackgroundAdjustment(newValue, platform: .current)
+        }
+    }
+
+    public static var widgetWallpaperBackgroundScreenMetrics: WidgetWallpaperBackgroundScreenMetrics {
+        get {
+            widgetWallpaperBackgroundScreenMetrics(platform: .current)
+        }
+        set {
+            setWidgetWallpaperBackgroundScreenMetrics(newValue, platform: .current)
+        }
     }
 
     public static func widgetAppearancePreferenceKey(for platform: WidgetPreferencePlatform) -> String {
@@ -556,6 +680,175 @@ public enum WidgetPlannerPreferenceStore {
 
     public static func clearCustomBackgroundImage(fileURL: URL) {
         try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    public static func wallpaperBackgroundImageURL(fileManager: FileManager = .default) -> URL? {
+        wallpaperBackgroundImageURL(platform: .current, fileManager: fileManager)
+    }
+
+    public static func wallpaperBackgroundImageURL(
+        platform: WidgetPreferencePlatform,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        guard platform == .iOS else {
+            return nil
+        }
+
+        #if canImport(Darwin)
+        return fileManager
+            .containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+            .appendingPathComponent(wallpaperBackgroundImageFilename)
+        #else
+        return nil
+        #endif
+    }
+
+    public static func saveWallpaperBackgroundImageData(_ data: Data) throws {
+        try saveWallpaperBackgroundImageData(data, platform: .current)
+    }
+
+    public static func saveWallpaperBackgroundImageData(
+        _ data: Data,
+        platform: WidgetPreferencePlatform
+    ) throws {
+        guard let fileURL = wallpaperBackgroundImageURL(platform: platform) else {
+            return
+        }
+
+        try saveWallpaperBackgroundImageData(data, fileURL: fileURL)
+    }
+
+    public static func saveWallpaperBackgroundImageData(_ data: Data, fileURL: URL) throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: fileURL, options: .atomic)
+    }
+
+    public static func clearWallpaperBackgroundImage() {
+        clearWallpaperBackgroundImage(platform: .current)
+    }
+
+    public static func clearWallpaperBackgroundImage(platform: WidgetPreferencePlatform) {
+        guard let fileURL = wallpaperBackgroundImageURL(platform: platform) else {
+            return
+        }
+
+        clearWallpaperBackgroundImage(fileURL: fileURL)
+    }
+
+    public static func clearWallpaperBackgroundImage(fileURL: URL) {
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    public static func widgetWallpaperBackgroundAdjustment(
+        platform: WidgetPreferencePlatform
+    ) -> WidgetWallpaperBackgroundAdjustment {
+        guard platform == .iOS else {
+            return .defaultValue
+        }
+
+        return widgetWallpaperBackgroundAdjustment(defaults: defaults)
+    }
+
+    public static func widgetWallpaperBackgroundAdjustment(defaults: UserDefaults) -> WidgetWallpaperBackgroundAdjustment {
+        WidgetWallpaperBackgroundAdjustment(
+            placement: WidgetWallpaperBackgroundPlacement(
+                rawValue: defaults.string(forKey: widgetWallpaperPlacementKey) ?? ""
+            ) ?? .middle,
+            horizontalOffset: defaults.double(forKey: widgetWallpaperHorizontalOffsetKey),
+            verticalOffset: defaults.double(forKey: widgetWallpaperVerticalOffsetKey),
+            scale: {
+                let storedScale = defaults.double(forKey: widgetWallpaperScaleKey)
+                return storedScale == 0 ? WidgetWallpaperBackgroundAdjustment.defaultValue.scale : storedScale
+            }()
+        )
+    }
+
+    public static func setWidgetWallpaperBackgroundAdjustment(
+        _ adjustment: WidgetWallpaperBackgroundAdjustment,
+        platform: WidgetPreferencePlatform
+    ) {
+        guard platform == .iOS else {
+            return
+        }
+
+        setWidgetWallpaperBackgroundAdjustment(adjustment, defaults: defaults)
+    }
+
+    public static func setWidgetWallpaperBackgroundAdjustment(
+        _ adjustment: WidgetWallpaperBackgroundAdjustment,
+        defaults: UserDefaults
+    ) {
+        defaults.set(adjustment.horizontalOffset, forKey: widgetWallpaperHorizontalOffsetKey)
+        defaults.set(adjustment.verticalOffset, forKey: widgetWallpaperVerticalOffsetKey)
+        defaults.set(adjustment.scale, forKey: widgetWallpaperScaleKey)
+        defaults.set(adjustment.placement.rawValue, forKey: widgetWallpaperPlacementKey)
+        defaults.synchronize()
+    }
+
+    public static func resetWidgetWallpaperBackgroundAdjustment(platform: WidgetPreferencePlatform) {
+        guard platform == .iOS else {
+            return
+        }
+
+        resetWidgetWallpaperBackgroundAdjustment(defaults: defaults)
+    }
+
+    public static func resetWidgetWallpaperBackgroundAdjustment(defaults: UserDefaults) {
+        defaults.removeObject(forKey: widgetWallpaperHorizontalOffsetKey)
+        defaults.removeObject(forKey: widgetWallpaperVerticalOffsetKey)
+        defaults.removeObject(forKey: widgetWallpaperScaleKey)
+        defaults.removeObject(forKey: widgetWallpaperPlacementKey)
+        defaults.synchronize()
+    }
+
+    public static func widgetWallpaperBackgroundScreenMetrics(
+        platform: WidgetPreferencePlatform
+    ) -> WidgetWallpaperBackgroundScreenMetrics {
+        guard platform == .iOS else {
+            return .defaultValue
+        }
+
+        return widgetWallpaperBackgroundScreenMetrics(defaults: defaults)
+    }
+
+    public static func widgetWallpaperBackgroundScreenMetrics(defaults: UserDefaults) -> WidgetWallpaperBackgroundScreenMetrics {
+        let storedWidth = defaults.double(forKey: widgetWallpaperScreenWidthKey)
+        let storedHeight = defaults.double(forKey: widgetWallpaperScreenHeightKey)
+        let storedScale = defaults.double(forKey: widgetWallpaperScreenScaleKey)
+
+        guard storedWidth > 0, storedHeight > 0 else {
+            return .defaultValue
+        }
+
+        return WidgetWallpaperBackgroundScreenMetrics(
+            width: storedWidth,
+            height: storedHeight,
+            scale: storedScale == 0 ? WidgetWallpaperBackgroundScreenMetrics.defaultValue.scale : storedScale
+        )
+    }
+
+    public static func setWidgetWallpaperBackgroundScreenMetrics(
+        _ metrics: WidgetWallpaperBackgroundScreenMetrics,
+        platform: WidgetPreferencePlatform
+    ) {
+        guard platform == .iOS else {
+            return
+        }
+
+        setWidgetWallpaperBackgroundScreenMetrics(metrics, defaults: defaults)
+    }
+
+    public static func setWidgetWallpaperBackgroundScreenMetrics(
+        _ metrics: WidgetWallpaperBackgroundScreenMetrics,
+        defaults: UserDefaults
+    ) {
+        defaults.set(metrics.width, forKey: widgetWallpaperScreenWidthKey)
+        defaults.set(metrics.height, forKey: widgetWallpaperScreenHeightKey)
+        defaults.set(metrics.scale, forKey: widgetWallpaperScreenScaleKey)
+        defaults.synchronize()
     }
 
     private static var defaults: UserDefaults {

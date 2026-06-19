@@ -184,7 +184,11 @@ public struct MeowPlannerTodayWidget: Widget {
         .description("See FuFu's schedules and plans.")
         .supportedFamilies(Self.supportedFamilies)
         .contentMarginsDisabled()
+        #if os(iOS)
+        .containerBackgroundRemovable(true)
+        #else
         .containerBackgroundRemovable(WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent)
+        #endif
     }
 }
 
@@ -233,6 +237,49 @@ private func widgetFullColorImage(_ image: Image) -> some View {
 }
 
 @available(iOS 17.0, macOS 14.0, *)
+private struct WidgetWallpaperBackgroundImageView: View {
+    var image: Image
+
+    var body: some View {
+        GeometryReader { proxy in
+            let adjustment = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment
+            let screenMetrics = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundScreenMetrics
+            let screenSize = CGSize(
+                width: max(proxy.size.width, CGFloat(screenMetrics.width)),
+                height: max(proxy.size.height, CGFloat(screenMetrics.height))
+            )
+            let widgetOrigin = widgetOrigin(in: screenSize, widgetSize: proxy.size, adjustment: adjustment)
+            let adjustmentScale = CGFloat(adjustment.scale)
+
+            widgetFullColorImage(image.resizable())
+                .frame(width: screenSize.width, height: screenSize.height)
+                .scaleEffect(adjustmentScale, anchor: .topLeading)
+                .offset(x: -widgetOrigin.x * adjustmentScale, y: -widgetOrigin.y * adjustmentScale)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
+        }
+    }
+
+    private func widgetOrigin(
+        in screenSize: CGSize,
+        widgetSize: CGSize,
+        adjustment: WidgetWallpaperBackgroundAdjustment
+    ) -> CGPoint {
+        let maximumX = max(0, screenSize.width - widgetSize.width)
+        let maximumY = max(0, screenSize.height - widgetSize.height)
+        let baseX = maximumX / 2
+        let baseY = maximumY * CGFloat(adjustment.placement.verticalOriginRatio)
+        let adjustedX = baseX + CGFloat(adjustment.horizontalOffset)
+        let adjustedY = baseY + CGFloat(adjustment.verticalOffset)
+
+        return CGPoint(
+            x: min(max(0, adjustedX), maximumX),
+            y: min(max(0, adjustedY), maximumY)
+        )
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
 private struct WidgetContainerBackgroundView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.showsWidgetContainerBackground) private var showsWidgetContainerBackground
@@ -258,6 +305,16 @@ private struct WidgetContainerBackgroundView: View {
                             .resizable()
                     )
                         .scaledToFill()
+                    #endif
+                } else {
+                    defaultBackground
+                }
+            case .wallpaperPhoto:
+                if let image = WidgetBackgroundImageLoader.wallpaperBackgroundImage() {
+                    #if os(iOS)
+                    WidgetWallpaperBackgroundImageView(image: Image(uiImage: image))
+                    #else
+                    defaultBackground
                     #endif
                 } else {
                     defaultBackground
@@ -349,7 +406,7 @@ private struct WeeklyScheduleWidgetView: View {
     }
 
     private var usesTransparentWidgetBackground: Bool {
-        !showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent
+        !showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle.isSeeThroughWidgetBackground
     }
 
     private var hasSchedules: Bool {
@@ -523,6 +580,13 @@ private struct WidgetScheduleBackgroundView: View {
             Group {
                 if shouldHideMeowPlannerBackground {
                     Color.clear
+                } else if WidgetPlannerPreferenceStore.widgetBackgroundStyle == .wallpaperPhoto,
+                          let image = WidgetBackgroundImageLoader.wallpaperBackgroundImage() {
+                    #if os(iOS)
+                    WidgetWallpaperBackgroundImageView(image: Image(uiImage: image))
+                    #else
+                    WidgetPalette.weeklyFallbackBackground(isDark: isDarkBackground)
+                    #endif
                 } else if let image = WidgetBackgroundImageLoader.image(
                     style: WidgetPlannerPreferenceStore.widgetBackgroundStyle,
                     isDark: isDarkBackground
@@ -883,12 +947,24 @@ private struct MonthWidgetView: View {
         usesMacOSGlassBackground ? WidgetPalette.macOSGlassGridBorder(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.18)
     }
 
-    private var monthTodayIndicatorColor: Color {
-        usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush
+    private var monthTodayCellHighlightColor: Color {
+        #if os(macOS)
+        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayCellHighlight(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.16)
+        #else
+        return WidgetPalette.blue.opacity(0.12)
+        #endif
     }
 
-    private var monthTodayBackgroundColor: Color {
-        usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayBackground(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.18)
+    private var showsTodayIndicator: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    private var monthTodayIndicatorColor: Color {
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush
     }
 
     private var fufuPawPrimaryWatermarkColor: Color {
@@ -1029,7 +1105,7 @@ private struct MonthWidgetView: View {
                         .minimumScaleFactor(0.60)
                 }
 
-                if calendar.isDateInToday(day.date) {
+                if showsTodayIndicator && calendar.isDateInToday(day.date) {
                     Circle()
                         .fill(monthTodayIndicatorColor)
                         .frame(width: 4, height: 4)
@@ -1063,7 +1139,7 @@ private struct MonthWidgetView: View {
 
     private func dayBackground(_ day: MonthPlannerDay) -> some ShapeStyle {
         if calendar.isDateInToday(day.date) {
-            return AnyShapeStyle(monthTodayBackgroundColor)
+            return AnyShapeStyle(monthTodayCellHighlightColor)
         }
         return AnyShapeStyle(Color.clear)
     }
@@ -1226,6 +1302,8 @@ private enum WidgetBackgroundImageLoader {
             bundledImage(isDark: isDark)
         case .customPhoto:
             customBackgroundImage()
+        case .wallpaperPhoto:
+            wallpaperBackgroundImage()
         case .transparent:
             nil
         }
@@ -1250,6 +1328,16 @@ private enum WidgetBackgroundImageLoader {
 
         return UIImage(data: data)
     }
+
+    static func wallpaperBackgroundImage() -> UIImage? {
+        guard let url = WidgetPlannerPreferenceStore.wallpaperBackgroundImageURL,
+              let data = try? Data(contentsOf: url)
+        else {
+            return nil
+        }
+
+        return UIImage(data: data)
+    }
     #else
     static func image(style: WidgetBackgroundStyle, isDark: Bool) -> NSImage? {
         switch style {
@@ -1257,6 +1345,8 @@ private enum WidgetBackgroundImageLoader {
             bundledImage(isDark: isDark)
         case .customPhoto:
             customBackgroundImage()
+        case .wallpaperPhoto:
+            wallpaperBackgroundImage()
         case .transparent:
             nil
         }
@@ -1274,6 +1364,16 @@ private enum WidgetBackgroundImageLoader {
 
     static func customBackgroundImage() -> NSImage? {
         guard let url = WidgetPlannerPreferenceStore.customBackgroundImageURL,
+              let data = try? Data(contentsOf: url)
+        else {
+            return nil
+        }
+
+        return NSImage(data: data)
+    }
+
+    static func wallpaperBackgroundImage() -> NSImage? {
+        guard let url = WidgetPlannerPreferenceStore.wallpaperBackgroundImageURL,
               let data = try? Data(contentsOf: url)
         else {
             return nil
@@ -1342,12 +1442,12 @@ private enum WidgetPalette {
         isDark ? Color.white.opacity(0.26) : Color.black.opacity(0.18)
     }
 
-    static func macOSGlassTodayIndicator(isDark: Bool) -> Color {
-        isDark ? Color.white.opacity(0.78) : Color.black.opacity(0.46)
+    static func macOSGlassTodayCellHighlight(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)
     }
 
-    static func macOSGlassTodayBackground(isDark: Bool) -> Color {
-        isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
+    static func macOSGlassTodayIndicator(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.78) : Color.black.opacity(0.46)
     }
 
     static func macOSGlassEventPillText(isDark: Bool) -> Color {
