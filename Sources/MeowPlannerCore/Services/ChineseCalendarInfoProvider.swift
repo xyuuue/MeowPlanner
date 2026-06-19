@@ -36,7 +36,22 @@ public enum ChineseCalendarInfoProvider {
             festivalName: lunarFestival(month: lunarMonth, day: lunarDay, isLeapMonth: isLeapMonth, daysInMonth: daysInLunarMonth)
                 ?? qingmingFestival(for: normalizedDate, calendar: calendar)
                 ?? gregorianFestival(for: normalizedDate, calendar: calendar)
-        )
+            )
+    }
+
+    public static func displayInfo(
+        for date: Date,
+        calendar: Calendar = .current,
+        includesFloatingGregorianObservances: Bool = false
+    ) -> ChineseCalendarDayInfo {
+        let baseInfo = info(for: date, calendar: calendar)
+        guard includesFloatingGregorianObservances,
+              baseInfo.festivalName == nil,
+              let observance = floatingGregorianObservance(for: midday(for: date, calendar: calendar), calendar: calendar) else {
+            return baseInfo
+        }
+
+        return ChineseCalendarDayInfo(lunarText: baseInfo.lunarText, festivalName: observance)
     }
 
     private static func midday(for date: Date, calendar: Calendar) -> Date {
@@ -84,6 +99,15 @@ public enum ChineseCalendarInfoProvider {
         case (10, 1): "国庆节"
         case (12, 24): "平安夜"
         case (12, 25): "圣诞节"
+        default: nil
+        }
+    }
+
+    private static func floatingGregorianObservance(for date: Date, calendar: Calendar) -> String? {
+        let components = calendar.dateComponents([.month, .weekday, .weekdayOrdinal], from: date)
+        return switch (components.month, components.weekday, components.weekdayOrdinal) {
+        case (5, 1, 2): "母亲节"
+        case (6, 1, 3): "父亲节"
         default: nil
         }
     }

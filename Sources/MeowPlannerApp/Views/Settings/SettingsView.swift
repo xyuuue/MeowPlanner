@@ -25,9 +25,16 @@ private enum SettingsSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-private let settingsContentTopInset: CGFloat = 0
+private let settingsHomeContentTopInset: CGFloat = 24
+private let settingsDestinationContentTopInset: CGFloat = 28
 #if os(iOS)
 private let settingsPersonalizationBottomScrollExpansion: CGFloat = 260
+
+private func settingsContentBottomNavigationMaskHeight(safeAreaInsets: EdgeInsets) -> CGFloat {
+    IOSAppNavigationMetrics.bottomNavigationContentHeight
+        + IOSAppNavigationMetrics.bottomNavigationTopPadding
+        + IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)
+}
 #else
 private let settingsPersonalizationBottomScrollExpansion: CGFloat = 0
 #endif
@@ -181,6 +188,7 @@ struct SettingsView: View {
     private var settingsNavigationStack: some View {
         settingsNavigationContent
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
     }
@@ -194,22 +202,34 @@ struct SettingsView: View {
         NavigationStack(path: $navigationPath) {
             settingsHomePage
                 .navigationDestination(for: SettingsDestination.self) { destination in
-                    switch destination {
-                    case .account:
-                        accountSettingsPage
-                    case .personalization:
-                        personalizationSettingsPage
-                    #if os(iOS)
-                    case .widget:
-                        widgetSettingsPage
-                    #endif
-                    }
+                    settingsDestinationPage(destination)
                 }
         }
     }
 
+    @ViewBuilder
+    private func settingsDestinationPage(_ destination: SettingsDestination) -> some View {
+        Group {
+            switch destination {
+            case .account:
+                accountSettingsPage
+            case .personalization:
+                personalizationSettingsPage
+            #if os(iOS)
+            case .widget:
+                widgetSettingsPage
+            #endif
+            }
+        }
+        #if os(iOS)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        #endif
+    }
+
     private var settingsHomePage: some View {
-        settingsForm {
+        settingsForm(topContentInset: settingsHomeContentTopInset) {
             appHeaderSection
 
             Section {
@@ -270,7 +290,10 @@ struct SettingsView: View {
     }
 
     private var personalizationSettingsPage: some View {
-        settingsForm(bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion) {
+        settingsForm(
+            bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion,
+            hidesContentBehindBottomNavigation: true
+        ) {
             languageSection
             appearanceSection
             #if os(macOS)
@@ -395,7 +418,9 @@ struct SettingsView: View {
     #endif
 
     private func settingsForm<Content: View>(
+        topContentInset settingsTopContentInset: CGFloat = settingsDestinationContentTopInset,
         bottomScrollExpansion settingsBottomScrollExpansion: CGFloat = 0,
+        hidesContentBehindBottomNavigation settingsHidesContentBehindBottomNavigation: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
         Form {
@@ -417,9 +442,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .verticalPageScrollOnly()
-        .settingsContentTopSpacing()
+        .settingsContentTopSpacing(settingsTopContentInset)
         .tint(MeowPlannerTheme.pawButtonBrown)
         .padding()
+        .settingsBottomNavigationContentMask(isEnabled: settingsHidesContentBehindBottomNavigation)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background { settingsPageBackground }
         .sheet(item: $activeSettingsSheet) { sheet in
@@ -1178,8 +1204,41 @@ private extension View {
     }
 
     @ViewBuilder
-    func settingsContentTopSpacing() -> some View {
+    func settingsContentTopSpacing(_ topInset: CGFloat) -> some View {
+        #if os(iOS)
+        contentMargins(.top, topInset, for: .scrollContent)
+        #else
         self
+        #endif
+    }
+
+    @ViewBuilder
+    func settingsBottomNavigationContentMask(isEnabled: Bool) -> some View {
+        #if os(iOS)
+        if isEnabled {
+            mask {
+                GeometryReader { proxy in
+                    let bottomMaskHeight = settingsContentBottomNavigationMaskHeight(
+                        safeAreaInsets: proxy.safeAreaInsets
+                    )
+
+                    VStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Color.black)
+                            .frame(height: max(0, proxy.size.height - bottomMaskHeight))
+
+                        Color.clear
+                            .frame(height: bottomMaskHeight)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+            }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
     }
 }
 

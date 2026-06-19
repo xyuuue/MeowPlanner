@@ -6,6 +6,19 @@ import AppKit
 import SwiftData
 import SwiftUI
 
+#if os(iOS)
+private let focusBottomNavigationVisibleExtension: CGFloat = 44
+
+private func focusBottomNavigationContentMaskHeight(safeAreaInsets: EdgeInsets) -> CGFloat {
+    _ = safeAreaInsets
+    return max(0,
+        IOSAppNavigationMetrics.bottomNavigationContentHeight
+            + IOSAppNavigationMetrics.bottomNavigationTopPadding
+            - focusBottomNavigationVisibleExtension
+    )
+}
+#endif
+
 @MainActor
 final class FocusTimerStore: ObservableObject {
     @Published private(set) var timer = FocusTimerState(durationSeconds: PlannerPreference.defaults.defaultFocusMinutes * 60)
@@ -189,6 +202,7 @@ struct FocusView: View {
         }
         .verticalPageScrollOnly()
         .scrollContentBackground(.hidden)
+        .focusBottomNavigationContentMask()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             focusPageBackground
@@ -1355,6 +1369,33 @@ struct FocusView: View {
         }
 
         customFocusMinutes = defaultFocusMinutes
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func focusBottomNavigationContentMask() -> some View {
+        #if os(iOS)
+        mask {
+            GeometryReader { proxy in
+                let bottomMaskHeight = focusBottomNavigationContentMaskHeight(
+                    safeAreaInsets: proxy.safeAreaInsets
+                )
+
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(Color.black)
+                        .frame(height: max(0, proxy.size.height - bottomMaskHeight))
+
+                    Color.clear
+                        .frame(height: bottomMaskHeight)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+        #else
+        self
+        #endif
     }
 }
 

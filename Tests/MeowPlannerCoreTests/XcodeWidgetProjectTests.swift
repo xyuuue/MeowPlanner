@@ -396,7 +396,7 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains("private var shouldShowSidebarButton: Bool"))
         #expect(shellSource.contains("selection != .settings"))
         #expect(shellSource.contains("if shouldShowSidebarButton"))
-        #expect(shellSource.contains("private var navigationContentShield: some View"))
+        #expect(!shellSource.contains("private var navigationContentShield: some View"))
         #expect(shellSource.contains(".ignoresSafeArea(edges: .top)"))
         #expect(shellSource.contains("safeAreaInset(edge: .bottom"))
         #expect(shellSource.contains("bottomNavigationReservation(safeAreaInsets: proxy.safeAreaInsets)"))
@@ -410,10 +410,12 @@ struct XcodeWidgetProjectTests {
         #expect(shellSource.contains("Color.clear\n            .frame(height: IOSAppNavigationMetrics.bottomNavigationReservedHeight(safeAreaInsets: safeAreaInsets))"))
         #expect(shellSource.contains("private func bottomNavigationBar(safeAreaInsets: EdgeInsets) -> some View"))
         #expect(shellSource.contains("bottomNavigationBackground\n                .ignoresSafeArea(edges: .bottom)"))
-        #expect(topNavigationBackgroundSource.contains("navigationContentShield"))
-        #expect(bottomNavigationBackgroundSource.contains("navigationContentShield"))
-        #expect(!topNavigationBackgroundSource.contains("Color.clear"))
-        #expect(!bottomNavigationBackgroundSource.contains("Color.clear"))
+        #expect(topNavigationBackgroundSource.contains("Color.clear"))
+        #expect(!topNavigationBackgroundSource.contains("navigationContentShield"))
+        #expect(bottomNavigationBackgroundSource.contains("Color.clear"))
+        #expect(!bottomNavigationBackgroundSource.contains("navigationContentShield"))
+        #expect(!bottomNavigationBackgroundSource.contains("if"))
+        #expect(!shellSource.contains("shouldUseTransparentBottomNavigationBackground"))
         #expect(shellSource.contains("IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets)"))
         #expect(shellSource.contains("static func bottomNavigationBottomPadding(for safeAreaInsets: EdgeInsets)"))
         #expect(shellSource.contains("bottomNavigationBottomPadding(for: safeAreaInsets)"))
@@ -490,7 +492,8 @@ struct XcodeWidgetProjectTests {
         #expect(!shellSource.contains("bottomNavigationBackgroundMotifs"))
         #expect(!shellSource.contains("bottomNavigationPawMotif("))
         #expect(!shellSource.contains("FuFuAssetImage(size: 34)"))
-        #expect(shellSource.contains("private var bottomNavigationBackground: some View {\n        navigationContentShield\n    }"))
+        #expect(shellSource.contains("Color.clear"))
+        #expect(!shellSource.contains("shouldUseTransparentBottomNavigationBackground"))
         #expect(!shellSource.contains("MeowPlannerTheme.fufuCalendarBackground.opacity(0.98)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(true)"))
         #expect(calendarSource.contains("iosNavigationState.setAgendaOverlayPresented(false)"))
@@ -635,7 +638,7 @@ struct XcodeWidgetProjectTests {
         let settingsFormSource = try sourceWindow(
             in: settingsSource,
             from: "private func settingsForm",
-            length: 1_200
+            length: 1_600
         )
         let personalizationSettingsPageSource = try #require(sourceBlock(
             in: settingsSource,
@@ -652,6 +655,7 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains(".toolbar(.hidden, for: .navigationBar)"))
         #expect(settingsSource.contains(".toolbarBackground(.hidden, for: .navigationBar)"))
         #expect(settingsSource.contains(".navigationBarTitleDisplayMode(.inline)"))
+        #expect(settingsSource.contains(".navigationBarBackButtonHidden(true)"))
         #expect(settingsSource.contains("func settingsPlatformNavigationTitle(_ title: String) -> some View"))
         #expect(settingsSource.contains("#if os(iOS)\n        self\n        #else\n        navigationTitle(title)"))
         #expect(settingsSource.contains(".settingsPlatformNavigationTitle(PlannerCopy.text(.settings"))
@@ -660,17 +664,30 @@ struct XcodeWidgetProjectTests {
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.settings"))
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.account"))
         #expect(!settingsSource.contains(".navigationTitle(PlannerCopy.text(.personalizationSettings"))
-        #expect(settingsFormSource.contains(".settingsContentTopSpacing()"))
         #expect(settingsFormSource.contains(".listRowSeparator(.hidden)"))
         #expect(settingsFormSource.contains("settingsBottomScrollExpansion"))
-        #expect(settingsSource.contains("func settingsContentTopSpacing() -> some View"))
-        #expect(settingsSource.contains("private let settingsContentTopInset: CGFloat = 0"))
-        #expect(!settingsSource.contains("contentMargins(.top, settingsContentTopInset, for: .scrollContent)"))
+        #expect(settingsFormSource.contains("topContentInset settingsTopContentInset: CGFloat = settingsDestinationContentTopInset"))
+        #expect(settingsFormSource.contains(".settingsContentTopSpacing(settingsTopContentInset)"))
+        #expect(settingsSource.contains("func settingsContentTopSpacing(_ topInset: CGFloat) -> some View"))
+        #expect(settingsSource.contains("private let settingsHomeContentTopInset: CGFloat = 24"))
+        #expect(settingsSource.contains("private let settingsDestinationContentTopInset: CGFloat = 28"))
+        #expect(settingsSource.contains("contentMargins(.top, topInset, for: .scrollContent)"))
+        #expect(!settingsSource.contains("private let settingsContentTopInset"))
+        #expect(!settingsSource.contains(".padding(.top, settingsTopContentInset)"))
         #expect(!settingsSource.contains(".padding(.top, settingsContentTopInset)"))
+        #expect(settingsSource.contains("settingsForm(topContentInset: settingsHomeContentTopInset)"))
+        #expect(settingsSource.contains("private func settingsContentBottomNavigationMaskHeight(safeAreaInsets: EdgeInsets) -> CGFloat"))
+        #expect(settingsSource.contains("IOSAppNavigationMetrics.bottomNavigationContentHeight"))
+        #expect(settingsSource.contains("+ IOSAppNavigationMetrics.bottomNavigationTopPadding"))
+        #expect(settingsSource.contains("+ IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)"))
+        #expect(!settingsSource.contains("IOSAppNavigationMetrics.bottomNavigationChromeHeight(safeAreaInsets: safeAreaInsets)"))
+        #expect(settingsFormSource.contains("hidesContentBehindBottomNavigation settingsHidesContentBehindBottomNavigation: Bool = false"))
+        #expect(settingsFormSource.contains(".settingsBottomNavigationContentMask(isEnabled: settingsHidesContentBehindBottomNavigation)"))
+        #expect(settingsSource.contains("let bottomMaskHeight = settingsContentBottomNavigationMaskHeight("))
         #expect(settingsSource.contains("settingsPersonalizationBottomScrollExpansion"))
         #expect(settingsSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(settingsSource.contains(".ignoresSafeArea()"))
-        #expect(personalizationSettingsPageSource.contains("settingsForm(bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion)"))
+        #expect(personalizationSettingsPageSource.contains("settingsForm(\n            bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion,\n            hidesContentBehindBottomNavigation: true"))
         #expect(personalizationSettingsPageSource.contains("iosBottomNavigationSection"))
         #expect(!personalizationSettingsPageSource.contains("settingsBackButton"))
         #expect(settingsFormSource.contains(".tint(MeowPlannerTheme.pawButtonBrown)"))
@@ -1756,6 +1773,11 @@ struct XcodeWidgetProjectTests {
             from: "private var recentSessions",
             length: 1_200
         )
+        let focusMaskHeightSource = try sourceWindow(
+            in: focusSource,
+            from: "private let focusBottomNavigationVisibleExtension",
+            length: 500
+        )
 
         #expect(focusSource.contains("private var focusPageBottomPadding: CGFloat"))
         #expect(focusSource.contains("IOSAppNavigationMetrics.bottomNavigationRaisedPadding"))
@@ -1780,6 +1802,17 @@ struct XcodeWidgetProjectTests {
         #expect(focusSource.contains("private var focusControlButtonSize: CGFloat"))
         #expect(focusSource.contains("return 64"))
         #expect(focusSource.contains(".frame(width: focusControlButtonSize, height: focusControlButtonSize)"))
+        #expect(focusSource.contains("private func focusBottomNavigationContentMaskHeight(safeAreaInsets: EdgeInsets) -> CGFloat"))
+        #expect(focusMaskHeightSource.contains("private let focusBottomNavigationVisibleExtension: CGFloat = 44"))
+        #expect(focusMaskHeightSource.contains("- focusBottomNavigationVisibleExtension"))
+        #expect(focusMaskHeightSource.contains("max(0,"))
+        #expect(focusMaskHeightSource.contains("IOSAppNavigationMetrics.bottomNavigationContentHeight"))
+        #expect(focusMaskHeightSource.contains("+ IOSAppNavigationMetrics.bottomNavigationTopPadding"))
+        #expect(!focusMaskHeightSource.contains("+ IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)"))
+        #expect(focusSource.contains(".focusBottomNavigationContentMask()"))
+        #expect(!focusSource.contains("LinearGradient(\n                        colors: [Color.black, Color.clear]"))
+        #expect(focusSource.contains("let bottomMaskHeight = focusBottomNavigationContentMaskHeight("))
+        #expect(focusSource.contains(".frame(height: bottomMaskHeight)"))
         #expect(focusSource.contains("private var focusRecentSessionsEmptyState: some View"))
         #expect(recentSessionsSource.contains("focusRecentSessionsEmptyState"))
         #expect(!recentSessionsSource.contains("FuFuEmptyStateView("))
@@ -2227,9 +2260,17 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerApp/Views/RootView.swift")
         let settingsFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let shellFile = root
+            .appendingPathComponent("Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift")
 
         let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
         let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let shellSource = try String(contentsOf: shellFile, encoding: .utf8)
+        let iosShellCallSource = try sourceWindow(
+            in: rootViewSource,
+            from: "IOSNavigationShellView(",
+            length: 900
+        )
         let selectSectionSource = try sourceWindow(
             in: rootViewSource,
             from: "private func selectSidebarSection(_ section: AppSection)",
@@ -2260,12 +2301,24 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("@Binding private var navigationPath: [SettingsDestination]"))
         #expect(settingsSource.contains("init(navigationPath: Binding<[SettingsDestination]> = .constant([]))"))
         #expect(settingsSource.contains("NavigationStack(path: $navigationPath)"))
+        #expect(iosShellCallSource.contains("settingsCanNavigateBack: !settingsNavigationPath.isEmpty"))
+        #expect(iosShellCallSource.contains("onSettingsBack: navigateBackFromSettingsDestination"))
+        #expect(rootViewSource.contains("private func navigateBackFromSettingsDestination()"))
+        #expect(rootViewSource.contains("guard !settingsNavigationPath.isEmpty else"))
+        #expect(rootViewSource.contains("settingsNavigationPath.removeLast()"))
+        #expect(shellSource.contains("var settingsCanNavigateBack: Bool"))
+        #expect(shellSource.contains("var onSettingsBack: () -> Void"))
+        #expect(shellSource.contains("private var shouldShowSettingsBackButton: Bool"))
+        #expect(shellSource.contains("selection == .settings && settingsCanNavigateBack"))
+        #expect(shellSource.contains("if shouldShowSettingsBackButton"))
+        #expect(shellSource.contains("Image(systemName: \"chevron.left\")"))
+        #expect(shellSource.contains("onSettingsBack()"))
+        #expect(shellSource.contains(".accessibilityLabel(settingsBackTitle)"))
         #expect(!accountSettingsPageSource.contains("settingsBackButton"))
         #expect(!personalizationSettingsPageSource.contains("settingsBackButton"))
         #expect(!settingsSource.contains("private var settingsBackButton: some View"))
         #expect(!settingsSource.contains("settingsBackButtonTitle"))
         #expect(!settingsSource.contains("@Environment(\\.dismiss) private var dismissSettingsDestination"))
-        #expect(!settingsSource.contains("navigationPath.removeLast()"))
         #expect(!settingsSource.contains("dismissSettingsDestination()"))
         #expect(!settingsSource.contains("Image(systemName: \"chevron.left\")"))
         #expect(!settingsSource.contains(".accessibilityLabel(settingsBackButtonTitle)"))
@@ -3469,9 +3522,14 @@ struct XcodeWidgetProjectTests {
         let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
 
         #expect(FileManager.default.fileExists(atPath: providerFile.path))
-        #expect(monthGridSource.contains("chineseCalendarBadge(day.chineseCalendarInfo)"))
+        #expect(monthGridSource.contains("chineseCalendarBadge(displayChineseCalendarInfo(for: day))"))
+        #expect(monthGridSource.contains("private func displayChineseCalendarInfo(for day: MonthPlannerDay) -> ChineseCalendarDayInfo"))
+        #expect(monthGridSource.contains("#if os(iOS)\n        return day.chineseCalendarInfo"))
+        #expect(monthGridSource.contains("ChineseCalendarInfoProvider.displayInfo("))
+        #expect(monthGridSource.contains("includesFloatingGregorianObservances: true"))
         #expect(monthGridSource.contains("info.isFestival"))
         #expect(dayAgendaSource.contains("ChineseCalendarInfoProvider.info(for: selectedDate"))
+        #expect(dayAgendaSource.contains("ChineseCalendarInfoProvider.displayInfo("))
         #expect(rootSource.contains("ChineseCalendarInfoProvider.info(for: selectedDate"))
         #expect(widgetSource.contains("day.chineseCalendarInfo.displayText"))
         #expect(widgetSource.contains("day.chineseCalendarInfo.isFestival"))

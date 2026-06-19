@@ -334,7 +334,9 @@ struct RootView: View {
             language: appLanguage,
             calendarNavigationState: iosCalendarNavigationState,
             timetableNavigationState: iosTimetableNavigationState,
-            onSelect: selectSidebarSection
+            settingsCanNavigateBack: !settingsNavigationPath.isEmpty,
+            onSelect: selectSidebarSection,
+            onSettingsBack: navigateBackFromSettingsDestination
         ) {
             sectionView
         }
@@ -620,6 +622,14 @@ struct RootView: View {
         default:
             selection = section
         }
+    }
+
+    private func navigateBackFromSettingsDestination() {
+        guard !settingsNavigationPath.isEmpty else {
+            return
+        }
+
+        settingsNavigationPath.removeLast()
     }
 
     #if os(macOS)

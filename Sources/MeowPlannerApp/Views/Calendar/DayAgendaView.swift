@@ -65,7 +65,15 @@ struct DayAgendaView: View {
     }
 
     private var selectedChineseCalendarInfo: ChineseCalendarDayInfo {
+        #if os(iOS)
         ChineseCalendarInfoProvider.info(for: selectedDate, calendar: .current)
+        #else
+        ChineseCalendarInfoProvider.displayInfo(
+            for: selectedDate,
+            calendar: .current,
+            includesFloatingGregorianObservances: true
+        )
+        #endif
     }
 
     private func agendaRow(

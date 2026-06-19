@@ -37,6 +37,29 @@ struct ChineseCalendarInfoTests {
         #expect(ChineseCalendarInfoProvider.info(for: try dateOnly("2026-10-01"), calendar: calendar).festivalName == "国庆节")
     }
 
+    @Test("floating gregorian observances resolve only for display info")
+    func floatingGregorianObservancesResolveOnlyForDisplayInfo() throws {
+        let fathersDay = try dateOnly("2026-06-21")
+        let mothersDay = try dateOnly("2026-05-10")
+        let ordinarySunday = try dateOnly("2026-06-14")
+
+        #expect(ChineseCalendarInfoProvider.info(for: fathersDay, calendar: calendar).festivalName == nil)
+        #expect(ChineseCalendarInfoProvider.displayInfo(for: fathersDay, calendar: calendar, includesFloatingGregorianObservances: true).festivalName == "父亲节")
+        #expect(ChineseCalendarInfoProvider.displayInfo(for: mothersDay, calendar: calendar, includesFloatingGregorianObservances: true).festivalName == "母亲节")
+        #expect(ChineseCalendarInfoProvider.displayInfo(for: ordinarySunday, calendar: calendar, includesFloatingGregorianObservances: true).festivalName == nil)
+    }
+
+    @Test("floating gregorian observances do not replace core festivals")
+    func floatingGregorianObservancesDoNotReplaceCoreFestivals() throws {
+        let info = ChineseCalendarInfoProvider.displayInfo(
+            for: try dateOnly("2026-06-19"),
+            calendar: calendar,
+            includesFloatingGregorianObservances: true
+        )
+
+        #expect(info.festivalName == "端午节")
+    }
+
     @Test("plain lunar day uses compact day label")
     func plainLunarDayUsesCompactDayLabel() throws {
         let info = ChineseCalendarInfoProvider.info(for: try dateOnly("2026-06-02"), calendar: calendar)

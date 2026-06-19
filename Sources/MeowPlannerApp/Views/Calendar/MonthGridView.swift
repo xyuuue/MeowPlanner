@@ -584,6 +584,18 @@ struct MonthGridView: View {
         weekStartPreference.configuredCalendar
     }
 
+    private func displayChineseCalendarInfo(for day: MonthPlannerDay) -> ChineseCalendarDayInfo {
+        #if os(iOS)
+        return day.chineseCalendarInfo
+        #else
+        return ChineseCalendarInfoProvider.displayInfo(
+            for: day.date,
+            calendar: calendar,
+            includesFloatingGregorianObservances: true
+        )
+        #endif
+    }
+
     private var weekdaySymbols: [String] {
         weekStartPreference.orderedShortWeekdaySymbols(calendar: calendar)
     }
@@ -669,7 +681,7 @@ struct MonthGridView: View {
                         dayNumberLabel(day.date, isToday: isToday, isSelected: isSelected, isInSelectedMonth: day.isInSelectedMonth)
 
                         if showChineseCalendar {
-                            chineseCalendarBadge(day.chineseCalendarInfo)
+                            chineseCalendarBadge(displayChineseCalendarInfo(for: day))
                                 .layoutPriority(0)
                         }
                     }

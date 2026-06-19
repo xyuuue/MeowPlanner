@@ -134,7 +134,9 @@ struct IOSNavigationShellView<Content: View>: View {
     var language: AppLanguage
     @ObservedObject var calendarNavigationState: IOSCalendarNavigationState
     @ObservedObject var timetableNavigationState: IOSTimetableNavigationState
+    var settingsCanNavigateBack: Bool = false
     var onSelect: (AppSection) -> Void
+    var onSettingsBack: () -> Void = {}
     @ViewBuilder var content: () -> Content
 
     private let sidebarHeaderTopPadding: CGFloat = 16
@@ -194,9 +196,26 @@ struct IOSNavigationShellView<Content: View>: View {
         selection != .settings
     }
 
+    private var shouldShowSettingsBackButton: Bool {
+        selection == .settings && settingsCanNavigateBack
+    }
+
     private var topNavigationBar: some View {
         HStack(spacing: 12) {
-            if shouldShowSidebarButton {
+            if shouldShowSettingsBackButton {
+                Button {
+                    onSettingsBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(MeowPlannerTheme.cocoa)
+                        .frame(width: 42, height: 42)
+                        .background(MeowPlannerTheme.cream.opacity(0.76), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(settingsBackTitle)
+            } else if shouldShowSidebarButton {
                 Button {
                     isShowingSidebar = true
                 } label: {
@@ -249,12 +268,8 @@ struct IOSNavigationShellView<Content: View>: View {
     }
 
     private var topNavigationBackground: some View {
-        navigationContentShield
+        Color.clear
             .ignoresSafeArea(edges: .top)
-    }
-
-    private var navigationContentShield: some View {
-        MeowPlannerTheme.fufuCalendarBackground
     }
 
     private var calendarNavigationBarCenter: some View {
@@ -383,7 +398,7 @@ struct IOSNavigationShellView<Content: View>: View {
     }
 
     private var bottomNavigationBackground: some View {
-        navigationContentShield
+        Color.clear
     }
 
     private func bottomNavigationButton(for section: AppSection, width: CGFloat) -> some View {
@@ -647,6 +662,10 @@ struct IOSNavigationShellView<Content: View>: View {
 
     private var sidebarCloseTitle: String {
         language == .chinese ? "关闭侧边栏" : "Close sidebar"
+    }
+
+    private var settingsBackTitle: String {
+        language == .chinese ? "返回" : "Back"
     }
 
     private var calendarNavigationTitle: String {
