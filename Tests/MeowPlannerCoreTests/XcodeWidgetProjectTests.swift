@@ -1191,8 +1191,8 @@ struct XcodeWidgetProjectTests {
         #expect(plist["CFBundleVersion"] as? String == "22")
     }
 
-    @Test("month widget has interactive FuFu navigation")
-    func monthWidgetHasInteractiveFuFuNavigation() throws {
+    @Test("month widget has interactive paw refresh navigation")
+    func monthWidgetHasInteractivePawRefreshNavigation() throws {
         let root = try packageRoot()
         let widgetFile = root
             .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
@@ -1211,6 +1211,16 @@ struct XcodeWidgetProjectTests {
         let appIntentPackageSource = try String(contentsOf: appIntentPackageFile, encoding: .utf8)
         let widgetIntentPackageSource = try String(contentsOf: widgetIntentPackageFile, encoding: .utf8)
         let projectSource = try String(contentsOf: projectFile, encoding: .utf8)
+        let monthSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+        let monthRefreshButtonSource = try sourceWindow(
+            in: monthSource,
+            from: "Button(intent: RefreshWidgetTimelineIntent())",
+            length: 360
+        )
 
         #expect(widgetSource.contains("import AppIntents"))
         #expect(widgetSource.contains("ChangeWidgetMonthIntent"))
@@ -1248,6 +1258,13 @@ struct XcodeWidgetProjectTests {
         #expect(projectSource.contains("Sources/MeowPlannerCore/Support/WidgetAppIntents.swift"))
         #expect(projectSource.contains("Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift"))
         #expect(projectSource.contains("Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift"))
+        #expect(monthRefreshButtonSource.contains("Image(systemName: \"pawprint.fill\")"))
+        #expect(monthRefreshButtonSource.contains(".font((family == .systemExtraLarge ? Font.body : Font.caption).weight(.bold))"))
+        #expect(monthRefreshButtonSource.contains(".foregroundStyle(monthPrimaryTextColor)"))
+        #expect(monthRefreshButtonSource.contains(".contentShape(Rectangle())"))
+        #expect(!monthRefreshButtonSource.contains("fufuWidgetMascot"))
+        #expect(!monthRefreshButtonSource.contains(".background("))
+        #expect(!monthRefreshButtonSource.contains(".overlay {"))
 
         let changeMonthIntentSource = try #require(
             coreIntentSource.range(of: "public struct ChangeWidgetMonthIntent")
@@ -1517,12 +1534,17 @@ struct XcodeWidgetProjectTests {
         #expect(containerSource.contains("#if os(macOS)\n        macOSSystemWidgetBackground"))
         #expect(containerSource.contains("private var macOSSystemWidgetBackground: some View"))
         #expect(containerSource.contains("Rectangle()\n                .fill(.regularMaterial)"))
-        #expect(containerSource.contains("Color(red: 0.47, green: 0.55, blue: 0.57).opacity(colorScheme == .dark ? 0.46 : 0.34)"))
-        #expect(containerSource.contains("Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28)"))
-        #expect(containerSource.contains("Color(red: 0.31, green: 0.38, blue: 0.40).opacity(colorScheme == .dark ? 0.24 : 0.10)"))
+        #expect(containerSource.contains("private var macOSWidgetBackgroundIsDark: Bool"))
+        #expect(containerSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)"))
+        #expect(containerSource.contains("WidgetPalette.macOSGlassBackgroundOverlay(isDark: macOSWidgetBackgroundIsDark)"))
+        #expect(containerSource.contains("WidgetPalette.macOSGlassBackgroundWash(isDark: macOSWidgetBackgroundIsDark)"))
+        #expect(containerSource.contains("WidgetPalette.macOSGlassBackgroundBorder(isDark: macOSWidgetBackgroundIsDark)"))
         #expect(containerSource.contains("private var defaultGradient: some View"))
         #expect(!containerSource.contains("case .defaultArtwork:\n                defaultGradient"))
         #expect(!containerSource.contains("#if os(iOS)\n        macOSSystemWidgetBackground"))
+        #expect(!containerSource.contains("Color(red: 0.47, green: 0.55, blue: 0.57)"))
+        #expect(!containerSource.contains("Color(red: 0.31, green: 0.38, blue: 0.40)"))
+        #expect(!containerSource.contains("Color.white.opacity(colorScheme == .dark"))
     }
 
     @Test("desktop widget uses snapshots and scheduled timeline entries")
@@ -1598,6 +1620,35 @@ struct XcodeWidgetProjectTests {
         #expect(widgetSource.contains("widgetColor(\n                hex: item.colorHex"))
     }
 
+    @Test("macOS month widget darkens active event pills on glass background")
+    func macOSMonthWidgetDarkensActiveEventPillsOnGlassBackground() throws {
+        let root = try packageRoot()
+        let widgetFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let monthSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+        let eventPillSource = try sourceWindow(
+            in: monthSource,
+            from: "private func eventPill(_ item: MonthPlannerItem)",
+            length: 1200
+        )
+
+        #expect(monthSource.contains("private var activeEventPillDarkeningOpacity: Double"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassActiveEventPillDarkeningOpacity(isDark: isDarkBackground) : 0"))
+        #expect(widgetSource.contains("static func macOSGlassActiveEventPillDarkeningOpacity(isDark: Bool) -> Double"))
+        #expect(eventPillSource.contains(".fill(eventPillBackground(item))"))
+        #expect(eventPillSource.contains(".overlay {"))
+        #expect(eventPillSource.contains("if !item.isCompleted && activeEventPillDarkeningOpacity > 0"))
+        #expect(eventPillSource.contains(".fill(Color.black.opacity(activeEventPillDarkeningOpacity))"))
+        #expect(eventPillSource.contains(".opacity(item.isCompleted ? completedEventPillOpacity : 1)"))
+        #expect(widgetSource.contains("widgetColor(\n                hex: item.colorHex"))
+    }
+
     @Test("macOS month widget keeps readable glass text and paw watermark")
     func macOSMonthWidgetKeepsReadableGlassTextAndPawWatermark() throws {
         let root = try packageRoot()
@@ -1612,25 +1663,34 @@ struct XcodeWidgetProjectTests {
         ))
 
         #expect(monthSource.contains("if showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork"))
+        #expect(monthSource.contains("@Environment(\\.colorScheme) private var colorScheme"))
         #expect(monthSource.contains("private var usesMacOSGlassBackground: Bool"))
         #expect(monthSource.contains("#if os(macOS)\n        showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork"))
+        #expect(monthSource.contains("private var isDarkBackground: Bool"))
+        #expect(monthSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)"))
         #expect(monthSource.contains("private var monthPrimaryTextColor: Color"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.94) : WidgetPalette.cocoa"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.76) : WidgetPalette.caramel"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.52) : Color.secondary"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.90) : WidgetPalette.blush"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.24) : WidgetPalette.caramel.opacity(0.12)"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.38) : WidgetPalette.caramel.opacity(0.18)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassPrimaryText(isDark: isDarkBackground) : WidgetPalette.cocoa"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassSecondaryText(isDark: isDarkBackground) : WidgetPalette.caramel"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassMutedText(isDark: isDarkBackground) : Color.secondary"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassFestivalText(isDark: isDarkBackground) : WidgetPalette.blush"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassGridLine(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.12)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassGridBorder(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.18)"))
         #expect(monthSource.contains(".foregroundStyle(monthPrimaryTextColor)"))
         #expect(monthSource.contains(".foregroundStyle(day.isInSelectedMonth ? monthPrimaryTextColor : monthMutedTextColor)"))
         #expect(monthSource.contains("day.chineseCalendarInfo.isFestival ? monthFestivalTextColor : monthSecondaryTextColor"))
         #expect(monthSource.contains("RoundedRectangle(cornerRadius: 7)\n                .stroke(monthGridBorderColor, lineWidth: 1)"))
         #expect(monthSource.contains("private func eventPillTitleColor"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? AnyShapeStyle(Color.white.opacity(0.94)) : AnyShapeStyle(WidgetPalette.cocoa)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? AnyShapeStyle(WidgetPalette.macOSGlassEventPillText(isDark: isDarkBackground)) : AnyShapeStyle(WidgetPalette.cocoa)"))
         #expect(monthSource.contains("widgetColor(\n                hex: item.colorHex"))
         #expect(monthSource.contains("private var fufuPawPrimaryWatermarkColor: Color"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.09) : WidgetPalette.caramel.opacity(0.10)"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.07) : WidgetPalette.blue.opacity(0.10)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassPawPrimary(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.10)"))
+        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassPawSecondary(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.10)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.94)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.76)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.52)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.90)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.24)"))
+        #expect(!monthSource.contains("usesMacOSGlassBackground ? Color.white.opacity(0.38)"))
         #expect(!monthSource.contains(".foregroundStyle(day.isInSelectedMonth ? WidgetPalette.cocoa : .secondary)"))
         #expect(!monthSource.contains("day.chineseCalendarInfo.isFestival ? WidgetPalette.blush : WidgetPalette.caramel"))
         #expect(!monthSource.contains("Rectangle()\n                .fill(WidgetPalette.caramel.opacity(0.12))"))

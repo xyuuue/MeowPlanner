@@ -281,23 +281,22 @@ private struct WidgetContainerBackgroundView: View {
     }
 
     #if os(macOS)
+    private var macOSWidgetBackgroundIsDark: Bool {
+        WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)
+    }
+
     private var macOSSystemWidgetBackground: some View {
         ZStack {
             Rectangle()
                 .fill(.regularMaterial)
 
-            LinearGradient(
-                colors: [
-                    Color(red: 0.47, green: 0.55, blue: 0.57).opacity(colorScheme == .dark ? 0.46 : 0.34),
-                    Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28),
-                    Color(red: 0.31, green: 0.38, blue: 0.40).opacity(colorScheme == .dark ? 0.24 : 0.10)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            WidgetPalette.macOSGlassBackgroundOverlay(isDark: macOSWidgetBackgroundIsDark)
 
-            Color.white
-                .opacity(colorScheme == .dark ? 0.04 : 0.10)
+            WidgetPalette.macOSGlassBackgroundWash(isDark: macOSWidgetBackgroundIsDark)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(WidgetPalette.macOSGlassBackgroundBorder(isDark: macOSWidgetBackgroundIsDark), lineWidth: 1)
         }
     }
     #endif
@@ -790,6 +789,7 @@ private struct SummaryWidgetView: View {
 
 @available(iOS 17.0, macOS 14.0, *)
 private struct MonthWidgetView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.widgetRenderingMode) private var widgetRenderingMode
     @Environment(\.showsWidgetContainerBackground) private var showsWidgetContainerBackground
 
@@ -855,48 +855,60 @@ private struct MonthWidgetView: View {
         #endif
     }
 
+    private var isDarkBackground: Bool {
+        WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)
+    }
+
     private var monthPrimaryTextColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.94) : WidgetPalette.cocoa
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassPrimaryText(isDark: isDarkBackground) : WidgetPalette.cocoa
     }
 
     private var monthSecondaryTextColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.76) : WidgetPalette.caramel
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassSecondaryText(isDark: isDarkBackground) : WidgetPalette.caramel
     }
 
     private var monthMutedTextColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.52) : Color.secondary
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassMutedText(isDark: isDarkBackground) : Color.secondary
     }
 
     private var monthFestivalTextColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.90) : WidgetPalette.blush
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassFestivalText(isDark: isDarkBackground) : WidgetPalette.blush
     }
 
     private var monthGridLineColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.24) : WidgetPalette.caramel.opacity(0.12)
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassGridLine(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.12)
     }
 
     private var monthGridBorderColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.38) : WidgetPalette.caramel.opacity(0.18)
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassGridBorder(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.18)
     }
 
     private var monthTodayIndicatorColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.92) : WidgetPalette.blush
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush
     }
 
     private var monthTodayBackgroundColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.14) : WidgetPalette.blue.opacity(0.18)
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayBackground(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.18)
     }
 
     private var fufuPawPrimaryWatermarkColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.09) : WidgetPalette.caramel.opacity(0.10)
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassPawPrimary(isDark: isDarkBackground) : WidgetPalette.caramel.opacity(0.10)
     }
 
     private var fufuPawSecondaryWatermarkColor: Color {
-        usesMacOSGlassBackground ? Color.white.opacity(0.07) : WidgetPalette.blue.opacity(0.10)
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassPawSecondary(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.10)
     }
 
     private var completedEventPillOpacity: Double {
         usesFullColorRendering ? 0.52 : 0.76
+    }
+
+    private var activeEventPillDarkeningOpacity: Double {
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassActiveEventPillDarkeningOpacity(isDark: isDarkBackground) : 0
+    }
+
+    private var emptyStateBackgroundColor: Color {
+        usesMacOSGlassBackground ? WidgetPalette.macOSGlassEmptyStateFill(isDark: isDarkBackground) : WidgetPalette.cream.opacity(0.84)
     }
 
     private var emptyStateOverlay: some View {
@@ -914,7 +926,7 @@ private struct MonthWidgetView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(WidgetPalette.cream.opacity(0.84), in: RoundedRectangle(cornerRadius: 7))
+        .background(emptyStateBackgroundColor, in: RoundedRectangle(cornerRadius: 7))
         .overlay {
             RoundedRectangle(cornerRadius: 7)
                 .stroke(monthGridBorderColor, lineWidth: 1)
@@ -952,7 +964,11 @@ private struct MonthWidgetView: View {
             Spacer(minLength: 4)
 
             Button(intent: RefreshWidgetTimelineIntent()) {
-                fufuWidgetMascot(size: family == .systemExtraLarge ? 20 : 16)
+                Image(systemName: "pawprint.fill")
+                    .font((family == .systemExtraLarge ? Font.body : Font.caption).weight(.bold))
+                    .foregroundStyle(monthPrimaryTextColor)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -1064,12 +1080,18 @@ private struct MonthWidgetView: View {
             .background {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(eventPillBackground(item))
+                    .overlay {
+                        if !item.isCompleted && activeEventPillDarkeningOpacity > 0 {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.black.opacity(activeEventPillDarkeningOpacity))
+                        }
+                    }
             }
             .opacity(item.isCompleted ? completedEventPillOpacity : 1)
     }
 
     private func eventPillTitleColor() -> some ShapeStyle {
-        usesMacOSGlassBackground ? AnyShapeStyle(Color.white.opacity(0.94)) : AnyShapeStyle(WidgetPalette.cocoa)
+        usesMacOSGlassBackground ? AnyShapeStyle(WidgetPalette.macOSGlassEventPillText(isDark: isDarkBackground)) : AnyShapeStyle(WidgetPalette.cocoa)
     }
 
     private func eventPillBackground(_ item: MonthPlannerItem) -> some ShapeStyle {
@@ -1269,6 +1291,84 @@ private enum WidgetPalette {
     static let blue = Color(red: 0.18, green: 0.45, blue: 0.68)
     static let blush = Color(red: 0.88, green: 0.58, blue: 0.51)
     static let orange = Color(red: 1.00, green: 0.53, blue: 0.04)
+
+    static func macOSGlassBackgroundOverlay(isDark: Bool) -> LinearGradient {
+        LinearGradient(
+            colors: isDark
+                ? [
+                    Color(red: 0.10, green: 0.11, blue: 0.11).opacity(0.78),
+                    Color(red: 0.18, green: 0.19, blue: 0.18).opacity(0.56),
+                    Color(red: 0.04, green: 0.05, blue: 0.05).opacity(0.62)
+                ]
+                : [
+                    Color.white.opacity(0.74),
+                    Color(red: 0.91, green: 0.91, blue: 0.88).opacity(0.56),
+                    Color(red: 0.78, green: 0.79, blue: 0.77).opacity(0.34)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static func macOSGlassBackgroundWash(isDark: Bool) -> Color {
+        isDark ? Color.black.opacity(0.16) : Color.white.opacity(0.18)
+    }
+
+    static func macOSGlassBackgroundBorder(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.18) : Color.black.opacity(0.12)
+    }
+
+    static func macOSGlassPrimaryText(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.86) : Color.black.opacity(0.68)
+    }
+
+    static func macOSGlassSecondaryText(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.64) : Color.black.opacity(0.50)
+    }
+
+    static func macOSGlassMutedText(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.42) : Color.black.opacity(0.34)
+    }
+
+    static func macOSGlassFestivalText(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.84) : Color.black.opacity(0.62)
+    }
+
+    static func macOSGlassGridLine(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)
+    }
+
+    static func macOSGlassGridBorder(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.26) : Color.black.opacity(0.18)
+    }
+
+    static func macOSGlassTodayIndicator(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.78) : Color.black.opacity(0.46)
+    }
+
+    static func macOSGlassTodayBackground(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
+    }
+
+    static func macOSGlassEventPillText(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.86) : Color.black.opacity(0.70)
+    }
+
+    static func macOSGlassActiveEventPillDarkeningOpacity(isDark: Bool) -> Double {
+        isDark ? 0.26 : 0.18
+    }
+
+    static func macOSGlassPawPrimary(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.05)
+    }
+
+    static func macOSGlassPawSecondary(isDark: Bool) -> Color {
+        isDark ? Color.white.opacity(0.06) : Color.black.opacity(0.04)
+    }
+
+    static func macOSGlassEmptyStateFill(isDark: Bool) -> Color {
+        isDark ? Color.black.opacity(0.24) : Color.white.opacity(0.64)
+    }
 
     static func weeklyGlassFill(isDark: Bool) -> Color {
         isDark ? Color.black.opacity(0.46) : Color.white.opacity(0.72)
