@@ -6,1143 +6,1020 @@
 	objectVersion = 56;
 	objects = {
 
-	00266C99B40A1A88754A83F2 = {
-		isa = PBXBuildFile;
-		fileRef = B7241800D60C73BB38025BBB;
-	};
-
-	00C45FD35CB0F9C5F764F070 = {
-		isa = PBXGroup;
-		children = (
-			F175EDC040AE768BED34CAA4,
-			C454C15D80121CBA073EEBE8,
-			AC0E2599A576534DDAEEE6BF,
-			2AE13A41D86A3659A292E1E5,
-			CFE091619B11103B174A8AF4,
-			AEA0ED17D84162DA5A48A4A8,
-		);
-		name = Products;
-		sourceTree = "<group>";
-	};
-
-	00EE8033D4CFD10142294C34 = {
-		isa = PBXBuildFile;
-		fileRef = CD39EB362757501DD18C7617;
-	};
-
-	026755A5AEE3DBDB087175AC = {
-		isa = PBXBuildFile;
-		fileRef = 1E77D2F5881A167064871C23;
-	};
-
-	0267AA73F45008C1962BF988 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift;
-		sourceTree = "<group>";
-	};
-
-	0333CCFB5F289DC1337AFAED = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 10;
-		files = (
-			4F3D78C43E6CB42C68008553,
-		);
-		name = "Embed Frameworks";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	0346D3E0A98991BAF579E9B4 = {
-		isa = PBXFileReference;
-		lastKnownFileType = folder;
-		path = Resources/AppIcon;
-		sourceTree = "<group>";
-	};
-
-	03B5A24E19D20744E267F0DB = {
-		isa = XCSwiftPackageProductDependency;
-		package = 7CAD6D28479CBF8021199213;
-		productName = FirebaseFirestore;
-	};
-
-	040686DDAF33884C5AA3A0E9 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/TodoItem.swift;
-		sourceTree = "<group>";
-	};
-
-	041CD91A5B4286E3FCBB2A73 = {
-		isa = PBXBuildFile;
-		fileRef = 27F37EBD6A4EDE31E2A8E34C;
-	};
-
-	0439AB6DED5B56F0F569B7F7 = {
-		isa = PBXBuildFile;
-		fileRef = 4C89319678BA0EBFF93AE4C8;
-	};
-
-	077911CF831D31482C0E5BC3 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift;
-		sourceTree = "<group>";
-	};
-
-	095BFAC1C1CCA5BBBA3D0723 = {
-		isa = PBXBuildFile;
-		fileRef = BF533C5A7D54E18C37C98089;
-	};
-
-	09D7408677F186324C1B7477 = {
-		isa = PBXBuildFile;
-		fileRef = 33193FACACEF39E3A48ED164;
-	};
-
-	09EB277CC8E726D088CB93C1 = {
-		isa = XCBuildConfiguration;
-		name = Debug;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Config/MeowPlanner-iOS.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlanner-iOS-Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yuelingqiu.MeowPlanner;
-				PRODUCT_NAME = MeowPlanner;
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-	};
-
-	0BABA6B1551618680567CECC = {
-		isa = PBXBuildFile;
-		fileRef = E7948FDA3B2676DF5F2B24D0;
-	};
-
-	0BD8C2DCCBA78DBEAED23746 = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/iOSBackground.png;
-		sourceTree = "<group>";
-	};
-
-	0CAD04C79FF72FFF6BEA75D4 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlanner-iOS.entitlements;
-		sourceTree = "<group>";
-	};
-
-	0D93599C20BD6051ED3990E0 = {
-		isa = PBXBuildFile;
-		productRef = 528C401C34C3045570C1E71F;
-	};
-
-	0FEBC0367BFD5C098E8BF3CF = {
-		isa = PBXBuildFile;
-		fileRef = 317E43A0AAD9986BF5C0A889;
-	};
-
-	1277AA39ABF53256B86CC887 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Support/WeekStartPreference.swift;
-		sourceTree = "<group>";
-	};
-
-	12E7CDB02704A3157FCEDFDA = {
-		isa = PBXBuildFile;
-		fileRef = 721CE965314E162B64D1610B;
-	};
-
-	130E4EE8EEA6B4C960D77468 = {
-		isa = PBXBuildFile;
-		productRef = 528C401C34C3045570C1E71F;
-	};
-
-	136D64B7BA340B68073C7509 = {
-		isa = PBXBuildFile;
-		fileRef = E53A53935F52CE486D4263E0;
-	};
-
-	139D9296E14BA8CEB088F875 = {
-		isa = PBXBuildFile;
-		fileRef = 5B80C87A96566DBD71652C47;
-	};
-
-	140969924C862525DB104150 = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			79D33856E36A59A6B282D01D,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	147C4662444631333629C1A4 = {
-		isa = XCSwiftPackageProductDependency;
-		package = 7CAD6D28479CBF8021199213;
-		productName = FirebaseCore;
-	};
-
-	14FD65A4806626C6882F1503 = {
-		isa = PBXBuildFile;
-		fileRef = D8547D30C056663E71FE08EC;
-	};
-
-	15B662772158AA826E77EB9F = {
-		isa = PBXBuildFile;
-		fileRef = C454C15D80121CBA073EEBE8;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	15FF09A6EDBF3652186847FB = {
-		isa = PBXBuildFile;
-		fileRef = 53FFE9382A5AE05C52D0840B;
-	};
-
-	16D0877D40AABBFF3353CB7B = {
-		isa = PBXBuildFile;
-		fileRef = 9D84EEF9584A8114C70E9EFB;
-	};
-
-	17B6F0B545E2305FB872B822 = {
-		isa = PBXBuildFile;
-		fileRef = 318D18021CA4172EF5AE92DC;
-	};
-
-	180BB19C6150BD0D387EFFDA = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = BA44B14C8F78B2A72038244D;
-		buildPhases = (
-			9E30C08527637D5E3D8D1B2A,
-			BDC75CA619DD1F6251DB3631,
-			9EBC7FF56B5741A8D9D0E80A,
-		);
-		buildRules = (
-		);
-		dependencies = (
-		);
-		name = MeowPlannerCore;
-		packageProductDependencies = (
-		);
-		productName = MeowPlannerCore;
-		productReference = C454C15D80121CBA073EEBE8;
-		productType = "com.apple.product-type.framework";
-	};
-
-	1817CB429C33608EE59C960C = {
-		isa = PBXBuildFile;
-		fileRef = B9056A05FB7CE51EC5814456;
-	};
-
-	189704E89A2B823FABE7B489 = {
-		isa = PBXBuildFile;
-		fileRef = 547C45178EDD46F7C2D621D9;
-	};
-
-	18DBB8BE4C04D49695695A1A = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AccountSessionStore.swift;
-		sourceTree = "<group>";
-	};
-
-	1939428BF237C1AFB440C3B2 = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			22C1DF4C09ECAF7DDA3D2736,
-			1ABF2C0AD136C89DBA5FBA41,
-			6C98680694770A7E7E373EBF,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	19A70435264C701F0E43E20B = {
-		isa = PBXBuildFile;
-		fileRef = BFE3C6F343234E2F26520FB8;
-	};
-
-	1A73461FBB993DE0B898AD34 = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			7EB8CA52586E7A58E1916579,
-			81CD3D30ABBE32DA4517598A,
-			FCA728FFE2D71BE926F8528E,
-			6829FA8A477BD2D09199C9EB,
-			C195057EFA88F54C498DCACD,
-			68AF3BFD7FFEEEBF79724300,
-			DA02863872E437B61F417B3F,
-			3A74A1B33BA1AF3C10594A9E,
-			C73243B5FB5F509A92B71410,
-			B7EAC8CC8C657E710C49089A,
-			88F15A726917E2CD910233AE,
-			36F202BCFF3F7773C868BFCC,
-			7859B50E888D9BA959C1BF3A,
-			B635C4FA90627088C740A29D,
-			50C10E819A66D0557B752C26,
-			9F5D31D4B87DAC2F67542B62,
-			B9F3A196ACBA4274A5989E23,
-			C3AEACE441B1CAE00BC3B1A3,
-			7B2C85655704FE71DFDB68C1,
-			9D168680780B08F377EF8D09,
-			BC3E3253E23F644D0E360691,
-			4CCC9422EC1F987DD4F4B420,
-			E107676B3776172843A29847,
-			5CADD55F7ADB2CB3BC8A6ABF,
-			041CD91A5B4286E3FCBB2A73,
-			5CD11A8BAE33517676834840,
-			3921CA11A5F67EA0E0EA4D0A,
-			F6765301EDE5D0D1760F6489,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	1ABF2C0AD136C89DBA5FBA41 = {
-		isa = PBXBuildFile;
-		fileRef = B1E16BC0D0229DB29EB488AD;
-	};
-
-	1B6C00CDB3AE603833DF830D = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift;
-		sourceTree = "<group>";
-	};
-
-	1BDEA66D31E9CFD9E8277B43 = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			09EB277CC8E726D088CB93C1,
-			7FF4B2B0BE1FA2630B96B1D1,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	1C3309D1F46C6F85A7202717 = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 10;
-		files = (
-			A7C7DA56546E7C4689102D97,
-		);
-		name = "Embed Frameworks";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	1C8FBFAD31855F4EC7CF8CA8 = {
-		isa = PBXBuildFile;
-		fileRef = 317E43A0AAD9986BF5C0A889;
-	};
-
-	1CC47386F9B56DC0DCB91C6D = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 180BB19C6150BD0D387EFFDA;
-		remoteInfo = MeowPlannerCore;
-	};
-
-	1DC9D96284853401583D5294 = {
-		isa = PBXBuildFile;
-		fileRef = 38F6F5CA40C95F3BE67F769C;
-	};
-
-	1E482FB6489F08186495E686 = {
-		isa = PBXBuildFile;
-		fileRef = FA98C30EA1AFDA9CBB767013;
-	};
-
-	1E77D2F5881A167064871C23 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/HabitCheckIn.swift;
-		sourceTree = "<group>";
-	};
-
-	201C1DEEDA77D9F32E235D3B = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	207C68EDE1DD787C3F3D6DF4 = {
-		isa = PBXBuildFile;
-		fileRef = A9EA7632D4F30E1B84B0ED83;
-	};
-
-	21017FBB96311E3B42179552 = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 5A87C496C65A3CCFF2C6017B;
-		remoteInfo = MeowPlannerWidgetExtension-iOS;
-	};
-
-	21187C2CBBFA69A67107AC4A = {
-		isa = PBXBuildFile;
-		fileRef = 0346D3E0A98991BAF579E9B4;
-	};
-
-	22C1DF4C09ECAF7DDA3D2736 = {
-		isa = PBXBuildFile;
-		fileRef = B82D3B504C01717021E01DB3;
-	};
-
-	22D02A9EFAC9B3FBBAEBE062 = {
-		isa = PBXGroup;
-		children = (
-			B7241800D60C73BB38025BBB,
-			D490E87E55B480C82A0659D9,
-			318D18021CA4172EF5AE92DC,
-			0BD8C2DCCBA78DBEAED23746,
-			FB2EDE17BEE61AFC2B88A112,
-			B82D3B504C01717021E01DB3,
-			B1E16BC0D0229DB29EB488AD,
-			F35C76A143A1080A06A20D54,
-			0346D3E0A98991BAF579E9B4,
-			317E43A0AAD9986BF5C0A889,
-		);
-		name = Resources;
-		sourceTree = "<group>";
-	};
-
-	24A04CAA495D579768B6F716 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/FocusSession.swift;
-		sourceTree = "<group>";
-	};
-
-	2554A3BA8D9DE94198B57397 = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 10;
-		files = (
-			15B662772158AA826E77EB9F,
-		);
-		name = "Embed Frameworks";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	26C54ABE4EE33D42CDD967CD = {
-		isa = PBXTargetDependency;
-		target = 180BB19C6150BD0D387EFFDA;
-		targetProxy = 9AEB430E8B5C0A638222EAB7;
-	};
-
-	27F37EBD6A4EDE31E2A8E34C = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Settings/SettingsView.swift;
-		sourceTree = "<group>";
-	};
-
-	29ABCCFEF181D76CCE50A9C7 = {
-		isa = PBXBuildFile;
-		fileRef = 5229A11767BD315215460B82;
-	};
-
-	29EF68FFA39BC77418886A82 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlannerWidget-iOS.entitlements;
-		sourceTree = "<group>";
-	};
-
-	2AE13A41D86A3659A292E1E5 = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.application;
-		includeInIndex = 0;
-		path = MeowPlanner.app;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	2BDE75D997AA9B5849F0B967 = {
-		isa = PBXBuildFile;
-		fileRef = 9D84EEF9584A8114C70E9EFB;
-	};
-
-	2CD5706AC74D9558585E34D9 = {
-		isa = PBXBuildFile;
-		productRef = 147C4662444631333629C1A4;
-	};
-
-	2D0EABFA6AAC7CC14913F7AD = {
-		isa = XCBuildConfiguration;
-		name = Debug;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_DYLIB_INSTALL_NAME = "@rpath/$(EXECUTABLE_PATH)";
-				MACH_O_TYPE = mh_dylib;
-				PRODUCT_BUNDLE_IDENTIFIER = com.yuelingqiu.MeowPlannerCore.iOS;
-				PRODUCT_MODULE_NAME = MeowPlannerCore;
-				PRODUCT_NAME = MeowPlannerCore;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-	};
-
-	2D73DD39EB548CA26DB48708 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/AccountAuthentication.swift;
-		sourceTree = "<group>";
-	};
-
-	2E06AF66A7AAC9A08B1EBE6F = {
-		isa = PBXTargetDependency;
-		target = 5A87C496C65A3CCFF2C6017B;
-		targetProxy = 21017FBB96311E3B42179552;
-	};
-
-	2E0BB1C446372BFD08300BF9 = {
-		isa = PBXBuildFile;
-		fileRef = 30DDC48266F587766CB1FFA4;
-	};
-
-	2E804071031A67106E08E888 = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			C09B1DBCC25AAEE0A7DAAF7F,
-			F49B7FC24B9B5C2259BA490E,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	300CBEE8E98E70DC1699756B = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			EF6414F41B285D930A41078C,
-			7EFC2A54ACD0B744067051D0,
-			C364103CA628B7E879945176,
-			311707FA3FDE6F64FF4C3BD8,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	30DDC48266F587766CB1FFA4 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift;
-		sourceTree = "<group>";
-	};
-
-	311707FA3FDE6F64FF4C3BD8 = {
-		isa = PBXBuildFile;
-		fileRef = D97EF31D3D4544224A1353F2;
-	};
-
-	3130B1EAC31E80FE4E892EA3 = {
-		isa = PBXBuildFile;
-		fileRef = 8F94AC40C231E5522EA03CB1;
-	};
-
-	317E43A0AAD9986BF5C0A889 = {
-		isa = PBXFileReference;
-		lastKnownFileType = folder;
-		path = Resources/FuFu;
-		sourceTree = "<group>";
-	};
-
-	318A63076BD906B0A4AFA07B = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = CD36D04A0D233D029CECD97A;
-		buildPhases = (
-			1A73461FBB993DE0B898AD34,
-			8D08A23C91E9F53E6C32771A,
-			8C2CFF067A1939635AC71D34,
-			2554A3BA8D9DE94198B57397,
-			9A813D2D34A6A237CB4CC047,
-		);
-		buildRules = (
-		);
-		dependencies = (
-			45FF6A6F83C85E59DBC8B329,
-			86ECC82404AC7ADBF8317F45,
-		);
-		name = MeowPlanner;
-		packageProductDependencies = (
-			147C4662444631333629C1A4,
-			528C401C34C3045570C1E71F,
-			03B5A24E19D20744E267F0DB,
-		);
-		productName = MeowPlanner;
-		productReference = F175EDC040AE768BED34CAA4;
-		productType = "com.apple.product-type.application";
-	};
-
-	318D18021CA4172EF5AE92DC = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/BackgroundDark.png;
-		sourceTree = "<group>";
-	};
-
-	32A0532E45E17C4AB224D0CE = {
-		isa = PBXBuildFile;
-		fileRef = D0A8402802E0226BE82F7B66;
-	};
-
-	32EE9AFB3F7ED84151A02352 = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = 634681BC5581CFA9CF006698;
-		buildPhases = (
-			838CA64B8CC67BFD56E8264A,
-			201C1DEEDA77D9F32E235D3B,
-			FA336494A35D0CC3BF74185E,
-		);
-		buildRules = (
-		);
-		dependencies = (
-		);
-		name = MeowPlannerCore-iOS;
-		packageProductDependencies = (
-		);
-		productName = MeowPlannerCore-iOS;
-		productReference = CFE091619B11103B174A8AF4;
-		productType = "com.apple.product-type.framework";
-	};
-
-	33193FACACEF39E3A48ED164 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift;
-		sourceTree = "<group>";
-	};
-
-	35611130CA3AD839825F2F0D = {
-		isa = PBXBuildFile;
-		fileRef = 707AA3AEAD226634825065D1;
-	};
-
-	36A1FD6BEEF4DCEECCEFF1DF = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			DA154C6E83CCDA3C7DD4F930,
-			F58144AD183ACA44F77FE92B,
-			17B6F0B545E2305FB872B822,
-			B164D1D1F9F24A52ABC7C998,
-			7F3CCF28237E3C01E045299D,
-			7E328B982B4A265A1427F76B,
-			21187C2CBBFA69A67107AC4A,
-			1C8FBFAD31855F4EC7CF8CA8,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	36F202BCFF3F7773C868BFCC = {
-		isa = PBXBuildFile;
-		fileRef = E858B06DEA1C8868C56E34B6;
-	};
-
-	37E4C76A7E7F2C41ADFD5E1F = {
-		isa = PBXBuildFile;
-		fileRef = F8E02A668A3786424C440995;
-	};
-
-	38784A82006169176A1A4E64 = {
-		isa = PBXBuildFile;
-		fileRef = 1277AA39ABF53256B86CC887;
-	};
-
-	38F6F5CA40C95F3BE67F769C = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift;
-		sourceTree = "<group>";
-	};
-
-	3921CA11A5F67EA0E0EA4D0A = {
-		isa = PBXBuildFile;
-		fileRef = 7E63C62518AC3EFFAAF99745;
-	};
-
-	3A40C6E12F46DF9FF0E0CAFB = {
-		isa = PBXBuildFile;
-		fileRef = D8547D30C056663E71FE08EC;
-	};
-
-	3A74A1B33BA1AF3C10594A9E = {
-		isa = PBXBuildFile;
-		fileRef = 9C3436D9FF1FCD30564D1D85;
-	};
-
-	3D8666EDB116021861B297C4 = {
-		isa = PBXBuildFile;
-		fileRef = 77AC5BEE7E35599433E83154;
-	};
-
-	3DCA2517CB865E6F2EF9B3BD = {
-		isa = PBXBuildFile;
-		fileRef = 1E77D2F5881A167064871C23;
-	};
-
-	40D49E1B20A7685EB0570DC4 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/CourseTimetable.swift;
-		sourceTree = "<group>";
-	};
-
-	417BFAFB67F0DE6C0F26AAEA = {
-		isa = PBXBuildFile;
-		fileRef = 773DCE90197176C4D5385F3A;
-	};
-
-	425B1E94BDF6F3A23018568A = {
-		isa = PBXBuildFile;
-		fileRef = 7BBB06F616B17D6828A01C39;
-	};
-
-	436124C7DD304E6DA28D329D = {
-		isa = PBXBuildFile;
-		fileRef = 460E7B1D737E4860D4B70AF2;
-	};
-
-	444C30803C9A93274F6A479F = {
-		isa = PBXBuildFile;
-		fileRef = C454C15D80121CBA073EEBE8;
-	};
-
-	45FF6A6F83C85E59DBC8B329 = {
-		isa = PBXTargetDependency;
-		target = 180BB19C6150BD0D387EFFDA;
-		targetProxy = 1CC47386F9B56DC0DCB91C6D;
-	};
-
-	460E7B1D737E4860D4B70AF2 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift;
-		sourceTree = "<group>";
-	};
-
-	487F8947B8888C7A6F3A3EBA = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AppNavigation.swift;
-		sourceTree = "<group>";
-	};
-
-	4AF186E14533C8AC2320327F = {
-		isa = PBXBuildFile;
-		fileRef = 77AC5BEE7E35599433E83154;
-	};
-
-	4B2423F70A6BD07EA27927D6 = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 10;
-		files = (
-			C480D2B0C8603016FD1BDB41,
-		);
-		name = "Embed Frameworks";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	4C635E3A831F291A4CF7A03F = {
-		isa = PBXBuildFile;
-		fileRef = 077911CF831D31482C0E5BC3;
-	};
-
-	4C89319678BA0EBFF93AE4C8 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/GoogleService-Info.plist;
-		sourceTree = "<group>";
-	};
-
-	4CCC9422EC1F987DD4F4B420 = {
-		isa = PBXBuildFile;
-		fileRef = B9056A05FB7CE51EC5814456;
-	};
-
-	4F3D78C43E6CB42C68008553 = {
-		isa = PBXBuildFile;
-		fileRef = CFE091619B11103B174A8AF4;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	4F5EA75AD911B1A63BC4E9F1 = {
-		isa = PBXBuildFile;
-		fileRef = 721CE965314E162B64D1610B;
-	};
-
-	50C10E819A66D0557B752C26 = {
-		isa = PBXBuildFile;
-		fileRef = D315528429EBD4EC4D08CD4B;
-	};
-
-	51E9AD78980BB365FDA73674 = {
-		isa = PBXBuildFile;
-		fileRef = 0346D3E0A98991BAF579E9B4;
-	};
-
-	5229A11767BD315215460B82 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/NotificationScheduler.swift;
-		sourceTree = "<group>";
-	};
-
-	528C401C34C3045570C1E71F = {
-		isa = XCSwiftPackageProductDependency;
-		package = 7CAD6D28479CBF8021199213;
-		productName = FirebaseAuth;
-	};
-
-	53C20788D3C5547E185D607C = {
-		isa = PBXBuildFile;
-		fileRef = E858B06DEA1C8868C56E34B6;
-	};
-
-	53D330BB9C5D3B82E1426745 = {
-		isa = PBXBuildFile;
-		fileRef = 773DCE90197176C4D5385F3A;
-	};
-
-	53F16A828E23C3564A1304C4 = {
-		isa = PBXBuildFile;
-		fileRef = 7C40F8326F1BBC3FE53E3479;
-	};
-
-	53FFE9382A5AE05C52D0840B = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Support/WidgetConstants.swift;
-		sourceTree = "<group>";
-	};
-
-	547C45178EDD46F7C2D621D9 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift;
-		sourceTree = "<group>";
-	};
-
-	57320A0D358CAF6DC361CC25 = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			F7907419381F59F23B45E6DE,
-			E7FC074B15ABCEA621649EB6,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	5865A6280EE8612EB13F9B09 = {
-		isa = PBXBuildFile;
-		fileRef = 7FF8FB72BD89E0B90E4D0601;
-	};
-
-	587FAB06CC0271E81715965F = {
-		isa = PBXBuildFile;
-		fileRef = F7EC414B16694B6CDA0FEFCB;
-	};
-
-	5913EEFB212D4600C23ED21C = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			7AF4B9A84F77428A9616D425,
-			BADFA338386BE4083A11308E,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	5A87C496C65A3CCFF2C6017B = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = 57320A0D358CAF6DC361CC25;
-		buildPhases = (
-			926022AF0BD3A12CB903BA3D,
-			817C48C23E6A01FAEEB590AE,
-			5913EEFB212D4600C23ED21C,
-			1C3309D1F46C6F85A7202717,
-		);
-		buildRules = (
-		);
-		dependencies = (
-			CD52984FB920D2150E82DDA0,
-		);
-		name = MeowPlannerWidgetExtension-iOS;
-		packageProductDependencies = (
-		);
-		productName = MeowPlannerWidgetExtension-iOS;
-		productReference = AEA0ED17D84162DA5A48A4A8;
-		productType = "com.apple.product-type.app-extension";
-	};
-
-	5B80C87A96566DBD71652C47 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AppIconInstaller.swift;
-		sourceTree = "<group>";
-	};
-
-	5C559723D06393E3290F9D4E = {
-		isa = PBXBuildFile;
-		fileRef = 24A04CAA495D579768B6F716;
-	};
-
-	5CADD55F7ADB2CB3BC8A6ABF = {
-		isa = PBXBuildFile;
-		fileRef = 1B6C00CDB3AE603833DF830D;
-	};
-
-	5CD11A8BAE33517676834840 = {
-		isa = PBXBuildFile;
-		fileRef = 30DDC48266F587766CB1FFA4;
-	};
-
-	61A9F57D9917828AE861847D = {
-		isa = PBXBuildFile;
-		fileRef = CBDA3B6C730EE3E33B1C7F85;
-	};
-
-	632A251B42096AAF8B0E5C5C = {
-		isa = PBXBuildFile;
-		fileRef = 1B6C00CDB3AE603833DF830D;
-	};
-
-	634681BC5581CFA9CF006698 = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			2D0EABFA6AAC7CC14913F7AD,
-			8017133B1880F0ED0F5FFC45,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	650FEACA2C68352DC68C51AC = {
-		isa = PBXBuildFile;
-		fileRef = 5229A11767BD315215460B82;
-	};
-
-	67F30FE894DE76AC9A8BDB6B = {
-		isa = PBXBuildFile;
-		fileRef = D97EF31D3D4544224A1353F2;
-	};
-
-	6829FA8A477BD2D09199C9EB = {
-		isa = PBXBuildFile;
-		fileRef = CCA63CB7527ABBF324CEFF38;
-	};
-
-	68AF3BFD7FFEEEBF79724300 = {
-		isa = PBXBuildFile;
-		fileRef = E7948FDA3B2676DF5F2B24D0;
-	};
-
-	6999E7ECDB18E0F262AB85E2 = {
-		isa = PBXBuildFile;
-		fileRef = 33193FACACEF39E3A48ED164;
-	};
-
-	6C98680694770A7E7E373EBF = {
-		isa = PBXBuildFile;
-		fileRef = 317E43A0AAD9986BF5C0A889;
-	};
-
-	6F044BCB4B633A557CB41767 = {
-		isa = PBXBuildFile;
-		fileRef = 8F94AC40C231E5522EA03CB1;
-	};
-
-	6F3D1792D8DD7A41B43889EB = {
-		isa = PBXBuildFile;
-		fileRef = BA7E1C7367EC6EFBDB2CE701;
-	};
-
-	6FAF30DB61499C49B3447D9A = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/RootView.swift;
-		sourceTree = "<group>";
-	};
-
-	707AA3AEAD226634825065D1 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift;
-		sourceTree = "<group>";
-	};
-
-	721CE965314E162B64D1610B = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/MeowPlannerCore.swift;
-		sourceTree = "<group>";
-	};
-
-	7344AF727E9287C0CA0CA040 = {
-		isa = PBXBuildFile;
-		fileRef = A9EA7632D4F30E1B84B0ED83;
-	};
-
-	742CF4EFF188F01E1203E753 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlannerWidget-iOS-Info.plist;
-		sourceTree = "<group>";
-	};
-
-	773DCE90197176C4D5385F3A = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/Habit.swift;
-		sourceTree = "<group>";
-	};
-
-	77AC5BEE7E35599433E83154 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/FocusTimerState.swift;
-		sourceTree = "<group>";
-	};
-
-	7859B50E888D9BA959C1BF3A = {
-		isa = PBXBuildFile;
-		fileRef = 547C45178EDD46F7C2D621D9;
-	};
-
-	79AA44DEE589D8B8E96A0A8C = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = 2E804071031A67106E08E888;
-		buildPhases = (
-			300CBEE8E98E70DC1699756B,
-			140969924C862525DB104150,
-			1939428BF237C1AFB440C3B2,
-			4B2423F70A6BD07EA27927D6,
-		);
-		buildRules = (
-		);
-		dependencies = (
-			26C54ABE4EE33D42CDD967CD,
-		);
-		name = MeowPlannerWidgetExtension;
-		packageProductDependencies = (
-		);
-		productName = MeowPlannerWidgetExtension;
-		productReference = AC0E2599A576534DDAEEE6BF;
-		productType = "com.apple.product-type.app-extension";
-	};
-
-	79D33856E36A59A6B282D01D = {
-		isa = PBXBuildFile;
-		fileRef = C454C15D80121CBA073EEBE8;
-	};
-
-	7AF4B9A84F77428A9616D425 = {
-		isa = PBXBuildFile;
-		fileRef = B82D3B504C01717021E01DB3;
-	};
-
-	7B2C85655704FE71DFDB68C1 = {
-		isa = PBXBuildFile;
-		fileRef = FA98C30EA1AFDA9CBB767013;
-	};
-
-	7BBB06F616B17D6828A01C39 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift;
-		sourceTree = "<group>";
-	};
-
-	7C40F8326F1BBC3FE53E3479 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift;
-		sourceTree = "<group>";
-	};
-
-	7CAD6D28479CBF8021199213 = {
-		isa = XCRemoteSwiftPackageReference;
-		repositoryURL = https://github.com/firebase/firebase-ios-sdk.git;
-		requirement = {
-			kind = upToNextMajorVersion;
-			minimumVersion = 12.14.0;
+/* Begin PBXBuildFile section */
+		00266C99B40A1A88754A83F2 /* Resources/AppIcon/AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B7241800D60C73BB38025BBB /* Resources/AppIcon/AppIcon.icns */; };
+		00EE8033D4CFD10142294C34 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD39EB362757501DD18C7617 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift */; };
+		026755A5AEE3DBDB087175AC /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E77D2F5881A167064871C23 /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift */; };
+		041CD91A5B4286E3FCBB2A73 /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F37EBD6A4EDE31E2A8E34C /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift */; };
+		0439AB6DED5B56F0F569B7F7 /* Config/GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4C89319678BA0EBFF93AE4C8 /* Config/GoogleService-Info.plist */; };
+		095BFAC1C1CCA5BBBA3D0723 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF533C5A7D54E18C37C98089 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift */; };
+		09D7408677F186324C1B7477 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33193FACACEF39E3A48ED164 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift */; };
+		0BABA6B1551618680567CECC /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7948FDA3B2676DF5F2B24D0 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift */; };
+		0D93599C20BD6051ED3990E0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 528C401C34C3045570C1E71F /* FirebaseAuth */; };
+		0FEBC0367BFD5C098E8BF3CF /* Resources/FuFu in Resources */ = {isa = PBXBuildFile; fileRef = 317E43A0AAD9986BF5C0A889 /* Resources/FuFu */; };
+		12E7CDB02704A3157FCEDFDA /* Sources/MeowPlannerCore/MeowPlannerCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 721CE965314E162B64D1610B /* Sources/MeowPlannerCore/MeowPlannerCore.swift */; };
+		130E4EE8EEA6B4C960D77468 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 528C401C34C3045570C1E71F /* FirebaseAuth */; };
+		136D64B7BA340B68073C7509 /* Sources/MeowPlannerCore/Support/AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E53A53935F52CE486D4263E0 /* Sources/MeowPlannerCore/Support/AppLanguage.swift */; };
+		139D9296E14BA8CEB088F875 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B80C87A96566DBD71652C47 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift */; };
+		14FD65A4806626C6882F1503 /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8547D30C056663E71FE08EC /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift */; };
+		15B662772158AA826E77EB9F /* MeowPlannerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		15FF09A6EDBF3652186847FB /* Sources/MeowPlannerCore/Support/WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53FFE9382A5AE05C52D0840B /* Sources/MeowPlannerCore/Support/WidgetConstants.swift */; };
+		16D0877D40AABBFF3353CB7B /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D84EEF9584A8114C70E9EFB /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift */; };
+		17B6F0B545E2305FB872B822 /* Resources/BackgroundDark.png in Resources */ = {isa = PBXBuildFile; fileRef = 318D18021CA4172EF5AE92DC /* Resources/BackgroundDark.png */; };
+		1817CB429C33608EE59C960C /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9056A05FB7CE51EC5814456 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift */; };
+		189704E89A2B823FABE7B489 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547C45178EDD46F7C2D621D9 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift */; };
+		19A70435264C701F0E43E20B /* Sources/MeowPlannerCore/Models/PlannerPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE3C6F343234E2F26520FB8 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift */; };
+		1ABF2C0AD136C89DBA5FBA41 /* Resources/WidgetBackgroundDark.png in Resources */ = {isa = PBXBuildFile; fileRef = B1E16BC0D0229DB29EB488AD /* Resources/WidgetBackgroundDark.png */; };
+		1C8FBFAD31855F4EC7CF8CA8 /* Resources/FuFu in Resources */ = {isa = PBXBuildFile; fileRef = 317E43A0AAD9986BF5C0A889 /* Resources/FuFu */; };
+		1DC9D96284853401583D5294 /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F6F5CA40C95F3BE67F769C /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift */; };
+		1E482FB6489F08186495E686 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA98C30EA1AFDA9CBB767013 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift */; };
+		207C68EDE1DD787C3F3D6DF4 /* Sources/MeowPlannerCore/Services/RepeatRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EA7632D4F30E1B84B0ED83 /* Sources/MeowPlannerCore/Services/RepeatRule.swift */; };
+		21187C2CBBFA69A67107AC4A /* Resources/AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 0346D3E0A98991BAF579E9B4 /* Resources/AppIcon */; };
+		22C1DF4C09ECAF7DDA3D2736 /* Resources/WidgetBackgroundLight.png in Resources */ = {isa = PBXBuildFile; fileRef = B82D3B504C01717021E01DB3 /* Resources/WidgetBackgroundLight.png */; };
+		29ABCCFEF181D76CCE50A9C7 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5229A11767BD315215460B82 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift */; };
+		2BDE75D997AA9B5849F0B967 /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D84EEF9584A8114C70E9EFB /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift */; };
+		2CD5706AC74D9558585E34D9 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 147C4662444631333629C1A4 /* FirebaseCore */; };
+		2E0BB1C446372BFD08300BF9 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30DDC48266F587766CB1FFA4 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift */; };
+		311707FA3FDE6F64FF4C3BD8 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EF31D3D4544224A1353F2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift */; };
+		3130B1EAC31E80FE4E892EA3 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F94AC40C231E5522EA03CB1 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift */; };
+		32A0532E45E17C4AB224D0CE /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A8402802E0226BE82F7B66 /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift */; };
+		35611130CA3AD839825F2F0D /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 707AA3AEAD226634825065D1 /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift */; };
+		36F202BCFF3F7773C868BFCC /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E858B06DEA1C8868C56E34B6 /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift */; };
+		37E4C76A7E7F2C41ADFD5E1F /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E02A668A3786424C440995 /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift */; };
+		38784A82006169176A1A4E64 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277AA39ABF53256B86CC887 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift */; };
+		3921CA11A5F67EA0E0EA4D0A /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E63C62518AC3EFFAAF99745 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift */; };
+		3A40C6E12F46DF9FF0E0CAFB /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8547D30C056663E71FE08EC /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift */; };
+		3A74A1B33BA1AF3C10594A9E /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3436D9FF1FCD30564D1D85 /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift */; };
+		3D8666EDB116021861B297C4 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77AC5BEE7E35599433E83154 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift */; };
+		3DCA2517CB865E6F2EF9B3BD /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E77D2F5881A167064871C23 /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift */; };
+		417BFAFB67F0DE6C0F26AAEA /* Sources/MeowPlannerCore/Models/Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773DCE90197176C4D5385F3A /* Sources/MeowPlannerCore/Models/Habit.swift */; };
+		425B1E94BDF6F3A23018568A /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBB06F616B17D6828A01C39 /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift */; };
+		436124C7DD304E6DA28D329D /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460E7B1D737E4860D4B70AF2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift */; };
+		444C30803C9A93274F6A479F /* MeowPlannerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */; };
+		4AF186E14533C8AC2320327F /* Sources/MeowPlannerCore/Services/FocusTimerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77AC5BEE7E35599433E83154 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift */; };
+		4C635E3A831F291A4CF7A03F /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077911CF831D31482C0E5BC3 /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift */; };
+		4CCC9422EC1F987DD4F4B420 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9056A05FB7CE51EC5814456 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift */; };
+		4F3D78C43E6CB42C68008553 /* MeowPlannerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		4F5EA75AD911B1A63BC4E9F1 /* Sources/MeowPlannerCore/MeowPlannerCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 721CE965314E162B64D1610B /* Sources/MeowPlannerCore/MeowPlannerCore.swift */; };
+		50C10E819A66D0557B752C26 /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D315528429EBD4EC4D08CD4B /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift */; };
+		51E9AD78980BB365FDA73674 /* Resources/AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 0346D3E0A98991BAF579E9B4 /* Resources/AppIcon */; };
+		53C20788D3C5547E185D607C /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E858B06DEA1C8868C56E34B6 /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift */; };
+		53D330BB9C5D3B82E1426745 /* Sources/MeowPlannerCore/Models/Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773DCE90197176C4D5385F3A /* Sources/MeowPlannerCore/Models/Habit.swift */; };
+		53F16A828E23C3564A1304C4 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C40F8326F1BBC3FE53E3479 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift */; };
+		5865A6280EE8612EB13F9B09 /* Sources/MeowPlannerCore/Models/TodoGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF8FB72BD89E0B90E4D0601 /* Sources/MeowPlannerCore/Models/TodoGroup.swift */; };
+		587FAB06CC0271E81715965F /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7EC414B16694B6CDA0FEFCB /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift */; };
+		5C559723D06393E3290F9D4E /* Sources/MeowPlannerCore/Models/FocusSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A04CAA495D579768B6F716 /* Sources/MeowPlannerCore/Models/FocusSession.swift */; };
+		5CADD55F7ADB2CB3BC8A6ABF /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B6C00CDB3AE603833DF830D /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift */; };
+		5CD11A8BAE33517676834840 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30DDC48266F587766CB1FFA4 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift */; };
+		61A9F57D9917828AE861847D /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBDA3B6C730EE3E33B1C7F85 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift */; };
+		632A251B42096AAF8B0E5C5C /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B6C00CDB3AE603833DF830D /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift */; };
+		650FEACA2C68352DC68C51AC /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5229A11767BD315215460B82 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift */; };
+		67F30FE894DE76AC9A8BDB6B /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97EF31D3D4544224A1353F2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift */; };
+		6829FA8A477BD2D09199C9EB /* Sources/MeowPlannerApp/Support/AppDockIconController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA63CB7527ABBF324CEFF38 /* Sources/MeowPlannerApp/Support/AppDockIconController.swift */; };
+		68AF3BFD7FFEEEBF79724300 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7948FDA3B2676DF5F2B24D0 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift */; };
+		6999E7ECDB18E0F262AB85E2 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33193FACACEF39E3A48ED164 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift */; };
+		6C98680694770A7E7E373EBF /* Resources/FuFu in Resources */ = {isa = PBXBuildFile; fileRef = 317E43A0AAD9986BF5C0A889 /* Resources/FuFu */; };
+		6F044BCB4B633A557CB41767 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F94AC40C231E5522EA03CB1 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift */; };
+		6F3D1792D8DD7A41B43889EB /* Sources/MeowPlannerCore/Models/PlannerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7E1C7367EC6EFBDB2CE701 /* Sources/MeowPlannerCore/Models/PlannerEvent.swift */; };
+		7344AF727E9287C0CA0CA040 /* Sources/MeowPlannerCore/Services/RepeatRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EA7632D4F30E1B84B0ED83 /* Sources/MeowPlannerCore/Services/RepeatRule.swift */; };
+		7859B50E888D9BA959C1BF3A /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547C45178EDD46F7C2D621D9 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift */; };
+		79D33856E36A59A6B282D01D /* MeowPlannerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */; };
+		7AF4B9A84F77428A9616D425 /* Resources/WidgetBackgroundLight.png in Resources */ = {isa = PBXBuildFile; fileRef = B82D3B504C01717021E01DB3 /* Resources/WidgetBackgroundLight.png */; };
+		7B2C85655704FE71DFDB68C1 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA98C30EA1AFDA9CBB767013 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift */; };
+		7E328B982B4A265A1427F76B /* Resources/iOSAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F35C76A143A1080A06A20D54 /* Resources/iOSAssets.xcassets */; };
+		7EB8CA52586E7A58E1916579 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBDA3B6C730EE3E33B1C7F85 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift */; };
+		7EFC2A54ACD0B744067051D0 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460E7B1D737E4860D4B70AF2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift */; };
+		7F166A722DDFF828210BC605 /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D315528429EBD4EC4D08CD4B /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift */; };
+		7F3CCF28237E3C01E045299D /* Resources/iOSBackgroundDark.png in Resources */ = {isa = PBXBuildFile; fileRef = FB2EDE17BEE61AFC2B88A112 /* Resources/iOSBackgroundDark.png */; };
+		81CD3D30ABBE32DA4517598A /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC6BEE8F448C35268B19E6E /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift */; };
+		84D54FA65B9F484220A24314 /* MeowPlannerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */; };
+		85E87F86EF823B9255EE8884 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F268C2EF0E946006FC57F088 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift */; };
+		88262D8E050077D14C9083B7 /* MeowPlannerWidgetExtension-iOS.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AEA0ED17D84162DA5A48A4A8 /* MeowPlannerWidgetExtension-iOS.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		884A6FE81AA9DDBDBAA3549A /* Resources/BackgroundDark.png in Resources */ = {isa = PBXBuildFile; fileRef = 318D18021CA4172EF5AE92DC /* Resources/BackgroundDark.png */; };
+		88F15A726917E2CD910233AE /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C40F8326F1BBC3FE53E3479 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift */; };
+		8CCF440DA9FAF2B4B2522CC3 /* Resources/Background.png in Resources */ = {isa = PBXBuildFile; fileRef = D490E87E55B480C82A0659D9 /* Resources/Background.png */; };
+		8D4DBB107AABA43D83A39E7A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18DBB8BE4C04D49695695A1A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift */; };
+		8F583538631574B87B0BF654 /* Sources/MeowPlannerApp/Support/AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487F8947B8888C7A6F3A3EBA /* Sources/MeowPlannerApp/Support/AppNavigation.swift */; };
+		9131729FF693F4606B3C76A4 /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F37EBD6A4EDE31E2A8E34C /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift */; };
+		9352893B9D8A95101C53D67E /* Sources/MeowPlannerCore/Models/TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040686DDAF33884C5AA3A0E9 /* Sources/MeowPlannerCore/Models/TodoItem.swift */; };
+		9366AD7F78EC49C1A5E5DCFB /* Sources/MeowPlannerCore/Models/PlannerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7E1C7367EC6EFBDB2CE701 /* Sources/MeowPlannerCore/Models/PlannerEvent.swift */; };
+		9762AAADC6F2B000A5958005 /* Sources/MeowPlannerCore/Models/FocusSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A04CAA495D579768B6F716 /* Sources/MeowPlannerCore/Models/FocusSession.swift */; };
+		99007B8E315186DE7546D1C6 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D49E1B20A7685EB0570DC4 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift */; };
+		9A15D7D8BCDA317FBE47D3FC /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0267AA73F45008C1962BF988 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift */; };
+		9B86873C384DA616FA87CC8B /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95544B4881D053A1832F0761 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift */; };
+		9D168680780B08F377EF8D09 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD39EB362757501DD18C7617 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift */; };
+		9E063B86677E36131BA08263 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95544B4881D053A1832F0761 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift */; };
+		9F5D31D4B87DAC2F67542B62 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0F17E21CEFBA550AE1533 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift */; };
+		A3E7C0C6026C4AE5DA5CDFA3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 03B5A24E19D20744E267F0DB /* FirebaseFirestore */; };
+		A7C7DA56546E7C4689102D97 /* MeowPlannerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		AB2E685D5A51CAA78C1DC5C9 /* Sources/MeowPlannerCore/Support/AppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E53A53935F52CE486D4263E0 /* Sources/MeowPlannerCore/Support/AppLanguage.swift */; };
+		ABB0BD3E6477DC31DA384312 /* Sources/MeowPlannerCore/Models/TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040686DDAF33884C5AA3A0E9 /* Sources/MeowPlannerCore/Models/TodoItem.swift */; };
+		AD3052ACAABA800418D9183C /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9F46105A03E73480077958 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift */; };
+		B164D1D1F9F24A52ABC7C998 /* Resources/iOSBackground.png in Resources */ = {isa = PBXBuildFile; fileRef = 0BD8C2DCCBA78DBEAED23746 /* Resources/iOSBackground.png */; };
+		B61D1DB7C52FAB98461FDF38 /* Sources/MeowPlannerCore/Support/WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53FFE9382A5AE05C52D0840B /* Sources/MeowPlannerCore/Support/WidgetConstants.swift */; };
+		B635C4FA90627088C740A29D /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077911CF831D31482C0E5BC3 /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift */; };
+		B7EAC8CC8C657E710C49089A /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E02A668A3786424C440995 /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift */; };
+		B7FA11469469AE30EBA97782 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0F17E21CEFBA550AE1533 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift */; };
+		B9F3A196ACBA4274A5989E23 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0267AA73F45008C1962BF988 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift */; };
+		BA082060FD30FBAFEFF2D3F8 /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F6F5CA40C95F3BE67F769C /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift */; };
+		BAB034FFDE4733FB69333010 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D49E1B20A7685EB0570DC4 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift */; };
+		BADFA338386BE4083A11308E /* Resources/WidgetBackgroundDark.png in Resources */ = {isa = PBXBuildFile; fileRef = B1E16BC0D0229DB29EB488AD /* Resources/WidgetBackgroundDark.png */; };
+		BB3C8E85EDA748D94DDC2AF8 /* Sources/MeowPlannerApp/Views/RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF30DB61499C49B3447D9A /* Sources/MeowPlannerApp/Views/RootView.swift */; };
+		BC3E3253E23F644D0E360691 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F268C2EF0E946006FC57F088 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift */; };
+		BFC330992C91B47C3543A2F9 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A57EE86928424FF1ED949908 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift */; };
+		C14FAFB0D28B2D8893208036 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 147C4662444631333629C1A4 /* FirebaseCore */; };
+		C195057EFA88F54C498DCACD /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B80C87A96566DBD71652C47 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift */; };
+		C364103CA628B7E879945176 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E690C80D303B3712DD0BEB48 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift */; };
+		C3AEACE441B1CAE00BC3B1A3 /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7EC414B16694B6CDA0FEFCB /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift */; };
+		C480D2B0C8603016FD1BDB41 /* MeowPlannerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C73243B5FB5F509A92B71410 /* Sources/MeowPlannerApp/Support/AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487F8947B8888C7A6F3A3EBA /* Sources/MeowPlannerApp/Support/AppNavigation.swift */; };
+		CB3F4B47C272D7ADDE0A677B /* Sources/MeowPlannerApp/Support/AppDockIconController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA63CB7527ABBF324CEFF38 /* Sources/MeowPlannerApp/Support/AppDockIconController.swift */; };
+		D1437EC8B13931E48C336D6F /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3436D9FF1FCD30564D1D85 /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift */; };
+		D27DCC1DA3F345482C48F8D7 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 03B5A24E19D20744E267F0DB /* FirebaseFirestore */; };
+		D50654178BF459833F2FB647 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277AA39ABF53256B86CC887 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift */; };
+		D9AB55E359FA071399010423 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9F46105A03E73480077958 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift */; };
+		DA02863872E437B61F417B3F /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A4E000E88AD50B54F4D379 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift */; };
+		DA154C6E83CCDA3C7DD4F930 /* Config/GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4C89319678BA0EBFF93AE4C8 /* Config/GoogleService-Info.plist */; };
+		DC89317E58B0CDB0BB42AE72 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A4E000E88AD50B54F4D379 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift */; };
+		DE9C6856187F82F72B9E832A /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 707AA3AEAD226634825065D1 /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift */; };
+		E107676B3776172843A29847 /* Sources/MeowPlannerApp/Views/RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF30DB61499C49B3447D9A /* Sources/MeowPlannerApp/Views/RootView.swift */; };
+		E30E66B038E186C2CC3C4724 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE3C6F343234E2F26520FB8 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift */; };
+		E3E3E961C3E2CF147641CE5A /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A8402802E0226BE82F7B66 /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift */; };
+		E4F62078DD11B2ABC323E3C0 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E63C62518AC3EFFAAF99745 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift */; };
+		E99494170CD77D44A07783B5 /* MeowPlannerWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AC0E2599A576534DDAEEE6BF /* MeowPlannerWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EA9AD785F71D093EBAA17122 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D73DD39EB548CA26DB48708 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift */; };
+		EBEA5461ED0D7C63F9C1612E /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D73DD39EB548CA26DB48708 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift */; };
+		EC2A9CBA22B66AD008E8DFC4 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF533C5A7D54E18C37C98089 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift */; };
+		EC42B115A4207B974809B900 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E690C80D303B3712DD0BEB48 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift */; };
+		EF6414F41B285D930A41078C /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBB06F616B17D6828A01C39 /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift */; };
+		F3CF8CAD9CA1DF5FED4BB149 /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC6BEE8F448C35268B19E6E /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift */; };
+		F58144AD183ACA44F77FE92B /* Resources/Background.png in Resources */ = {isa = PBXBuildFile; fileRef = D490E87E55B480C82A0659D9 /* Resources/Background.png */; };
+		F6765301EDE5D0D1760F6489 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A57EE86928424FF1ED949908 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift */; };
+		F872B3334A23FE072F817D26 /* MeowPlannerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */; };
+		FA78844A2572155505BA5C8B /* Sources/MeowPlannerCore/Models/TodoGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF8FB72BD89E0B90E4D0601 /* Sources/MeowPlannerCore/Models/TodoGroup.swift */; };
+		FCA728FFE2D71BE926F8528E /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18DBB8BE4C04D49695695A1A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1CC47386F9B56DC0DCB91C6D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 180BB19C6150BD0D387EFFDA;
+			remoteInfo = MeowPlannerCore;
 		};
-	};
+		21017FBB96311E3B42179552 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A87C496C65A3CCFF2C6017B;
+			remoteInfo = "MeowPlannerWidgetExtension-iOS";
+		};
+		9AEB430E8B5C0A638222EAB7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 180BB19C6150BD0D387EFFDA;
+			remoteInfo = MeowPlannerCore;
+		};
+		AD3740210F08A20FA6081B2F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32EE9AFB3F7ED84151A02352;
+			remoteInfo = "MeowPlannerCore-iOS";
+		};
+		B08FC46ECE5A991DCA2E8F50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 79AA44DEE589D8B8E96A0A8C;
+			remoteInfo = MeowPlannerWidgetExtension;
+		};
+		C1C5BD7ADCAAC8684B17B7BA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32EE9AFB3F7ED84151A02352;
+			remoteInfo = "MeowPlannerCore-iOS";
+		};
+/* End PBXContainerItemProxy section */
 
-	7E328B982B4A265A1427F76B = {
-		isa = PBXBuildFile;
-		fileRef = F35C76A143A1080A06A20D54;
-	};
+/* Begin PBXCopyFilesBuildPhase section */
+		0333CCFB5F289DC1337AFAED /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 10;
+			files = (
+				4F3D78C43E6CB42C68008553 /* MeowPlannerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1C3309D1F46C6F85A7202717 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 10;
+			files = (
+				A7C7DA56546E7C4689102D97 /* MeowPlannerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2554A3BA8D9DE94198B57397 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 10;
+			files = (
+				15B662772158AA826E77EB9F /* MeowPlannerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4B2423F70A6BD07EA27927D6 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 10;
+			files = (
+				C480D2B0C8603016FD1BDB41 /* MeowPlannerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A813D2D34A6A237CB4CC047 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 13;
+			files = (
+				E99494170CD77D44A07783B5 /* MeowPlannerWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F967B432881D629BCD5BCE2C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstSubfolderSpec = 13;
+			files = (
+				88262D8E050077D14C9083B7 /* MeowPlannerWidgetExtension-iOS.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
-	7E63C62518AC3EFFAAF99745 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift;
-		sourceTree = "<group>";
-	};
+/* Begin PBXFileReference section */
+		0267AA73F45008C1962BF988 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift; sourceTree = "<group>"; };
+		0346D3E0A98991BAF579E9B4 /* Resources/AppIcon */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/AppIcon; sourceTree = "<group>"; };
+		040686DDAF33884C5AA3A0E9 /* Sources/MeowPlannerCore/Models/TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/TodoItem.swift; sourceTree = "<group>"; };
+		077911CF831D31482C0E5BC3 /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift; sourceTree = "<group>"; };
+		0BD8C2DCCBA78DBEAED23746 /* Resources/iOSBackground.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/iOSBackground.png; sourceTree = "<group>"; };
+		0CAD04C79FF72FFF6BEA75D4 /* Config/MeowPlanner-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlanner-iOS.entitlements"; sourceTree = "<group>"; };
+		1277AA39ABF53256B86CC887 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Support/WeekStartPreference.swift; sourceTree = "<group>"; };
+		18DBB8BE4C04D49695695A1A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AccountSessionStore.swift; sourceTree = "<group>"; };
+		1B6C00CDB3AE603833DF830D /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift; sourceTree = "<group>"; };
+		1E77D2F5881A167064871C23 /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/HabitCheckIn.swift; sourceTree = "<group>"; };
+		24A04CAA495D579768B6F716 /* Sources/MeowPlannerCore/Models/FocusSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/FocusSession.swift; sourceTree = "<group>"; };
+		27F37EBD6A4EDE31E2A8E34C /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		29EF68FFA39BC77418886A82 /* Config/MeowPlannerWidget-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlannerWidget-iOS.entitlements"; sourceTree = "<group>"; };
+		2AE13A41D86A3659A292E1E5 /* MeowPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeowPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D73DD39EB548CA26DB48708 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/AccountAuthentication.swift; sourceTree = "<group>"; };
+		30DDC48266F587766CB1FFA4 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift; sourceTree = "<group>"; };
+		317E43A0AAD9986BF5C0A889 /* Resources/FuFu */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/FuFu; sourceTree = "<group>"; };
+		318D18021CA4172EF5AE92DC /* Resources/BackgroundDark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/BackgroundDark.png; sourceTree = "<group>"; };
+		33193FACACEF39E3A48ED164 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift; sourceTree = "<group>"; };
+		38F6F5CA40C95F3BE67F769C /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift; sourceTree = "<group>"; };
+		40D49E1B20A7685EB0570DC4 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/CourseTimetable.swift; sourceTree = "<group>"; };
+		460E7B1D737E4860D4B70AF2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift; sourceTree = "<group>"; };
+		487F8947B8888C7A6F3A3EBA /* Sources/MeowPlannerApp/Support/AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AppNavigation.swift; sourceTree = "<group>"; };
+		4C89319678BA0EBFF93AE4C8 /* Config/GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		5229A11767BD315215460B82 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/NotificationScheduler.swift; sourceTree = "<group>"; };
+		53FFE9382A5AE05C52D0840B /* Sources/MeowPlannerCore/Support/WidgetConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Support/WidgetConstants.swift; sourceTree = "<group>"; };
+		547C45178EDD46F7C2D621D9 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift; sourceTree = "<group>"; };
+		5B80C87A96566DBD71652C47 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AppIconInstaller.swift; sourceTree = "<group>"; };
+		6FAF30DB61499C49B3447D9A /* Sources/MeowPlannerApp/Views/RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/RootView.swift; sourceTree = "<group>"; };
+		707AA3AEAD226634825065D1 /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift; sourceTree = "<group>"; };
+		721CE965314E162B64D1610B /* Sources/MeowPlannerCore/MeowPlannerCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/MeowPlannerCore.swift; sourceTree = "<group>"; };
+		742CF4EFF188F01E1203E753 /* Config/MeowPlannerWidget-iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlannerWidget-iOS-Info.plist"; sourceTree = "<group>"; };
+		773DCE90197176C4D5385F3A /* Sources/MeowPlannerCore/Models/Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/Habit.swift; sourceTree = "<group>"; };
+		77AC5BEE7E35599433E83154 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/FocusTimerState.swift; sourceTree = "<group>"; };
+		7BBB06F616B17D6828A01C39 /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift; sourceTree = "<group>"; };
+		7C40F8326F1BBC3FE53E3479 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift; sourceTree = "<group>"; };
+		7E63C62518AC3EFFAAF99745 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift; sourceTree = "<group>"; };
+		7FF8FB72BD89E0B90E4D0601 /* Sources/MeowPlannerCore/Models/TodoGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/TodoGroup.swift; sourceTree = "<group>"; };
+		80A4E000E88AD50B54F4D379 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift; sourceTree = "<group>"; };
+		8F94AC40C231E5522EA03CB1 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/CloudAppDataSync.swift; sourceTree = "<group>"; };
+		95544B4881D053A1832F0761 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift; sourceTree = "<group>"; };
+		9BC83747FFC87A8482E5AAC2 /* Config/MeowPlanner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config/MeowPlanner.entitlements; sourceTree = "<group>"; };
+		9BD0F17E21CEFBA550AE1533 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift; sourceTree = "<group>"; };
+		9C3436D9FF1FCD30564D1D85 /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift; sourceTree = "<group>"; };
+		9D84EEF9584A8114C70E9EFB /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/CloudTodoSync.swift; sourceTree = "<group>"; };
+		A57EE86928424FF1ED949908 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift; sourceTree = "<group>"; };
+		A85DCC5CA3517463523BB532 /* Config/MeowPlanner-iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlanner-iOS-Info.plist"; sourceTree = "<group>"; };
+		A9EA7632D4F30E1B84B0ED83 /* Sources/MeowPlannerCore/Services/RepeatRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/RepeatRule.swift; sourceTree = "<group>"; };
+		AC0E2599A576534DDAEEE6BF /* MeowPlannerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MeowPlannerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AEA0ED17D84162DA5A48A4A8 /* MeowPlannerWidgetExtension-iOS.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "MeowPlannerWidgetExtension-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1E16BC0D0229DB29EB488AD /* Resources/WidgetBackgroundDark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/WidgetBackgroundDark.png; sourceTree = "<group>"; };
+		B2809A80D8BBF7637877AF03 /* Config/MeowPlannerWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlannerWidget-Info.plist"; sourceTree = "<group>"; };
+		B69255CAB8D007CF6045AB72 /* Config/MeowPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config/MeowPlannerWidget.entitlements; sourceTree = "<group>"; };
+		B7241800D60C73BB38025BBB /* Resources/AppIcon/AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Resources/AppIcon/AppIcon.icns; sourceTree = "<group>"; };
+		B82D3B504C01717021E01DB3 /* Resources/WidgetBackgroundLight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/WidgetBackgroundLight.png; sourceTree = "<group>"; };
+		B9056A05FB7CE51EC5814456 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift; sourceTree = "<group>"; };
+		BA7E1C7367EC6EFBDB2CE701 /* Sources/MeowPlannerCore/Models/PlannerEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/PlannerEvent.swift; sourceTree = "<group>"; };
+		BEC6BEE8F448C35268B19E6E /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift; sourceTree = "<group>"; };
+		BF533C5A7D54E18C37C98089 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/TodoListPlanner.swift; sourceTree = "<group>"; };
+		BFE3C6F343234E2F26520FB8 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Models/PlannerPreference.swift; sourceTree = "<group>"; };
+		C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MeowPlannerCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA9F46105A03E73480077958 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Support/WidgetAppIntents.swift; sourceTree = "<group>"; };
+		CBDA3B6C730EE3E33B1C7F85 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/App/MeowPlannerApp.swift; sourceTree = "<group>"; };
+		CCA63CB7527ABBF324CEFF38 /* Sources/MeowPlannerApp/Support/AppDockIconController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AppDockIconController.swift; sourceTree = "<group>"; };
+		CD39EB362757501DD18C7617 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Habits/HabitsView.swift; sourceTree = "<group>"; };
+		CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MeowPlannerCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0A8402802E0226BE82F7B66 /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift; sourceTree = "<group>"; };
+		D315528429EBD4EC4D08CD4B /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift; sourceTree = "<group>"; };
+		D490E87E55B480C82A0659D9 /* Resources/Background.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/Background.png; sourceTree = "<group>"; };
+		D8547D30C056663E71FE08EC /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Services/ReminderPlanner.swift; sourceTree = "<group>"; };
+		D97EF31D3D4544224A1353F2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift; sourceTree = "<group>"; };
+		E53A53935F52CE486D4263E0 /* Sources/MeowPlannerCore/Support/AppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerCore/Support/AppLanguage.swift; sourceTree = "<group>"; };
+		E690C80D303B3712DD0BEB48 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift; sourceTree = "<group>"; };
+		E7948FDA3B2676DF5F2B24D0 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift; sourceTree = "<group>"; };
+		E858B06DEA1C8868C56E34B6 /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift; sourceTree = "<group>"; };
+		F175EDC040AE768BED34CAA4 /* MeowPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeowPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F268C2EF0E946006FC57F088 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift; sourceTree = "<group>"; };
+		F35C76A143A1080A06A20D54 /* Resources/iOSAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/iOSAssets.xcassets; sourceTree = "<group>"; };
+		F515A2AF50D48F2409713C78 /* Config/MeowPlanner-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Config/MeowPlanner-Info.plist"; sourceTree = "<group>"; };
+		F7EC414B16694B6CDA0FEFCB /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift; sourceTree = "<group>"; };
+		F8E02A668A3786424C440995 /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift; sourceTree = "<group>"; };
+		FA98C30EA1AFDA9CBB767013 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/MeowPlannerApp/Views/Focus/FocusView.swift; sourceTree = "<group>"; };
+		FB2EDE17BEE61AFC2B88A112 /* Resources/iOSBackgroundDark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Resources/iOSBackgroundDark.png; sourceTree = "<group>"; };
+/* End PBXFileReference section */
 
-	7EB8CA52586E7A58E1916579 = {
-		isa = PBXBuildFile;
-		fileRef = CBDA3B6C730EE3E33B1C7F85;
-	};
+/* Begin PBXFrameworksBuildPhase section */
+		140969924C862525DB104150 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				79D33856E36A59A6B282D01D /* MeowPlannerCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		201C1DEEDA77D9F32E235D3B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		817C48C23E6A01FAEEB590AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F872B3334A23FE072F817D26 /* MeowPlannerCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D08A23C91E9F53E6C32771A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				444C30803C9A93274F6A479F /* MeowPlannerCore.framework in Frameworks */,
+				2CD5706AC74D9558585E34D9 /* FirebaseCore in Frameworks */,
+				0D93599C20BD6051ED3990E0 /* FirebaseAuth in Frameworks */,
+				A3E7C0C6026C4AE5DA5CDFA3 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		963BF6FD5EE76B8746AA60FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84D54FA65B9F484220A24314 /* MeowPlannerCore.framework in Frameworks */,
+				C14FAFB0D28B2D8893208036 /* FirebaseCore in Frameworks */,
+				130E4EE8EEA6B4C960D77468 /* FirebaseAuth in Frameworks */,
+				D27DCC1DA3F345482C48F8D7 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BDC75CA619DD1F6251DB3631 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
-	7EFC2A54ACD0B744067051D0 = {
-		isa = PBXBuildFile;
-		fileRef = 460E7B1D737E4860D4B70AF2;
-	};
+/* Begin PBXGroup section */
+		00C45FD35CB0F9C5F764F070 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F175EDC040AE768BED34CAA4 /* MeowPlanner.app */,
+				C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */,
+				AC0E2599A576534DDAEEE6BF /* MeowPlannerWidgetExtension.appex */,
+				2AE13A41D86A3659A292E1E5 /* MeowPlanner.app */,
+				CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */,
+				AEA0ED17D84162DA5A48A4A8 /* MeowPlannerWidgetExtension-iOS.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		22D02A9EFAC9B3FBBAEBE062 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B7241800D60C73BB38025BBB /* Resources/AppIcon/AppIcon.icns */,
+				D490E87E55B480C82A0659D9 /* Resources/Background.png */,
+				318D18021CA4172EF5AE92DC /* Resources/BackgroundDark.png */,
+				0BD8C2DCCBA78DBEAED23746 /* Resources/iOSBackground.png */,
+				FB2EDE17BEE61AFC2B88A112 /* Resources/iOSBackgroundDark.png */,
+				B82D3B504C01717021E01DB3 /* Resources/WidgetBackgroundLight.png */,
+				B1E16BC0D0229DB29EB488AD /* Resources/WidgetBackgroundDark.png */,
+				F35C76A143A1080A06A20D54 /* Resources/iOSAssets.xcassets */,
+				0346D3E0A98991BAF579E9B4 /* Resources/AppIcon */,
+				317E43A0AAD9986BF5C0A889 /* Resources/FuFu */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		9642F1047C1002A1EE72F0DB /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				FC8F5A85394B0D5FF7E93AFA /* MeowPlannerCore */,
+				CF8D0BD4B75E8C2C174692A5 /* MeowPlannerApp */,
+				D45CB4A487390B4D06F7B760 /* MeowPlannerWidget */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		ADCF10F76EBF2A74473E9DC4 = {
+			isa = PBXGroup;
+			children = (
+				9642F1047C1002A1EE72F0DB /* Sources */,
+				22D02A9EFAC9B3FBBAEBE062 /* Resources */,
+				D35BDCF6803CCB1A9C4483A8 /* Config */,
+				00C45FD35CB0F9C5F764F070 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CF8D0BD4B75E8C2C174692A5 /* MeowPlannerApp */ = {
+			isa = PBXGroup;
+			children = (
+				CBDA3B6C730EE3E33B1C7F85 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift */,
+				BEC6BEE8F448C35268B19E6E /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift */,
+				18DBB8BE4C04D49695695A1A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift */,
+				CCA63CB7527ABBF324CEFF38 /* Sources/MeowPlannerApp/Support/AppDockIconController.swift */,
+				5B80C87A96566DBD71652C47 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift */,
+				E7948FDA3B2676DF5F2B24D0 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift */,
+				80A4E000E88AD50B54F4D379 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift */,
+				9C3436D9FF1FCD30564D1D85 /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift */,
+				487F8947B8888C7A6F3A3EBA /* Sources/MeowPlannerApp/Support/AppNavigation.swift */,
+				F8E02A668A3786424C440995 /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift */,
+				7C40F8326F1BBC3FE53E3479 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift */,
+				E858B06DEA1C8868C56E34B6 /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift */,
+				547C45178EDD46F7C2D621D9 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift */,
+				077911CF831D31482C0E5BC3 /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift */,
+				D315528429EBD4EC4D08CD4B /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift */,
+				9BD0F17E21CEFBA550AE1533 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift */,
+				0267AA73F45008C1962BF988 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift */,
+				F7EC414B16694B6CDA0FEFCB /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift */,
+				FA98C30EA1AFDA9CBB767013 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift */,
+				CD39EB362757501DD18C7617 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift */,
+				F268C2EF0E946006FC57F088 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift */,
+				B9056A05FB7CE51EC5814456 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift */,
+				6FAF30DB61499C49B3447D9A /* Sources/MeowPlannerApp/Views/RootView.swift */,
+				1B6C00CDB3AE603833DF830D /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift */,
+				27F37EBD6A4EDE31E2A8E34C /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift */,
+				30DDC48266F587766CB1FFA4 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift */,
+				7E63C62518AC3EFFAAF99745 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift */,
+				A57EE86928424FF1ED949908 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift */,
+			);
+			name = MeowPlannerApp;
+			sourceTree = "<group>";
+		};
+		D35BDCF6803CCB1A9C4483A8 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				4C89319678BA0EBFF93AE4C8 /* Config/GoogleService-Info.plist */,
+				F515A2AF50D48F2409713C78 /* Config/MeowPlanner-Info.plist */,
+				9BC83747FFC87A8482E5AAC2 /* Config/MeowPlanner.entitlements */,
+				B2809A80D8BBF7637877AF03 /* Config/MeowPlannerWidget-Info.plist */,
+				B69255CAB8D007CF6045AB72 /* Config/MeowPlannerWidget.entitlements */,
+				A85DCC5CA3517463523BB532 /* Config/MeowPlanner-iOS-Info.plist */,
+				0CAD04C79FF72FFF6BEA75D4 /* Config/MeowPlanner-iOS.entitlements */,
+				742CF4EFF188F01E1203E753 /* Config/MeowPlannerWidget-iOS-Info.plist */,
+				29EF68FFA39BC77418886A82 /* Config/MeowPlannerWidget-iOS.entitlements */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+		D45CB4A487390B4D06F7B760 /* MeowPlannerWidget */ = {
+			isa = PBXGroup;
+			children = (
+				7BBB06F616B17D6828A01C39 /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift */,
+				460E7B1D737E4860D4B70AF2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift */,
+				E690C80D303B3712DD0BEB48 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift */,
+				D97EF31D3D4544224A1353F2 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift */,
+			);
+			name = MeowPlannerWidget;
+			sourceTree = "<group>";
+		};
+		FC8F5A85394B0D5FF7E93AFA /* MeowPlannerCore */ = {
+			isa = PBXGroup;
+			children = (
+				721CE965314E162B64D1610B /* Sources/MeowPlannerCore/MeowPlannerCore.swift */,
+				40D49E1B20A7685EB0570DC4 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift */,
+				24A04CAA495D579768B6F716 /* Sources/MeowPlannerCore/Models/FocusSession.swift */,
+				773DCE90197176C4D5385F3A /* Sources/MeowPlannerCore/Models/Habit.swift */,
+				1E77D2F5881A167064871C23 /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift */,
+				BA7E1C7367EC6EFBDB2CE701 /* Sources/MeowPlannerCore/Models/PlannerEvent.swift */,
+				BFE3C6F343234E2F26520FB8 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift */,
+				7FF8FB72BD89E0B90E4D0601 /* Sources/MeowPlannerCore/Models/TodoGroup.swift */,
+				040686DDAF33884C5AA3A0E9 /* Sources/MeowPlannerCore/Models/TodoItem.swift */,
+				2D73DD39EB548CA26DB48708 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift */,
+				8F94AC40C231E5522EA03CB1 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift */,
+				9D84EEF9584A8114C70E9EFB /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift */,
+				95544B4881D053A1832F0761 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift */,
+				38F6F5CA40C95F3BE67F769C /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift */,
+				77AC5BEE7E35599433E83154 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift */,
+				D0A8402802E0226BE82F7B66 /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift */,
+				5229A11767BD315215460B82 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift */,
+				D8547D30C056663E71FE08EC /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift */,
+				A9EA7632D4F30E1B84B0ED83 /* Sources/MeowPlannerCore/Services/RepeatRule.swift */,
+				BF533C5A7D54E18C37C98089 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift */,
+				33193FACACEF39E3A48ED164 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift */,
+				E53A53935F52CE486D4263E0 /* Sources/MeowPlannerCore/Support/AppLanguage.swift */,
+				707AA3AEAD226634825065D1 /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift */,
+				1277AA39ABF53256B86CC887 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift */,
+				CA9F46105A03E73480077958 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift */,
+				53FFE9382A5AE05C52D0840B /* Sources/MeowPlannerCore/Support/WidgetConstants.swift */,
+			);
+			name = MeowPlannerCore;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
 
-	7F166A722DDFF828210BC605 = {
-		isa = PBXBuildFile;
-		fileRef = D315528429EBD4EC4D08CD4B;
-	};
+/* Begin PBXNativeTarget section */
+		180BB19C6150BD0D387EFFDA /* MeowPlannerCore */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA44B14C8F78B2A72038244D /* Build configuration list for PBXNativeTarget "MeowPlannerCore" */;
+			buildPhases = (
+				9E30C08527637D5E3D8D1B2A /* Sources */,
+				BDC75CA619DD1F6251DB3631 /* Frameworks */,
+				9EBC7FF56B5741A8D9D0E80A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MeowPlannerCore;
+			packageProductDependencies = (
+			);
+			productName = MeowPlannerCore;
+			productReference = C454C15D80121CBA073EEBE8 /* MeowPlannerCore.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		318A63076BD906B0A4AFA07B /* MeowPlanner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CD36D04A0D233D029CECD97A /* Build configuration list for PBXNativeTarget "MeowPlanner" */;
+			buildPhases = (
+				1A73461FBB993DE0B898AD34 /* Sources */,
+				8D08A23C91E9F53E6C32771A /* Frameworks */,
+				8C2CFF067A1939635AC71D34 /* Resources */,
+				2554A3BA8D9DE94198B57397 /* Embed Frameworks */,
+				9A813D2D34A6A237CB4CC047 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				45FF6A6F83C85E59DBC8B329 /* PBXTargetDependency */,
+				86ECC82404AC7ADBF8317F45 /* PBXTargetDependency */,
+			);
+			name = MeowPlanner;
+			packageProductDependencies = (
+				147C4662444631333629C1A4 /* FirebaseCore */,
+				528C401C34C3045570C1E71F /* FirebaseAuth */,
+				03B5A24E19D20744E267F0DB /* FirebaseFirestore */,
+			);
+			productName = MeowPlanner;
+			productReference = F175EDC040AE768BED34CAA4 /* MeowPlanner.app */;
+			productType = "com.apple.product-type.application";
+		};
+		32EE9AFB3F7ED84151A02352 /* MeowPlannerCore-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 634681BC5581CFA9CF006698 /* Build configuration list for PBXNativeTarget "MeowPlannerCore-iOS" */;
+			buildPhases = (
+				838CA64B8CC67BFD56E8264A /* Sources */,
+				201C1DEEDA77D9F32E235D3B /* Frameworks */,
+				FA336494A35D0CC3BF74185E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MeowPlannerCore-iOS";
+			packageProductDependencies = (
+			);
+			productName = "MeowPlannerCore-iOS";
+			productReference = CFE091619B11103B174A8AF4 /* MeowPlannerCore.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		5A87C496C65A3CCFF2C6017B /* MeowPlannerWidgetExtension-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 57320A0D358CAF6DC361CC25 /* Build configuration list for PBXNativeTarget "MeowPlannerWidgetExtension-iOS" */;
+			buildPhases = (
+				926022AF0BD3A12CB903BA3D /* Sources */,
+				817C48C23E6A01FAEEB590AE /* Frameworks */,
+				5913EEFB212D4600C23ED21C /* Resources */,
+				1C3309D1F46C6F85A7202717 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CD52984FB920D2150E82DDA0 /* PBXTargetDependency */,
+			);
+			name = "MeowPlannerWidgetExtension-iOS";
+			packageProductDependencies = (
+			);
+			productName = "MeowPlannerWidgetExtension-iOS";
+			productReference = AEA0ED17D84162DA5A48A4A8 /* MeowPlannerWidgetExtension-iOS.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		79AA44DEE589D8B8E96A0A8C /* MeowPlannerWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2E804071031A67106E08E888 /* Build configuration list for PBXNativeTarget "MeowPlannerWidgetExtension" */;
+			buildPhases = (
+				300CBEE8E98E70DC1699756B /* Sources */,
+				140969924C862525DB104150 /* Frameworks */,
+				1939428BF237C1AFB440C3B2 /* Resources */,
+				4B2423F70A6BD07EA27927D6 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				26C54ABE4EE33D42CDD967CD /* PBXTargetDependency */,
+			);
+			name = MeowPlannerWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = MeowPlannerWidgetExtension;
+			productReference = AC0E2599A576534DDAEEE6BF /* MeowPlannerWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		8153C05F8D721631B3536094 /* MeowPlanner-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1BDEA66D31E9CFD9E8277B43 /* Build configuration list for PBXNativeTarget "MeowPlanner-iOS" */;
+			buildPhases = (
+				8C4CD4B62D3E77B2E10788E1 /* Sources */,
+				963BF6FD5EE76B8746AA60FD /* Frameworks */,
+				36A1FD6BEEF4DCEECCEFF1DF /* Resources */,
+				0333CCFB5F289DC1337AFAED /* Embed Frameworks */,
+				F967B432881D629BCD5BCE2C /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9B98D0D32465112FB5CA07F0 /* PBXTargetDependency */,
+				2E06AF66A7AAC9A08B1EBE6F /* PBXTargetDependency */,
+			);
+			name = "MeowPlanner-iOS";
+			packageProductDependencies = (
+				147C4662444631333629C1A4 /* FirebaseCore */,
+				528C401C34C3045570C1E71F /* FirebaseAuth */,
+				03B5A24E19D20744E267F0DB /* FirebaseFirestore */,
+			);
+			productName = "MeowPlanner-iOS";
+			productReference = 2AE13A41D86A3659A292E1E5 /* MeowPlanner.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
 
-	7F3CCF28237E3C01E045299D = {
-		isa = PBXBuildFile;
-		fileRef = FB2EDE17BEE61AFC2B88A112;
-	};
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				ORGANIZATIONNAME = yuelingqiu;
+				TargetAttributes = {
+					180BB19C6150BD0D387EFFDA = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					318A63076BD906B0A4AFA07B = {
+						CreatedOnToolsVersion = 26.5;
+						ProvisioningStyle = Automatic;
+					};
+					32EE9AFB3F7ED84151A02352 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					5A87C496C65A3CCFF2C6017B = {
+						CreatedOnToolsVersion = 26.5;
+						ProvisioningStyle = Automatic;
+					};
+					79AA44DEE589D8B8E96A0A8C = {
+						CreatedOnToolsVersion = 26.5;
+						ProvisioningStyle = Automatic;
+					};
+					8153C05F8D721631B3536094 = {
+						CreatedOnToolsVersion = 26.5;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EA733E1334E307185C91DF03 /* Build configuration list for PBXProject "MeowPlanner" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = ADCF10F76EBF2A74473E9DC4;
+			packageReferences = (
+				7CAD6D28479CBF8021199213 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			productRefGroup = 00C45FD35CB0F9C5F764F070 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				318A63076BD906B0A4AFA07B /* MeowPlanner */,
+				180BB19C6150BD0D387EFFDA /* MeowPlannerCore */,
+				79AA44DEE589D8B8E96A0A8C /* MeowPlannerWidgetExtension */,
+				8153C05F8D721631B3536094 /* MeowPlanner-iOS */,
+				32EE9AFB3F7ED84151A02352 /* MeowPlannerCore-iOS */,
+				5A87C496C65A3CCFF2C6017B /* MeowPlannerWidgetExtension-iOS */,
+			);
+		};
+/* End PBXProject section */
 
-	7FF4B2B0BE1FA2630B96B1D1 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+/* Begin PBXResourcesBuildPhase section */
+		1939428BF237C1AFB440C3B2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22C1DF4C09ECAF7DDA3D2736 /* Resources/WidgetBackgroundLight.png in Resources */,
+				1ABF2C0AD136C89DBA5FBA41 /* Resources/WidgetBackgroundDark.png in Resources */,
+				6C98680694770A7E7E373EBF /* Resources/FuFu in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		36A1FD6BEEF4DCEECCEFF1DF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA154C6E83CCDA3C7DD4F930 /* Config/GoogleService-Info.plist in Resources */,
+				F58144AD183ACA44F77FE92B /* Resources/Background.png in Resources */,
+				17B6F0B545E2305FB872B822 /* Resources/BackgroundDark.png in Resources */,
+				B164D1D1F9F24A52ABC7C998 /* Resources/iOSBackground.png in Resources */,
+				7F3CCF28237E3C01E045299D /* Resources/iOSBackgroundDark.png in Resources */,
+				7E328B982B4A265A1427F76B /* Resources/iOSAssets.xcassets in Resources */,
+				21187C2CBBFA69A67107AC4A /* Resources/AppIcon in Resources */,
+				1C8FBFAD31855F4EC7CF8CA8 /* Resources/FuFu in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5913EEFB212D4600C23ED21C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AF4B9A84F77428A9616D425 /* Resources/WidgetBackgroundLight.png in Resources */,
+				BADFA338386BE4083A11308E /* Resources/WidgetBackgroundDark.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8C2CFF067A1939635AC71D34 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				00266C99B40A1A88754A83F2 /* Resources/AppIcon/AppIcon.icns in Resources */,
+				0439AB6DED5B56F0F569B7F7 /* Config/GoogleService-Info.plist in Resources */,
+				8CCF440DA9FAF2B4B2522CC3 /* Resources/Background.png in Resources */,
+				884A6FE81AA9DDBDBAA3549A /* Resources/BackgroundDark.png in Resources */,
+				51E9AD78980BB365FDA73674 /* Resources/AppIcon in Resources */,
+				0FEBC0367BFD5C098E8BF3CF /* Resources/FuFu in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9EBC7FF56B5741A8D9D0E80A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA336494A35D0CC3BF74185E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1A73461FBB993DE0B898AD34 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7EB8CA52586E7A58E1916579 /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift in Sources */,
+				81CD3D30ABBE32DA4517598A /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift in Sources */,
+				FCA728FFE2D71BE926F8528E /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift in Sources */,
+				6829FA8A477BD2D09199C9EB /* Sources/MeowPlannerApp/Support/AppDockIconController.swift in Sources */,
+				C195057EFA88F54C498DCACD /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift in Sources */,
+				68AF3BFD7FFEEEBF79724300 /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift in Sources */,
+				DA02863872E437B61F417B3F /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift in Sources */,
+				3A74A1B33BA1AF3C10594A9E /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift in Sources */,
+				C73243B5FB5F509A92B71410 /* Sources/MeowPlannerApp/Support/AppNavigation.swift in Sources */,
+				B7EAC8CC8C657E710C49089A /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift in Sources */,
+				88F15A726917E2CD910233AE /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift in Sources */,
+				36F202BCFF3F7773C868BFCC /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift in Sources */,
+				7859B50E888D9BA959C1BF3A /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift in Sources */,
+				B635C4FA90627088C740A29D /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift in Sources */,
+				50C10E819A66D0557B752C26 /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift in Sources */,
+				9F5D31D4B87DAC2F67542B62 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift in Sources */,
+				B9F3A196ACBA4274A5989E23 /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift in Sources */,
+				C3AEACE441B1CAE00BC3B1A3 /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift in Sources */,
+				7B2C85655704FE71DFDB68C1 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift in Sources */,
+				9D168680780B08F377EF8D09 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift in Sources */,
+				BC3E3253E23F644D0E360691 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift in Sources */,
+				4CCC9422EC1F987DD4F4B420 /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift in Sources */,
+				E107676B3776172843A29847 /* Sources/MeowPlannerApp/Views/RootView.swift in Sources */,
+				5CADD55F7ADB2CB3BC8A6ABF /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift in Sources */,
+				041CD91A5B4286E3FCBB2A73 /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift in Sources */,
+				5CD11A8BAE33517676834840 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift in Sources */,
+				3921CA11A5F67EA0E0EA4D0A /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift in Sources */,
+				F6765301EDE5D0D1760F6489 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		300CBEE8E98E70DC1699756B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF6414F41B285D930A41078C /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift in Sources */,
+				7EFC2A54ACD0B744067051D0 /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift in Sources */,
+				C364103CA628B7E879945176 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift in Sources */,
+				311707FA3FDE6F64FF4C3BD8 /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		838CA64B8CC67BFD56E8264A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F5EA75AD911B1A63BC4E9F1 /* Sources/MeowPlannerCore/MeowPlannerCore.swift in Sources */,
+				BAB034FFDE4733FB69333010 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift in Sources */,
+				9762AAADC6F2B000A5958005 /* Sources/MeowPlannerCore/Models/FocusSession.swift in Sources */,
+				417BFAFB67F0DE6C0F26AAEA /* Sources/MeowPlannerCore/Models/Habit.swift in Sources */,
+				3DCA2517CB865E6F2EF9B3BD /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift in Sources */,
+				6F3D1792D8DD7A41B43889EB /* Sources/MeowPlannerCore/Models/PlannerEvent.swift in Sources */,
+				E30E66B038E186C2CC3C4724 /* Sources/MeowPlannerCore/Models/PlannerPreference.swift in Sources */,
+				5865A6280EE8612EB13F9B09 /* Sources/MeowPlannerCore/Models/TodoGroup.swift in Sources */,
+				9352893B9D8A95101C53D67E /* Sources/MeowPlannerCore/Models/TodoItem.swift in Sources */,
+				EA9AD785F71D093EBAA17122 /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift in Sources */,
+				6F044BCB4B633A557CB41767 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift in Sources */,
+				16D0877D40AABBFF3353CB7B /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift in Sources */,
+				9E063B86677E36131BA08263 /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift in Sources */,
+				1DC9D96284853401583D5294 /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift in Sources */,
+				3D8666EDB116021861B297C4 /* Sources/MeowPlannerCore/Services/FocusTimerState.swift in Sources */,
+				E3E3E961C3E2CF147641CE5A /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift in Sources */,
+				650FEACA2C68352DC68C51AC /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift in Sources */,
+				14FD65A4806626C6882F1503 /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift in Sources */,
+				7344AF727E9287C0CA0CA040 /* Sources/MeowPlannerCore/Services/RepeatRule.swift in Sources */,
+				EC2A9CBA22B66AD008E8DFC4 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift in Sources */,
+				09D7408677F186324C1B7477 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift in Sources */,
+				136D64B7BA340B68073C7509 /* Sources/MeowPlannerCore/Support/AppLanguage.swift in Sources */,
+				DE9C6856187F82F72B9E832A /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift in Sources */,
+				38784A82006169176A1A4E64 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift in Sources */,
+				D9AB55E359FA071399010423 /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift in Sources */,
+				B61D1DB7C52FAB98461FDF38 /* Sources/MeowPlannerCore/Support/WidgetConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8C4CD4B62D3E77B2E10788E1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				61A9F57D9917828AE861847D /* Sources/MeowPlannerApp/App/MeowPlannerApp.swift in Sources */,
+				F3CF8CAD9CA1DF5FED4BB149 /* Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift in Sources */,
+				8D4DBB107AABA43D83A39E7A /* Sources/MeowPlannerApp/Support/AccountSessionStore.swift in Sources */,
+				CB3F4B47C272D7ADDE0A677B /* Sources/MeowPlannerApp/Support/AppDockIconController.swift in Sources */,
+				139D9296E14BA8CEB088F875 /* Sources/MeowPlannerApp/Support/AppIconInstaller.swift in Sources */,
+				0BABA6B1551618680567CECC /* Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift in Sources */,
+				DC89317E58B0CDB0BB42AE72 /* Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift in Sources */,
+				D1437EC8B13931E48C336D6F /* Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift in Sources */,
+				8F583538631574B87B0BF654 /* Sources/MeowPlannerApp/Support/AppNavigation.swift in Sources */,
+				37E4C76A7E7F2C41ADFD5E1F /* Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift in Sources */,
+				53F16A828E23C3564A1304C4 /* Sources/MeowPlannerApp/Support/MeowPlannerTheme.swift in Sources */,
+				53C20788D3C5547E185D607C /* Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift in Sources */,
+				189704E89A2B823FABE7B489 /* Sources/MeowPlannerApp/Views/Account/AccountAuthenticationModalView.swift in Sources */,
+				4C635E3A831F291A4CF7A03F /* Sources/MeowPlannerApp/Views/Account/AccountGatedRootView.swift in Sources */,
+				7F166A722DDFF828210BC605 /* Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift in Sources */,
+				B7FA11469469AE30EBA97782 /* Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift in Sources */,
+				9A15D7D8BCDA317FBE47D3FC /* Sources/MeowPlannerApp/Views/Calendar/MonthGridView.swift in Sources */,
+				587FAB06CC0271E81715965F /* Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift in Sources */,
+				1E482FB6489F08186495E686 /* Sources/MeowPlannerApp/Views/Focus/FocusView.swift in Sources */,
+				00EE8033D4CFD10142294C34 /* Sources/MeowPlannerApp/Views/Habits/HabitsView.swift in Sources */,
+				85E87F86EF823B9255EE8884 /* Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift in Sources */,
+				1817CB429C33608EE59C960C /* Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift in Sources */,
+				BB3C8E85EDA748D94DDC2AF8 /* Sources/MeowPlannerApp/Views/RootView.swift in Sources */,
+				632A251B42096AAF8B0E5C5C /* Sources/MeowPlannerApp/Views/Settings/AccountSettingsSection.swift in Sources */,
+				9131729FF693F4606B3C76A4 /* Sources/MeowPlannerApp/Views/Settings/SettingsView.swift in Sources */,
+				2E0BB1C446372BFD08300BF9 /* Sources/MeowPlannerApp/Views/Timetable/CourseTimetableView.swift in Sources */,
+				E4F62078DD11B2ABC323E3C0 /* Sources/MeowPlannerApp/Views/Todos/TodoEditorView.swift in Sources */,
+				BFC330992C91B47C3543A2F9 /* Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		926022AF0BD3A12CB903BA3D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				425B1E94BDF6F3A23018568A /* Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift in Sources */,
+				436124C7DD304E6DA28D329D /* Sources/MeowPlannerWidget/MeowPlannerWidgetBundle.swift in Sources */,
+				EC42B115A4207B974809B900 /* Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift in Sources */,
+				67F30FE894DE76AC9A8BDB6B /* Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E30C08527637D5E3D8D1B2A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12E7CDB02704A3157FCEDFDA /* Sources/MeowPlannerCore/MeowPlannerCore.swift in Sources */,
+				99007B8E315186DE7546D1C6 /* Sources/MeowPlannerCore/Models/CourseTimetable.swift in Sources */,
+				5C559723D06393E3290F9D4E /* Sources/MeowPlannerCore/Models/FocusSession.swift in Sources */,
+				53D330BB9C5D3B82E1426745 /* Sources/MeowPlannerCore/Models/Habit.swift in Sources */,
+				026755A5AEE3DBDB087175AC /* Sources/MeowPlannerCore/Models/HabitCheckIn.swift in Sources */,
+				9366AD7F78EC49C1A5E5DCFB /* Sources/MeowPlannerCore/Models/PlannerEvent.swift in Sources */,
+				19A70435264C701F0E43E20B /* Sources/MeowPlannerCore/Models/PlannerPreference.swift in Sources */,
+				FA78844A2572155505BA5C8B /* Sources/MeowPlannerCore/Models/TodoGroup.swift in Sources */,
+				ABB0BD3E6477DC31DA384312 /* Sources/MeowPlannerCore/Models/TodoItem.swift in Sources */,
+				EBEA5461ED0D7C63F9C1612E /* Sources/MeowPlannerCore/Services/AccountAuthentication.swift in Sources */,
+				3130B1EAC31E80FE4E892EA3 /* Sources/MeowPlannerCore/Services/CloudAppDataSync.swift in Sources */,
+				2BDE75D997AA9B5849F0B967 /* Sources/MeowPlannerCore/Services/CloudTodoSync.swift in Sources */,
+				9B86873C384DA616FA87CC8B /* Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift in Sources */,
+				BA082060FD30FBAFEFF2D3F8 /* Sources/MeowPlannerCore/Services/CourseTimetablePlanner.swift in Sources */,
+				4AF186E14533C8AC2320327F /* Sources/MeowPlannerCore/Services/FocusTimerState.swift in Sources */,
+				32A0532E45E17C4AB224D0CE /* Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift in Sources */,
+				29ABCCFEF181D76CCE50A9C7 /* Sources/MeowPlannerCore/Services/NotificationScheduler.swift in Sources */,
+				3A40C6E12F46DF9FF0E0CAFB /* Sources/MeowPlannerCore/Services/ReminderPlanner.swift in Sources */,
+				207C68EDE1DD787C3F3D6DF4 /* Sources/MeowPlannerCore/Services/RepeatRule.swift in Sources */,
+				095BFAC1C1CCA5BBBA3D0723 /* Sources/MeowPlannerCore/Services/TodoListPlanner.swift in Sources */,
+				6999E7ECDB18E0F262AB85E2 /* Sources/MeowPlannerCore/Stores/ModelContainerFactory.swift in Sources */,
+				AB2E685D5A51CAA78C1DC5C9 /* Sources/MeowPlannerCore/Support/AppLanguage.swift in Sources */,
+				35611130CA3AD839825F2F0D /* Sources/MeowPlannerCore/Support/MonthPlannerGridBuilder.swift in Sources */,
+				D50654178BF459833F2FB647 /* Sources/MeowPlannerCore/Support/WeekStartPreference.swift in Sources */,
+				AD3052ACAABA800418D9183C /* Sources/MeowPlannerCore/Support/WidgetAppIntents.swift in Sources */,
+				15FF09A6EDBF3652186847FB /* Sources/MeowPlannerCore/Support/WidgetConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		26C54ABE4EE33D42CDD967CD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 180BB19C6150BD0D387EFFDA /* MeowPlannerCore */;
+			targetProxy = 9AEB430E8B5C0A638222EAB7 /* PBXContainerItemProxy */;
+		};
+		2E06AF66A7AAC9A08B1EBE6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A87C496C65A3CCFF2C6017B /* MeowPlannerWidgetExtension-iOS */;
+			targetProxy = 21017FBB96311E3B42179552 /* PBXContainerItemProxy */;
+		};
+		45FF6A6F83C85E59DBC8B329 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 180BB19C6150BD0D387EFFDA /* MeowPlannerCore */;
+			targetProxy = 1CC47386F9B56DC0DCB91C6D /* PBXContainerItemProxy */;
+		};
+		86ECC82404AC7ADBF8317F45 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 79AA44DEE589D8B8E96A0A8C /* MeowPlannerWidgetExtension */;
+			targetProxy = B08FC46ECE5A991DCA2E8F50 /* PBXContainerItemProxy */;
+		};
+		9B98D0D32465112FB5CA07F0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32EE9AFB3F7ED84151A02352 /* MeowPlannerCore-iOS */;
+			targetProxy = C1C5BD7ADCAAC8684B17B7BA /* PBXContainerItemProxy */;
+		};
+		CD52984FB920D2150E82DDA0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32EE9AFB3F7ED84151A02352 /* MeowPlannerCore-iOS */;
+			targetProxy = AD3740210F08A20FA6081B2F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09EB277CC8E726D088CB93C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Config/MeowPlanner-iOS.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "Config/MeowPlanner-iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ANG8PQAHH2;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlanner-iOS-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlanner-iOS-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1151,25 +1028,14 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yuelingqiu.MeowPlanner;
 				PRODUCT_NAME = MeowPlanner;
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-	};
-
-	7FF8FB72BD89E0B90E4D0601 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/TodoGroup.swift;
-		sourceTree = "<group>";
-	};
-
-	8017133B1880F0ED0F5FFC45 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Debug;
+		};
+		2D0EABFA6AAC7CC14913F7AD /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -1184,182 +1050,60 @@
 				PRODUCT_NAME = MeowPlannerCore;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-	};
-
-	80A4E000E88AD50B54F4D379 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/FirebaseAccountAuthenticationClient.swift;
-		sourceTree = "<group>";
-	};
-
-	8153C05F8D721631B3536094 = {
-		isa = PBXNativeTarget;
-		buildConfigurationList = 1BDEA66D31E9CFD9E8277B43;
-		buildPhases = (
-			8C4CD4B62D3E77B2E10788E1,
-			963BF6FD5EE76B8746AA60FD,
-			36A1FD6BEEF4DCEECCEFF1DF,
-			0333CCFB5F289DC1337AFAED,
-			F967B432881D629BCD5BCE2C,
-		);
-		buildRules = (
-		);
-		dependencies = (
-			9B98D0D32465112FB5CA07F0,
-			2E06AF66A7AAC9A08B1EBE6F,
-		);
-		name = MeowPlanner-iOS;
-		packageProductDependencies = (
-			147C4662444631333629C1A4,
-			528C401C34C3045570C1E71F,
-			03B5A24E19D20744E267F0DB,
-		);
-		productName = MeowPlanner-iOS;
-		productReference = 2AE13A41D86A3659A292E1E5;
-		productType = "com.apple.product-type.application";
-	};
-
-	817C48C23E6A01FAEEB590AE = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			F872B3334A23FE072F817D26,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	81CD3D30ABBE32DA4517598A = {
-		isa = PBXBuildFile;
-		fileRef = BEC6BEE8F448C35268B19E6E;
-	};
-
-	838CA64B8CC67BFD56E8264A = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			4F5EA75AD911B1A63BC4E9F1,
-			BAB034FFDE4733FB69333010,
-			9762AAADC6F2B000A5958005,
-			417BFAFB67F0DE6C0F26AAEA,
-			3DCA2517CB865E6F2EF9B3BD,
-			6F3D1792D8DD7A41B43889EB,
-			E30E66B038E186C2CC3C4724,
-			5865A6280EE8612EB13F9B09,
-			9352893B9D8A95101C53D67E,
-			EA9AD785F71D093EBAA17122,
-			6F044BCB4B633A557CB41767,
-			16D0877D40AABBFF3353CB7B,
-			9E063B86677E36131BA08263,
-			1DC9D96284853401583D5294,
-			3D8666EDB116021861B297C4,
-			E3E3E961C3E2CF147641CE5A,
-			650FEACA2C68352DC68C51AC,
-			14FD65A4806626C6882F1503,
-			7344AF727E9287C0CA0CA040,
-			EC2A9CBA22B66AD008E8DFC4,
-			09D7408677F186324C1B7477,
-			136D64B7BA340B68073C7509,
-			DE9C6856187F82F72B9E832A,
-			38784A82006169176A1A4E64,
-			D9AB55E359FA071399010423,
-			B61D1DB7C52FAB98461FDF38,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	84D54FA65B9F484220A24314 = {
-		isa = PBXBuildFile;
-		fileRef = CFE091619B11103B174A8AF4;
-	};
-
-	85E87F86EF823B9255EE8884 = {
-		isa = PBXBuildFile;
-		fileRef = F268C2EF0E946006FC57F088;
-	};
-
-	86ECC82404AC7ADBF8317F45 = {
-		isa = PBXTargetDependency;
-		target = 79AA44DEE589D8B8E96A0A8C;
-		targetProxy = B08FC46ECE5A991DCA2E8F50;
-	};
-
-	88262D8E050077D14C9083B7 = {
-		isa = PBXBuildFile;
-		fileRef = AEA0ED17D84162DA5A48A4A8;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	884A6FE81AA9DDBDBAA3549A = {
-		isa = PBXBuildFile;
-		fileRef = 318D18021CA4172EF5AE92DC;
-	};
-
-	88F15A726917E2CD910233AE = {
-		isa = PBXBuildFile;
-		fileRef = 7C40F8326F1BBC3FE53E3479;
-	};
-
-	8C2CFF067A1939635AC71D34 = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			00266C99B40A1A88754A83F2,
-			0439AB6DED5B56F0F569B7F7,
-			8CCF440DA9FAF2B4B2522CC3,
-			884A6FE81AA9DDBDBAA3549A,
-			51E9AD78980BB365FDA73674,
-			0FEBC0367BFD5C098E8BF3CF,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	8C4CD4B62D3E77B2E10788E1 = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			61A9F57D9917828AE861847D,
-			F3CF8CAD9CA1DF5FED4BB149,
-			8D4DBB107AABA43D83A39E7A,
-			CB3F4B47C272D7ADDE0A677B,
-			139D9296E14BA8CEB088F875,
-			0BABA6B1551618680567CECC,
-			DC89317E58B0CDB0BB42AE72,
-			D1437EC8B13931E48C336D6F,
-			8F583538631574B87B0BF654,
-			37E4C76A7E7F2C41ADFD5E1F,
-			53F16A828E23C3564A1304C4,
-			53C20788D3C5547E185D607C,
-			189704E89A2B823FABE7B489,
-			4C635E3A831F291A4CF7A03F,
-			7F166A722DDFF828210BC605,
-			B7FA11469469AE30EBA97782,
-			9A15D7D8BCDA317FBE47D3FC,
-			587FAB06CC0271E81715965F,
-			1E482FB6489F08186495E686,
-			00EE8033D4CFD10142294C34,
-			85E87F86EF823B9255EE8884,
-			1817CB429C33608EE59C960C,
-			BB3C8E85EDA748D94DDC2AF8,
-			632A251B42096AAF8B0E5C5C,
-			9131729FF693F4606B3C76A4,
-			2E0BB1C446372BFD08300BF9,
-			E4F62078DD11B2ABC323E3C0,
-			BFC330992C91B47C3543A2F9,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	8CB711CD9B55FA7DDBA25370 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Debug;
+		};
+		7FF4B2B0BE1FA2630B96B1D1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Config/MeowPlanner-iOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = ANG8PQAHH2;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "Config/MeowPlanner-iOS-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yuelingqiu.MeowPlanner;
+				PRODUCT_NAME = MeowPlanner;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8017133B1880F0ED0F5FFC45 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_DYLIB_INSTALL_NAME = "@rpath/$(EXECUTABLE_PATH)";
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yuelingqiu.MeowPlannerCore.iOS;
+				PRODUCT_MODULE_NAME = MeowPlannerCore;
+				PRODUCT_NAME = MeowPlannerCore;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8CB711CD9B55FA7DDBA25370 /* Release */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/MeowPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -1368,7 +1112,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlanner-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlanner-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1380,298 +1124,10 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	8CCF440DA9FAF2B4B2522CC3 = {
-		isa = PBXBuildFile;
-		fileRef = D490E87E55B480C82A0659D9;
-	};
-
-	8D08A23C91E9F53E6C32771A = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			444C30803C9A93274F6A479F,
-			2CD5706AC74D9558585E34D9,
-			0D93599C20BD6051ED3990E0,
-			A3E7C0C6026C4AE5DA5CDFA3,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	8D4DBB107AABA43D83A39E7A = {
-		isa = PBXBuildFile;
-		fileRef = 18DBB8BE4C04D49695695A1A;
-	};
-
-	8F583538631574B87B0BF654 = {
-		isa = PBXBuildFile;
-		fileRef = 487F8947B8888C7A6F3A3EBA;
-	};
-
-	8F94AC40C231E5522EA03CB1 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/CloudAppDataSync.swift;
-		sourceTree = "<group>";
-	};
-
-	9131729FF693F4606B3C76A4 = {
-		isa = PBXBuildFile;
-		fileRef = 27F37EBD6A4EDE31E2A8E34C;
-	};
-
-	926022AF0BD3A12CB903BA3D = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			425B1E94BDF6F3A23018568A,
-			436124C7DD304E6DA28D329D,
-			EC42B115A4207B974809B900,
-			67F30FE894DE76AC9A8BDB6B,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	9352893B9D8A95101C53D67E = {
-		isa = PBXBuildFile;
-		fileRef = 040686DDAF33884C5AA3A0E9;
-	};
-
-	9366AD7F78EC49C1A5E5DCFB = {
-		isa = PBXBuildFile;
-		fileRef = BA7E1C7367EC6EFBDB2CE701;
-	};
-
-	95544B4881D053A1832F0761 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/ChineseCalendarInfoProvider.swift;
-		sourceTree = "<group>";
-	};
-
-	963BF6FD5EE76B8746AA60FD = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			84D54FA65B9F484220A24314,
-			C14FAFB0D28B2D8893208036,
-			130E4EE8EEA6B4C960D77468,
-			D27DCC1DA3F345482C48F8D7,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	9642F1047C1002A1EE72F0DB = {
-		isa = PBXGroup;
-		children = (
-			FC8F5A85394B0D5FF7E93AFA,
-			CF8D0BD4B75E8C2C174692A5,
-			D45CB4A487390B4D06F7B760,
-		);
-		name = Sources;
-		sourceTree = "<group>";
-	};
-
-	9762AAADC6F2B000A5958005 = {
-		isa = PBXBuildFile;
-		fileRef = 24A04CAA495D579768B6F716;
-	};
-
-	98F54143AB4E86B28C3AFEE0 = {
-		isa = PBXProject;
-		attributes = {
-			BuildIndependentTargetsInParallel = 1;
-			LastSwiftUpdateCheck = 2600;
-			LastUpgradeCheck = 2600;
-			ORGANIZATIONNAME = yuelingqiu;
-			TargetAttributes = {
-				318A63076BD906B0A4AFA07B = {CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; };
-				180BB19C6150BD0D387EFFDA = {CreatedOnToolsVersion = 26.5; };
-				79AA44DEE589D8B8E96A0A8C = {CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; };
-				8153C05F8D721631B3536094 = {CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; };
-				32EE9AFB3F7ED84151A02352 = {CreatedOnToolsVersion = 26.5; };
-				5A87C496C65A3CCFF2C6017B = {CreatedOnToolsVersion = 26.5; ProvisioningStyle = Automatic; };
-			};
+			name = Release;
 		};
-		buildConfigurationList = EA733E1334E307185C91DF03;
-		compatibilityVersion = "Xcode 14.0";
-		developmentRegion = en;
-		hasScannedForEncodings = 0;
-		knownRegions = (
-			en,
-			Base,
-		);
-		mainGroup = ADCF10F76EBF2A74473E9DC4;
-		packageReferences = (
-			7CAD6D28479CBF8021199213,
-		);
-		productRefGroup = 00C45FD35CB0F9C5F764F070;
-		projectDirPath = "";
-		projectRoot = "";
-		targets = (
-			318A63076BD906B0A4AFA07B,
-			180BB19C6150BD0D387EFFDA,
-			79AA44DEE589D8B8E96A0A8C,
-			8153C05F8D721631B3536094,
-			32EE9AFB3F7ED84151A02352,
-			5A87C496C65A3CCFF2C6017B,
-		);
-	};
-
-	99007B8E315186DE7546D1C6 = {
-		isa = PBXBuildFile;
-		fileRef = 40D49E1B20A7685EB0570DC4;
-	};
-
-	9A15D7D8BCDA317FBE47D3FC = {
-		isa = PBXBuildFile;
-		fileRef = 0267AA73F45008C1962BF988;
-	};
-
-	9A813D2D34A6A237CB4CC047 = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 13;
-		files = (
-			E99494170CD77D44A07783B5,
-		);
-		name = "Embed App Extensions";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	9AEB430E8B5C0A638222EAB7 = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 180BB19C6150BD0D387EFFDA;
-		remoteInfo = MeowPlannerCore;
-	};
-
-	9B86873C384DA616FA87CC8B = {
-		isa = PBXBuildFile;
-		fileRef = 95544B4881D053A1832F0761;
-	};
-
-	9B98D0D32465112FB5CA07F0 = {
-		isa = PBXTargetDependency;
-		target = 32EE9AFB3F7ED84151A02352;
-		targetProxy = C1C5BD7ADCAAC8684B17B7BA;
-	};
-
-	9BC83747FFC87A8482E5AAC2 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlanner.entitlements;
-		sourceTree = "<group>";
-	};
-
-	9BD0F17E21CEFBA550AE1533 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Calendar/DayAgendaView.swift;
-		sourceTree = "<group>";
-	};
-
-	9C3436D9FF1FCD30564D1D85 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/FirestoreAppDataSyncService.swift;
-		sourceTree = "<group>";
-	};
-
-	9D168680780B08F377EF8D09 = {
-		isa = PBXBuildFile;
-		fileRef = CD39EB362757501DD18C7617;
-	};
-
-	9D84EEF9584A8114C70E9EFB = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/CloudTodoSync.swift;
-		sourceTree = "<group>";
-	};
-
-	9E063B86677E36131BA08263 = {
-		isa = PBXBuildFile;
-		fileRef = 95544B4881D053A1832F0761;
-	};
-
-	9E30C08527637D5E3D8D1B2A = {
-		isa = PBXSourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-			12E7CDB02704A3157FCEDFDA,
-			99007B8E315186DE7546D1C6,
-			5C559723D06393E3290F9D4E,
-			53D330BB9C5D3B82E1426745,
-			026755A5AEE3DBDB087175AC,
-			9366AD7F78EC49C1A5E5DCFB,
-			19A70435264C701F0E43E20B,
-			FA78844A2572155505BA5C8B,
-			ABB0BD3E6477DC31DA384312,
-			EBEA5461ED0D7C63F9C1612E,
-			3130B1EAC31E80FE4E892EA3,
-			2BDE75D997AA9B5849F0B967,
-			9B86873C384DA616FA87CC8B,
-			BA082060FD30FBAFEFF2D3F8,
-			4AF186E14533C8AC2320327F,
-			32A0532E45E17C4AB224D0CE,
-			29ABCCFEF181D76CCE50A9C7,
-			3A40C6E12F46DF9FF0E0CAFB,
-			207C68EDE1DD787C3F3D6DF4,
-			095BFAC1C1CCA5BBBA3D0723,
-			6999E7ECDB18E0F262AB85E2,
-			AB2E685D5A51CAA78C1DC5C9,
-			35611130CA3AD839825F2F0D,
-			D50654178BF459833F2FB647,
-			AD3052ACAABA800418D9183C,
-			15FF09A6EDBF3652186847FB,
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	9EBC7FF56B5741A8D9D0E80A = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	9F5D31D4B87DAC2F67542B62 = {
-		isa = PBXBuildFile;
-		fileRef = 9BD0F17E21CEFBA550AE1533;
-	};
-
-	A3E7C0C6026C4AE5DA5CDFA3 = {
-		isa = PBXBuildFile;
-		productRef = 03B5A24E19D20744E267F0DB;
-	};
-
-	A57EE86928424FF1ED949908 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Todos/TodoHomeView.swift;
-		sourceTree = "<group>";
-	};
-
-	A7C7DA56546E7C4689102D97 = {
-		isa = PBXBuildFile;
-		fileRef = CFE091619B11103B174A8AF4;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	A85DCC5CA3517463523BB532 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlanner-iOS-Info.plist;
-		sourceTree = "<group>";
-	};
-
-	A9497CE23FDDC0787512981E = {
-		isa = XCBuildConfiguration;
-		name = Debug;
+		A9497CE23FDDC0787512981E /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1709,7 +1165,10 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1 $(inherited)";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -1722,14 +1181,13 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = -Onone;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	A9DD297AC466B8C891118663 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Debug;
+		};
+		A9DD297AC466B8C891118663 /* Release */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1760,7 +1218,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf-with-dsym;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = NO;
@@ -1768,7 +1226,10 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = s;
-				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1 $(inherited)";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -1782,166 +1243,13 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = -O;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	A9EA7632D4F30E1B84B0ED83 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/RepeatRule.swift;
-		sourceTree = "<group>";
-	};
-
-	AB2E685D5A51CAA78C1DC5C9 = {
-		isa = PBXBuildFile;
-		fileRef = E53A53935F52CE486D4263E0;
-	};
-
-	ABB0BD3E6477DC31DA384312 = {
-		isa = PBXBuildFile;
-		fileRef = 040686DDAF33884C5AA3A0E9;
-	};
-
-	AC0E2599A576534DDAEEE6BF = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.app-extension;
-		includeInIndex = 0;
-		path = MeowPlannerWidgetExtension.appex;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	AD3052ACAABA800418D9183C = {
-		isa = PBXBuildFile;
-		fileRef = CA9F46105A03E73480077958;
-	};
-
-	AD3740210F08A20FA6081B2F = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 32EE9AFB3F7ED84151A02352;
-		remoteInfo = MeowPlannerCore-iOS;
-	};
-
-	ADCF10F76EBF2A74473E9DC4 = {
-		isa = PBXGroup;
-		children = (
-			9642F1047C1002A1EE72F0DB,
-			22D02A9EFAC9B3FBBAEBE062,
-			D35BDCF6803CCB1A9C4483A8,
-			00C45FD35CB0F9C5F764F070,
-		);
-		sourceTree = "<group>";
-	};
-
-	AEA0ED17D84162DA5A48A4A8 = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.app-extension;
-		includeInIndex = 0;
-		path = MeowPlannerWidgetExtension-iOS.appex;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	B08FC46ECE5A991DCA2E8F50 = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 79AA44DEE589D8B8E96A0A8C;
-		remoteInfo = MeowPlannerWidgetExtension;
-	};
-
-	B164D1D1F9F24A52ABC7C998 = {
-		isa = PBXBuildFile;
-		fileRef = 0BD8C2DCCBA78DBEAED23746;
-	};
-
-	B1E16BC0D0229DB29EB488AD = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/WidgetBackgroundDark.png;
-		sourceTree = "<group>";
-	};
-
-	B2809A80D8BBF7637877AF03 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlannerWidget-Info.plist;
-		sourceTree = "<group>";
-	};
-
-	B61D1DB7C52FAB98461FDF38 = {
-		isa = PBXBuildFile;
-		fileRef = 53FFE9382A5AE05C52D0840B;
-	};
-
-	B635C4FA90627088C740A29D = {
-		isa = PBXBuildFile;
-		fileRef = 077911CF831D31482C0E5BC3;
-	};
-
-	B69255CAB8D007CF6045AB72 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlannerWidget.entitlements;
-		sourceTree = "<group>";
-	};
-
-	B7241800D60C73BB38025BBB = {
-		isa = PBXFileReference;
-		lastKnownFileType = image.icns;
-		path = Resources/AppIcon/AppIcon.icns;
-		sourceTree = "<group>";
-	};
-
-	B7EAC8CC8C657E710C49089A = {
-		isa = PBXBuildFile;
-		fileRef = F8E02A668A3786424C440995;
-	};
-
-	B7FA11469469AE30EBA97782 = {
-		isa = PBXBuildFile;
-		fileRef = 9BD0F17E21CEFBA550AE1533;
-	};
-
-	B82D3B504C01717021E01DB3 = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/WidgetBackgroundLight.png;
-		sourceTree = "<group>";
-	};
-
-	B9056A05FB7CE51EC5814456 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Navigation/IOSNavigationShellView.swift;
-		sourceTree = "<group>";
-	};
-
-	B9F3A196ACBA4274A5989E23 = {
-		isa = PBXBuildFile;
-		fileRef = 0267AA73F45008C1962BF988;
-	};
-
-	BA082060FD30FBAFEFF2D3F8 = {
-		isa = PBXBuildFile;
-		fileRef = 38F6F5CA40C95F3BE67F769C;
-	};
-
-	BA44B14C8F78B2A72038244D = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			BA4BCFA4F8F780ECC73AB3D9,
-			F617DBCE4425E01FBD290EA0,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	BA4BCFA4F8F780ECC73AB3D9 = {
-		isa = XCBuildConfiguration;
-		name = Debug;
+			name = Release;
+		};
+		BA4BCFA4F8F780ECC73AB3D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -1958,72 +1266,10 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	BA7E1C7367EC6EFBDB2CE701 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/PlannerEvent.swift;
-		sourceTree = "<group>";
-	};
-
-	BAB034FFDE4733FB69333010 = {
-		isa = PBXBuildFile;
-		fileRef = 40D49E1B20A7685EB0570DC4;
-	};
-
-	BADFA338386BE4083A11308E = {
-		isa = PBXBuildFile;
-		fileRef = B1E16BC0D0229DB29EB488AD;
-	};
-
-	BB3C8E85EDA748D94DDC2AF8 = {
-		isa = PBXBuildFile;
-		fileRef = 6FAF30DB61499C49B3447D9A;
-	};
-
-	BC3E3253E23F644D0E360691 = {
-		isa = PBXBuildFile;
-		fileRef = F268C2EF0E946006FC57F088;
-	};
-
-	BDC75CA619DD1F6251DB3631 = {
-		isa = PBXFrameworksBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	BEC6BEE8F448C35268B19E6E = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AccountScopedModelContainerStore.swift;
-		sourceTree = "<group>";
-	};
-
-	BF533C5A7D54E18C37C98089 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/TodoListPlanner.swift;
-		sourceTree = "<group>";
-	};
-
-	BFC330992C91B47C3543A2F9 = {
-		isa = PBXBuildFile;
-		fileRef = A57EE86928424FF1ED949908;
-	};
-
-	BFE3C6F343234E2F26520FB8 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Models/PlannerPreference.swift;
-		sourceTree = "<group>";
-	};
-
-	C09B1DBCC25AAEE0A7DAAF7F = {
-		isa = XCBuildConfiguration;
-		name = Debug;
+			name = Debug;
+		};
+		C09B1DBCC25AAEE0A7DAAF7F /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/MeowPlannerWidget.entitlements;
@@ -2032,7 +1278,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlannerWidget-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlannerWidget-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -2047,58 +1293,10 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEOWPLANNER_WIDGET_EXTENSION";
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	C14FAFB0D28B2D8893208036 = {
-		isa = PBXBuildFile;
-		productRef = 147C4662444631333629C1A4;
-	};
-
-	C195057EFA88F54C498DCACD = {
-		isa = PBXBuildFile;
-		fileRef = 5B80C87A96566DBD71652C47;
-	};
-
-	C1C5BD7ADCAAC8684B17B7BA = {
-		isa = PBXContainerItemProxy;
-		containerPortal = 98F54143AB4E86B28C3AFEE0;
-		proxyType = 1;
-		remoteGlobalIDString = 32EE9AFB3F7ED84151A02352;
-		remoteInfo = MeowPlannerCore-iOS;
-	};
-
-	C364103CA628B7E879945176 = {
-		isa = PBXBuildFile;
-		fileRef = E690C80D303B3712DD0BEB48;
-	};
-
-	C3AEACE441B1CAE00BC3B1A3 = {
-		isa = PBXBuildFile;
-		fileRef = F7EC414B16694B6CDA0FEFCB;
-	};
-
-	C454C15D80121CBA073EEBE8 = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.framework;
-		includeInIndex = 0;
-		path = MeowPlannerCore.framework;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	C480D2B0C8603016FD1BDB41 = {
-		isa = PBXBuildFile;
-		fileRef = C454C15D80121CBA073EEBE8;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	C73243B5FB5F509A92B71410 = {
-		isa = PBXBuildFile;
-		fileRef = 487F8947B8888C7A6F3A3EBA;
-	};
-
-	C78748F0939CCFE4B40764C7 = {
-		isa = XCBuildConfiguration;
-		name = Debug;
+			name = Debug;
+		};
+		C78748F0939CCFE4B40764C7 /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/MeowPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -2107,7 +1305,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlanner-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlanner-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -2119,257 +1317,18 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	CA9F46105A03E73480077958 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Support/WidgetAppIntents.swift;
-		sourceTree = "<group>";
-	};
-
-	CB3F4B47C272D7ADDE0A677B = {
-		isa = PBXBuildFile;
-		fileRef = CCA63CB7527ABBF324CEFF38;
-	};
-
-	CBDA3B6C730EE3E33B1C7F85 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/App/MeowPlannerApp.swift;
-		sourceTree = "<group>";
-	};
-
-	CCA63CB7527ABBF324CEFF38 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AppDockIconController.swift;
-		sourceTree = "<group>";
-	};
-
-	CD36D04A0D233D029CECD97A = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			C78748F0939CCFE4B40764C7,
-			8CB711CD9B55FA7DDBA25370,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	CD39EB362757501DD18C7617 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Habits/HabitsView.swift;
-		sourceTree = "<group>";
-	};
-
-	CD52984FB920D2150E82DDA0 = {
-		isa = PBXTargetDependency;
-		target = 32EE9AFB3F7ED84151A02352;
-		targetProxy = AD3740210F08A20FA6081B2F;
-	};
-
-	CF8D0BD4B75E8C2C174692A5 = {
-		isa = PBXGroup;
-		children = (
-			CBDA3B6C730EE3E33B1C7F85,
-			BEC6BEE8F448C35268B19E6E,
-			18DBB8BE4C04D49695695A1A,
-			CCA63CB7527ABBF324CEFF38,
-			5B80C87A96566DBD71652C47,
-			E7948FDA3B2676DF5F2B24D0,
-			80A4E000E88AD50B54F4D379,
-			9C3436D9FF1FCD30564D1D85,
-			487F8947B8888C7A6F3A3EBA,
-			F8E02A668A3786424C440995,
-			7C40F8326F1BBC3FE53E3479,
-			E858B06DEA1C8868C56E34B6,
-			547C45178EDD46F7C2D621D9,
-			077911CF831D31482C0E5BC3,
-			D315528429EBD4EC4D08CD4B,
-			9BD0F17E21CEFBA550AE1533,
-			0267AA73F45008C1962BF988,
-			F7EC414B16694B6CDA0FEFCB,
-			FA98C30EA1AFDA9CBB767013,
-			CD39EB362757501DD18C7617,
-			F268C2EF0E946006FC57F088,
-			B9056A05FB7CE51EC5814456,
-			6FAF30DB61499C49B3447D9A,
-			1B6C00CDB3AE603833DF830D,
-			27F37EBD6A4EDE31E2A8E34C,
-			30DDC48266F587766CB1FFA4,
-			7E63C62518AC3EFFAAF99745,
-			A57EE86928424FF1ED949908,
-		);
-		name = MeowPlannerApp;
-		sourceTree = "<group>";
-	};
-
-	CFE091619B11103B174A8AF4 = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.framework;
-		includeInIndex = 0;
-		path = MeowPlannerCore.framework;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	D0A8402802E0226BE82F7B66 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/HabitStreakCalculator.swift;
-		sourceTree = "<group>";
-	};
-
-	D1437EC8B13931E48C336D6F = {
-		isa = PBXBuildFile;
-		fileRef = 9C3436D9FF1FCD30564D1D85;
-	};
-
-	D27DCC1DA3F345482C48F8D7 = {
-		isa = PBXBuildFile;
-		productRef = 03B5A24E19D20744E267F0DB;
-	};
-
-	D315528429EBD4EC4D08CD4B = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Calendar/CalendarHomeView.swift;
-		sourceTree = "<group>";
-	};
-
-	D35BDCF6803CCB1A9C4483A8 = {
-		isa = PBXGroup;
-		children = (
-			4C89319678BA0EBFF93AE4C8,
-			F515A2AF50D48F2409713C78,
-			9BC83747FFC87A8482E5AAC2,
-			B2809A80D8BBF7637877AF03,
-			B69255CAB8D007CF6045AB72,
-			A85DCC5CA3517463523BB532,
-			0CAD04C79FF72FFF6BEA75D4,
-			742CF4EFF188F01E1203E753,
-			29EF68FFA39BC77418886A82,
-		);
-		name = Config;
-		sourceTree = "<group>";
-	};
-
-	D45CB4A487390B4D06F7B760 = {
-		isa = PBXGroup;
-		children = (
-			7BBB06F616B17D6828A01C39,
-			460E7B1D737E4860D4B70AF2,
-			E690C80D303B3712DD0BEB48,
-			D97EF31D3D4544224A1353F2,
-		);
-		name = MeowPlannerWidget;
-		sourceTree = "<group>";
-	};
-
-	D490E87E55B480C82A0659D9 = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/Background.png;
-		sourceTree = "<group>";
-	};
-
-	D50654178BF459833F2FB647 = {
-		isa = PBXBuildFile;
-		fileRef = 1277AA39ABF53256B86CC887;
-	};
-
-	D8547D30C056663E71FE08EC = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Services/ReminderPlanner.swift;
-		sourceTree = "<group>";
-	};
-
-	D97EF31D3D4544224A1353F2 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerWidget/MeowPlannerWidgetModule.swift;
-		sourceTree = "<group>";
-	};
-
-	D9AB55E359FA071399010423 = {
-		isa = PBXBuildFile;
-		fileRef = CA9F46105A03E73480077958;
-	};
-
-	DA02863872E437B61F417B3F = {
-		isa = PBXBuildFile;
-		fileRef = 80A4E000E88AD50B54F4D379;
-	};
-
-	DA154C6E83CCDA3C7DD4F930 = {
-		isa = PBXBuildFile;
-		fileRef = 4C89319678BA0EBFF93AE4C8;
-	};
-
-	DC89317E58B0CDB0BB42AE72 = {
-		isa = PBXBuildFile;
-		fileRef = 80A4E000E88AD50B54F4D379;
-	};
-
-	DE9C6856187F82F72B9E832A = {
-		isa = PBXBuildFile;
-		fileRef = 707AA3AEAD226634825065D1;
-	};
-
-	E107676B3776172843A29847 = {
-		isa = PBXBuildFile;
-		fileRef = 6FAF30DB61499C49B3447D9A;
-	};
-
-	E30E66B038E186C2CC3C4724 = {
-		isa = PBXBuildFile;
-		fileRef = BFE3C6F343234E2F26520FB8;
-	};
-
-	E3E3E961C3E2CF147641CE5A = {
-		isa = PBXBuildFile;
-		fileRef = D0A8402802E0226BE82F7B66;
-	};
-
-	E4F62078DD11B2ABC323E3C0 = {
-		isa = PBXBuildFile;
-		fileRef = 7E63C62518AC3EFFAAF99745;
-	};
-
-	E53A53935F52CE486D4263E0 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerCore/Support/AppLanguage.swift;
-		sourceTree = "<group>";
-	};
-
-	E690C80D303B3712DD0BEB48 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift;
-		sourceTree = "<group>";
-	};
-
-	E7948FDA3B2676DF5F2B24D0 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/AppLanguageEnvironment.swift;
-		sourceTree = "<group>";
-	};
-
-	E7FC074B15ABCEA621649EB6 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Debug;
+		};
+		E7FC074B15ABCEA621649EB6 /* Release */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/MeowPlannerWidget-iOS.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "Config/MeowPlannerWidget-iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ANG8PQAHH2;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlannerWidget-iOS-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlannerWidget-iOS-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2381,94 +1340,15 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEOWPLANNER_WIDGET_EXTENSION";
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
-	};
-
-	E858B06DEA1C8868C56E34B6 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/WidgetTimelineSyncService.swift;
-		sourceTree = "<group>";
-	};
-
-	E99494170CD77D44A07783B5 = {
-		isa = PBXBuildFile;
-		fileRef = AC0E2599A576534DDAEEE6BF;
-		settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); };
-	};
-
-	EA733E1334E307185C91DF03 = {
-		isa = XCConfigurationList;
-		buildConfigurations = (
-			A9497CE23FDDC0787512981E,
-			A9DD297AC466B8C891118663,
-		);
-		defaultConfigurationIsVisible = 0;
-		defaultConfigurationName = Release;
-	};
-
-	EA9AD785F71D093EBAA17122 = {
-		isa = PBXBuildFile;
-		fileRef = 2D73DD39EB548CA26DB48708;
-	};
-
-	EBEA5461ED0D7C63F9C1612E = {
-		isa = PBXBuildFile;
-		fileRef = 2D73DD39EB548CA26DB48708;
-	};
-
-	EC2A9CBA22B66AD008E8DFC4 = {
-		isa = PBXBuildFile;
-		fileRef = BF533C5A7D54E18C37C98089;
-	};
-
-	EC42B115A4207B974809B900 = {
-		isa = PBXBuildFile;
-		fileRef = E690C80D303B3712DD0BEB48;
-	};
-
-	EF6414F41B285D930A41078C = {
-		isa = PBXBuildFile;
-		fileRef = 7BBB06F616B17D6828A01C39;
-	};
-
-	F175EDC040AE768BED34CAA4 = {
-		isa = PBXFileReference;
-		explicitFileType = wrapper.application;
-		includeInIndex = 0;
-		path = MeowPlanner.app;
-		sourceTree = BUILT_PRODUCTS_DIR;
-	};
-
-	F268C2EF0E946006FC57F088 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift;
-		sourceTree = "<group>";
-	};
-
-	F35C76A143A1080A06A20D54 = {
-		isa = PBXFileReference;
-		lastKnownFileType = folder.assetcatalog;
-		path = Resources/iOSAssets.xcassets;
-		sourceTree = "<group>";
-	};
-
-	F3CF8CAD9CA1DF5FED4BB149 = {
-		isa = PBXBuildFile;
-		fileRef = BEC6BEE8F448C35268B19E6E;
-	};
-
-	F49B7FC24B9B5C2259BA490E = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Release;
+		};
+		F49B7FC24B9B5C2259BA490E /* Release */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/MeowPlannerWidget.entitlements;
@@ -2477,7 +1357,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlannerWidget-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlannerWidget-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -2492,23 +1372,10 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEOWPLANNER_WIDGET_EXTENSION";
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	F515A2AF50D48F2409713C78 = {
-		isa = PBXFileReference;
-		lastKnownFileType = text.plist.xml;
-		path = Config/MeowPlanner-Info.plist;
-		sourceTree = "<group>";
-	};
-
-	F58144AD183ACA44F77FE92B = {
-		isa = PBXBuildFile;
-		fileRef = D490E87E55B480C82A0659D9;
-	};
-
-	F617DBCE4425E01FBD290EA0 = {
-		isa = XCBuildConfiguration;
-		name = Release;
+			name = Release;
+		};
+		F617DBCE4425E01FBD290EA0 /* Release */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -2525,24 +1392,18 @@
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_VERSION = 6.0;
 			};
-	};
-
-	F6765301EDE5D0D1760F6489 = {
-		isa = PBXBuildFile;
-		fileRef = A57EE86928424FF1ED949908;
-	};
-
-	F7907419381F59F23B45E6DE = {
-		isa = XCBuildConfiguration;
-		name = Debug;
+			name = Release;
+		};
+		F7907419381F59F23B45E6DE /* Debug */ = {
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/MeowPlannerWidget-iOS.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "Config/MeowPlannerWidget-iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ANG8PQAHH2;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = Config/MeowPlannerWidget-iOS-Info.plist;
+				INFOPLIST_FILE = "Config/MeowPlannerWidget-iOS-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2554,111 +1415,109 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = (
-					iphoneos,
-					iphonesimulator,
-				);
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MEOWPLANNER_WIDGET_EXTENSION";
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
-	};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
 
-	F7EC414B16694B6CDA0FEFCB = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Components/FuFuEmptyStateView.swift;
-		sourceTree = "<group>";
-	};
+/* Begin XCConfigurationList section */
+		1BDEA66D31E9CFD9E8277B43 /* Build configuration list for PBXNativeTarget "MeowPlanner-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				09EB277CC8E726D088CB93C1 /* Debug */,
+				7FF4B2B0BE1FA2630B96B1D1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2E804071031A67106E08E888 /* Build configuration list for PBXNativeTarget "MeowPlannerWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C09B1DBCC25AAEE0A7DAAF7F /* Debug */,
+				F49B7FC24B9B5C2259BA490E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		57320A0D358CAF6DC361CC25 /* Build configuration list for PBXNativeTarget "MeowPlannerWidgetExtension-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F7907419381F59F23B45E6DE /* Debug */,
+				E7FC074B15ABCEA621649EB6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		634681BC5581CFA9CF006698 /* Build configuration list for PBXNativeTarget "MeowPlannerCore-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D0EABFA6AAC7CC14913F7AD /* Debug */,
+				8017133B1880F0ED0F5FFC45 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BA44B14C8F78B2A72038244D /* Build configuration list for PBXNativeTarget "MeowPlannerCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA4BCFA4F8F780ECC73AB3D9 /* Debug */,
+				F617DBCE4425E01FBD290EA0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CD36D04A0D233D029CECD97A /* Build configuration list for PBXNativeTarget "MeowPlanner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C78748F0939CCFE4B40764C7 /* Debug */,
+				8CB711CD9B55FA7DDBA25370 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EA733E1334E307185C91DF03 /* Build configuration list for PBXProject "MeowPlanner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A9497CE23FDDC0787512981E /* Debug */,
+				A9DD297AC466B8C891118663 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
 
-	F872B3334A23FE072F817D26 = {
-		isa = PBXBuildFile;
-		fileRef = CFE091619B11103B174A8AF4;
-	};
+/* Begin XCRemoteSwiftPackageReference section */
+		7CAD6D28479CBF8021199213 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.14.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
-	F8E02A668A3786424C440995 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift;
-		sourceTree = "<group>";
+/* Begin XCSwiftPackageProductDependency section */
+		03B5A24E19D20744E267F0DB /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7CAD6D28479CBF8021199213 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		147C4662444631333629C1A4 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7CAD6D28479CBF8021199213 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		528C401C34C3045570C1E71F /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7CAD6D28479CBF8021199213 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
-
-	F967B432881D629BCD5BCE2C = {
-		isa = PBXCopyFilesBuildPhase;
-		buildActionMask = 2147483647;
-		dstSubfolderSpec = 13;
-		files = (
-			88262D8E050077D14C9083B7,
-		);
-		name = "Embed App Extensions";
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	FA336494A35D0CC3BF74185E = {
-		isa = PBXResourcesBuildPhase;
-		buildActionMask = 2147483647;
-		files = (
-		);
-		runOnlyForDeploymentPostprocessing = 0;
-	};
-
-	FA78844A2572155505BA5C8B = {
-		isa = PBXBuildFile;
-		fileRef = 7FF8FB72BD89E0B90E4D0601;
-	};
-
-	FA98C30EA1AFDA9CBB767013 = {
-		isa = PBXFileReference;
-		lastKnownFileType = sourcecode.swift;
-		path = Sources/MeowPlannerApp/Views/Focus/FocusView.swift;
-		sourceTree = "<group>";
-	};
-
-	FB2EDE17BEE61AFC2B88A112 = {
-		isa = PBXFileReference;
-		lastKnownFileType = file;
-		path = Resources/iOSBackgroundDark.png;
-		sourceTree = "<group>";
-	};
-
-	FC8F5A85394B0D5FF7E93AFA = {
-		isa = PBXGroup;
-		children = (
-			721CE965314E162B64D1610B,
-			40D49E1B20A7685EB0570DC4,
-			24A04CAA495D579768B6F716,
-			773DCE90197176C4D5385F3A,
-			1E77D2F5881A167064871C23,
-			BA7E1C7367EC6EFBDB2CE701,
-			BFE3C6F343234E2F26520FB8,
-			7FF8FB72BD89E0B90E4D0601,
-			040686DDAF33884C5AA3A0E9,
-			2D73DD39EB548CA26DB48708,
-			8F94AC40C231E5522EA03CB1,
-			9D84EEF9584A8114C70E9EFB,
-			95544B4881D053A1832F0761,
-			38F6F5CA40C95F3BE67F769C,
-			77AC5BEE7E35599433E83154,
-			D0A8402802E0226BE82F7B66,
-			5229A11767BD315215460B82,
-			D8547D30C056663E71FE08EC,
-			A9EA7632D4F30E1B84B0ED83,
-			BF533C5A7D54E18C37C98089,
-			33193FACACEF39E3A48ED164,
-			E53A53935F52CE486D4263E0,
-			707AA3AEAD226634825065D1,
-			1277AA39ABF53256B86CC887,
-			CA9F46105A03E73480077958,
-			53FFE9382A5AE05C52D0840B,
-		);
-		name = MeowPlannerCore;
-		sourceTree = "<group>";
-	};
-
-	FCA728FFE2D71BE926F8528E = {
-		isa = PBXBuildFile;
-		fileRef = 18DBB8BE4C04D49695695A1A;
-	};
-	};
-	rootObject = 98F54143AB4E86B28C3AFEE0;
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
 }

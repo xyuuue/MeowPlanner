@@ -157,6 +157,7 @@ struct MeowPlannerApp: App {
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
     @StateObject private var focusTimerStore: FocusTimerStore
     #if os(macOS)
+    @AppStorage(AppMenuBarIconPreference.storageKey) private var showMenuBarIcon = AppMenuBarIconPreference.defaultShowMenuBarIcon
     @NSApplicationDelegateAdaptor(MeowPlannerApplicationDelegate.self) private var appDelegate
     #endif
 
@@ -236,7 +237,7 @@ struct MeowPlannerApp: App {
         #endif
 
         #if os(macOS)
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
             MeowPlannerMenuBarView(
                 legacyModelContainer: legacyModelContainer,
                 openAppKitMainWindow: openAppKitMainWindow

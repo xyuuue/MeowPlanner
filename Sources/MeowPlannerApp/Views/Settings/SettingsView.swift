@@ -17,6 +17,9 @@ enum SettingsDestination: Hashable {
 
 private enum SettingsSheet: String, Identifiable {
     case eventColorEditor
+    #if os(iOS)
+    case widgetPhotoBackgroundEditor
+    #endif
     case signIn
     case linkAccount
     case linkEmail
@@ -30,11 +33,33 @@ private let settingsHomeContentTopInset: CGFloat = 24
 private let settingsDestinationContentTopInset: CGFloat = 28
 #if os(iOS)
 private let settingsPersonalizationBottomScrollExpansion: CGFloat = 260
+private let iosWidgetBackgroundStyles: [WidgetBackgroundStyle] = [.defaultArtwork, .customPhoto]
+private let widgetTimelineReloadDelays: [UInt64] = [
+    0,
+    120_000_000,
+    250_000_000,
+    500_000_000,
+    900_000_000,
+    1_500_000_000,
+    2_500_000_000,
+    5_000_000_000,
+    10_000_000_000,
+    20_000_000_000
+]
 
 private func settingsContentBottomNavigationMaskHeight(safeAreaInsets: EdgeInsets) -> CGFloat {
     IOSAppNavigationMetrics.bottomNavigationContentHeight
         + IOSAppNavigationMetrics.bottomNavigationTopPadding
         + IOSAppNavigationMetrics.bottomNavigationBottomPadding(for: safeAreaInsets)
+}
+
+private func normalizedIOSWidgetBackgroundStyle(_ style: WidgetBackgroundStyle) -> WidgetBackgroundStyle {
+    switch style {
+    case .customPhoto:
+        .customPhoto
+    default:
+        .defaultArtwork
+    }
 }
 #else
 private let settingsPersonalizationBottomScrollExpansion: CGFloat = 0
@@ -47,6 +72,9 @@ struct SettingsView: View {
     @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
     @AppStorage(AppAppearancePreference.storageKey) private var appearanceID = AppAppearancePreference.system.rawValue
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
+    #if os(macOS)
+    @AppStorage(AppMenuBarIconPreference.storageKey) private var showMenuBarIcon = AppMenuBarIconPreference.defaultShowMenuBarIcon
+    #endif
     #if os(iOS)
     @AppStorage(AppSection.iosBottomNavigationStorageKey) private var iosBottomNavigationRaw = AppSection.defaultIOSBottomNavigationStorageValue
     #endif
@@ -68,13 +96,15 @@ struct SettingsView: View {
     @State private var eventColorHexes = PlannerPreference.defaultEventColorHexes
     #if os(iOS)
     @State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?
-    @State private var selectedWidgetWallpaperPhotoItem: PhotosPickerItem?
-    @State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+    @State private var pendingWidgetBackgroundPhotoImage: UIImage?
+    @State private var pendingWidgetBackgroundPhotoData: Data?
+    @State private var widgetBackgroundStyle = normalizedIOSWidgetBackgroundStyle(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS))
     @State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
-    @State private var widgetWallpaperHorizontalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).horizontalOffset
-    @State private var widgetWallpaperVerticalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).verticalOffset
-    @State private var widgetWallpaperScale = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).scale
-    @State private var widgetWallpaperPlacement = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).placement
+    @State private var widgetTextColor = MeowPlannerTheme.color(hex: WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) ?? WidgetPlannerPreferenceStore.defaultWidgetTextColorHex)
+    @State private var hasCustomWidgetTextColor = WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) != nil
+    @State private var widgetCustomPhotoPlacement = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).placement
+    @State private var widgetCustomPhotoVerticalOffset = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).verticalOffset
+    @State private var widgetCustomPhotoScale = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).scale
     @State private var widgetPhotoImportError: String?
     #endif
     @State private var showingTimeCollapsePanel = false
@@ -176,9 +206,7 @@ struct SettingsView: View {
     #if os(iOS)
     private var settingsWithIOSWidgetChanges: some View {
         settingsWithPreferenceChanges
-            .onChange(of: widgetBackgroundStyle) { _, newValue in
-                persistWidgetBackgroundStyle(newValue)
-            }
+            .onAppear(perform: refreshWidgetBackgroundStateAndTimelinesIfNeeded)
             .onChange(of: widgetAppearanceID) { _, newValue in
                 persistWidgetAppearancePreference(newValue)
             }
@@ -186,23 +214,6 @@ struct SettingsView: View {
                 Task {
                     await importWidgetBackgroundPhoto(from: newValue)
                 }
-            }
-            .onChange(of: selectedWidgetWallpaperPhotoItem) { _, newValue in
-                Task {
-                    await importWidgetWallpaperBackgroundPhoto(from: newValue)
-                }
-            }
-            .onChange(of: widgetWallpaperHorizontalOffset) { _, _ in
-                persistWidgetWallpaperBackgroundAdjustment()
-            }
-            .onChange(of: widgetWallpaperVerticalOffset) { _, _ in
-                persistWidgetWallpaperBackgroundAdjustment()
-            }
-            .onChange(of: widgetWallpaperScale) { _, _ in
-                persistWidgetWallpaperBackgroundAdjustment()
-            }
-            .onChange(of: widgetWallpaperPlacement) { _, _ in
-                persistWidgetWallpaperBackgroundAdjustment()
             }
     }
     #endif
@@ -320,6 +331,9 @@ struct SettingsView: View {
             languageSection
             appearanceSection
             #if os(macOS)
+            menuBarIconSection
+            #endif
+            #if os(macOS)
             dockIconSection
             #endif
             focusSection
@@ -334,8 +348,12 @@ struct SettingsView: View {
 
     #if os(iOS)
     private var widgetSettingsPage: some View {
-        settingsForm {
+        settingsForm(
+            bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion,
+            hidesContentBehindBottomNavigation: true
+        ) {
             widgetAppearanceSection
+            widgetTextColorSection
             widgetBackgroundSection
         }
         .settingsPlatformNavigationTitle(PlannerCopy.text(.widgetSettings, language: appLanguage))
@@ -363,12 +381,31 @@ struct SettingsView: View {
         }
     }
 
+    private var widgetTextColorSection: some View {
+        Section(widgetTextColorSectionTitle) {
+            ColorPicker(widgetTextColorPickerTitle, selection: widgetTextColorBinding, supportsOpacity: false)
+
+            if hasCustomWidgetTextColor {
+                Button(widgetTextColorResetTitle) {
+                    resetWidgetTextColor()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(MeowPlannerTheme.caramel)
+            }
+
+            Text(widgetTextColorDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var widgetBackgroundSection: some View {
         Section(PlannerCopy.text(.widgetBackground, language: appLanguage)) {
             let chooseBackgroundImageTitle = PlannerCopy.text(.chooseBackgroundImage, language: appLanguage)
+            let editBackgroundImageTitle = widgetCustomPhotoEditTitle
 
-            Picker(PlannerCopy.text(.widgetBackground, language: appLanguage), selection: $widgetBackgroundStyle) {
-                ForEach(WidgetBackgroundStyle.allCases) { style in
+            Picker(PlannerCopy.text(.widgetBackground, language: appLanguage), selection: widgetBackgroundStyleBinding) {
+                ForEach(iosWidgetBackgroundStyles) { style in
                     Text(style.title(language: appLanguage)).tag(style)
                 }
             }
@@ -389,10 +426,25 @@ struct SettingsView: View {
                     .padding(.vertical, 2)
                 }
                 .buttonStyle(.plain)
-            }
 
-            if widgetBackgroundStyle == .wallpaperPhoto {
-                widgetWallpaperBackgroundControls
+                if WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS) {
+                    Button {
+                        openWidgetPhotoBackgroundEditor()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 18, weight: .semibold))
+                                .symbolRenderingMode(.monochrome)
+                                .foregroundStyle(MeowPlannerTheme.caramel)
+                                .frame(width: 28, height: 28)
+
+                            Text(editBackgroundImageTitle)
+                                .foregroundStyle(MeowPlannerTheme.caramel)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             if let widgetPhotoImportError {
@@ -407,93 +459,75 @@ struct SettingsView: View {
         }
     }
 
-    private var widgetWallpaperBackgroundControls: some View {
-        let wallpaperChooseTitle = widgetWallpaperChooseTitle
-
-        return VStack(alignment: .leading, spacing: 12) {
-            PhotosPicker(selection: $selectedWidgetWallpaperPhotoItem, matching: .images) {
-                HStack(spacing: 12) {
-                    Image(systemName: "photo.badge.checkmark")
-                        .font(.system(size: 18, weight: .semibold))
-                        .symbolRenderingMode(.monochrome)
-                        .foregroundStyle(MeowPlannerTheme.caramel)
-                        .frame(width: 28, height: 28)
-
-                    Text(wallpaperChooseTitle)
-                        .foregroundStyle(MeowPlannerTheme.caramel)
-                }
-                .padding(.vertical, 2)
+    private var widgetBackgroundStyleBinding: Binding<WidgetBackgroundStyle> {
+        Binding(
+            get: {
+                widgetBackgroundStyle
+            },
+            set: { newValue in
+                persistWidgetBackgroundStyle(newValue)
             }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 10) {
-                Picker(widgetWallpaperPlacementTitle, selection: $widgetWallpaperPlacement) {
-                    ForEach(WidgetWallpaperBackgroundPlacement.allCases) { placement in
-                        Text(placement.title(language: appLanguage)).tag(placement)
-                    }
-                }
-                .fufuSegmentedPickerStyle()
-
-                widgetWallpaperSlider(
-                    title: widgetWallpaperHorizontalOffsetTitle,
-                    value: widgetWallpaperHorizontalOffset
-                ) {
-                    Slider(value: $widgetWallpaperHorizontalOffset, in: -160...160, step: 1)
-                }
-
-                widgetWallpaperSlider(
-                    title: widgetWallpaperVerticalOffsetTitle,
-                    value: widgetWallpaperVerticalOffset
-                ) {
-                    Slider(value: $widgetWallpaperVerticalOffset, in: -160...160, step: 1)
-                }
-
-                widgetWallpaperSlider(
-                    title: widgetWallpaperScaleTitle,
-                    value: widgetWallpaperScale,
-                    format: .number.precision(.fractionLength(2))
-                ) {
-                    Slider(value: $widgetWallpaperScale, in: 0.8...2, step: 0.01)
-                }
-            }
-
-            Button(widgetWallpaperResetTitle) {
-                resetWidgetWallpaperBackgroundAdjustment()
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(MeowPlannerTheme.caramel)
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func widgetWallpaperSlider<SliderContent: View>(
-        title: String,
-        value: Double,
-        format: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0)),
-        @ViewBuilder slider: () -> SliderContent
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(value.formatted(format))
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
-
-            slider()
-                .tint(MeowPlannerTheme.caramel)
-        }
+        )
     }
 
     private func persistWidgetBackgroundStyle(_ newValue: WidgetBackgroundStyle) {
-        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(newValue, platform: .iOS)
-        reloadWidgetTimelines()
+        let normalizedValue = normalizedIOSWidgetBackgroundStyle(newValue)
+
+        widgetBackgroundStyle = normalizedValue
+        widgetPhotoImportError = nil
+        WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(normalizedValue, platform: .iOS)
+
+        switch normalizedValue {
+        case .customPhoto:
+            WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)
+            guard WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS) else {
+                WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)
+                scheduleWidgetTimelineReloads()
+                return
+            }
+        default:
+            break
+        }
+
+        WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)
+        scheduleWidgetTimelineReloads()
     }
 
     private func persistWidgetAppearancePreference(_ newValue: String) {
         WidgetPlannerPreferenceStore.setWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue), platform: .iOS)
-        reloadWidgetTimelines()
+        if widgetBackgroundStyle == .defaultArtwork {
+            WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)
+        }
+        scheduleWidgetTimelineReloads()
+    }
+
+    private var widgetTextColorBinding: Binding<Color> {
+        Binding(
+            get: {
+                widgetTextColor
+            },
+            set: { newValue in
+                widgetTextColor = newValue
+                persistWidgetTextColor(newValue)
+            }
+        )
+    }
+
+    private func persistWidgetTextColor(_ newValue: Color) {
+        guard let hex = MeowPlannerTheme.hex(color: newValue) else {
+            return
+        }
+
+        WidgetPlannerPreferenceStore.setWidgetTextColorHex(hex, platform: .iOS)
+        hasCustomWidgetTextColor = true
+        scheduleWidgetTimelineReloads()
+    }
+
+    private func resetWidgetTextColor() {
+        WidgetPlannerPreferenceStore.clearWidgetTextColorHex(platform: .iOS)
+        widgetTextColor = MeowPlannerTheme.color(hex: WidgetPlannerPreferenceStore.defaultWidgetTextColorHex)
+        hasCustomWidgetTextColor = false
+        scheduleWidgetTimelineReloads()
     }
 
     @MainActor
@@ -502,76 +536,151 @@ struct SettingsView: View {
             return
         }
 
+        defer {
+            selectedWidgetBackgroundPhotoItem = nil
+        }
+
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
                 return
             }
+            guard let image = UIImage(data: data) else {
+                throw WidgetBackgroundImageStorageError.missingSharedContainer
+            }
 
-            try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, platform: .iOS)
+            loadWidgetCustomPhotoAdjustmentState()
+            pendingWidgetBackgroundPhotoImage = image
+            pendingWidgetBackgroundPhotoData = data
             widgetPhotoImportError = nil
-            widgetBackgroundStyle = .customPhoto
-            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, platform: .iOS)
-            reloadWidgetTimelines()
+            activeSettingsSheet = .widgetPhotoBackgroundEditor
         } catch {
             widgetPhotoImportError = widgetPhotoImportFailureMessage
         }
     }
 
-    @MainActor
-    private func importWidgetWallpaperBackgroundPhoto(from item: PhotosPickerItem?) async {
-        guard let item else {
+    private func openWidgetPhotoBackgroundEditor() {
+        guard let data = WidgetPlannerPreferenceStore.customBackgroundImageData(platform: .iOS),
+              let image = UIImage(data: data) else {
+            widgetPhotoImportError = widgetMissingCustomPhotoMessage
+            return
+        }
+
+        loadWidgetCustomPhotoAdjustmentState()
+        pendingWidgetBackgroundPhotoImage = image
+        pendingWidgetBackgroundPhotoData = data
+        widgetPhotoImportError = nil
+        activeSettingsSheet = .widgetPhotoBackgroundEditor
+    }
+
+    private func saveWidgetBackgroundPhoto() {
+        guard let imageData = pendingWidgetBackgroundPhotoData else {
+            widgetPhotoImportError = widgetPhotoImportFailureMessage
             return
         }
 
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                return
+            try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(imageData, platform: .iOS)
+            guard WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS) else {
+                throw WidgetBackgroundImageStorageError.missingSharedContainer
             }
 
-            try WidgetPlannerPreferenceStore.saveWallpaperBackgroundImageData(data, platform: .iOS)
-            WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundScreenMetrics(
-                WidgetWallpaperBackgroundScreenMetrics(
-                    width: UIScreen.main.bounds.width,
-                    height: UIScreen.main.bounds.height,
-                    scale: UIScreen.main.scale
+            WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)
+            WidgetPlannerPreferenceStore.setWidgetCustomPhotoBackgroundAdjustment(
+                WidgetCustomPhotoBackgroundAdjustment(
+                    placement: widgetCustomPhotoPlacement,
+                    horizontalOffset: 0,
+                    verticalOffset: widgetCustomPhotoVerticalOffset,
+                    scale: widgetCustomPhotoScale
+                ),
+                platform: .iOS
+            )
+            WidgetPlannerPreferenceStore.setWidgetCustomPhotoBackgroundScreenMetrics(
+                WidgetCustomPhotoBackgroundScreenMetrics(
+                    width: Double(UIScreen.main.bounds.width),
+                    height: Double(UIScreen.main.bounds.height),
+                    scale: Double(UIScreen.main.scale)
                 ),
                 platform: .iOS
             )
             widgetPhotoImportError = nil
-            widgetBackgroundStyle = .wallpaperPhoto
-            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.wallpaperPhoto, platform: .iOS)
-            reloadWidgetTimelines()
+            widgetBackgroundStyle = .customPhoto
+            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, platform: .iOS)
+            WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)
+            pendingWidgetBackgroundPhotoImage = nil
+            pendingWidgetBackgroundPhotoData = nil
+            activeSettingsSheet = nil
+            scheduleWidgetTimelineReloads()
         } catch {
             widgetPhotoImportError = widgetPhotoImportFailureMessage
         }
     }
 
-    private func persistWidgetWallpaperBackgroundAdjustment() {
-        WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment(
-            WidgetWallpaperBackgroundAdjustment(
-                placement: widgetWallpaperPlacement,
-                horizontalOffset: widgetWallpaperHorizontalOffset,
-                verticalOffset: widgetWallpaperVerticalOffset,
-                scale: widgetWallpaperScale
-            ),
-            platform: .iOS
-        )
-        reloadWidgetTimelines()
+    private func cancelWidgetBackgroundPhotoEditing() {
+        pendingWidgetBackgroundPhotoImage = nil
+        pendingWidgetBackgroundPhotoData = nil
+        activeSettingsSheet = nil
+        loadWidgetCustomPhotoAdjustmentState()
     }
 
-    private func resetWidgetWallpaperBackgroundAdjustment() {
-        WidgetPlannerPreferenceStore.resetWidgetWallpaperBackgroundAdjustment(platform: .iOS)
-        let adjustment = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS)
-        widgetWallpaperPlacement = adjustment.placement
-        widgetWallpaperHorizontalOffset = adjustment.horizontalOffset
-        widgetWallpaperVerticalOffset = adjustment.verticalOffset
-        widgetWallpaperScale = adjustment.scale
-        reloadWidgetTimelines()
+    private func loadWidgetCustomPhotoAdjustmentState() {
+        let adjustment = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS)
+        widgetCustomPhotoPlacement = adjustment.placement
+        widgetCustomPhotoVerticalOffset = adjustment.verticalOffset
+        widgetCustomPhotoScale = adjustment.scale
+    }
+
+    private func refreshWidgetBackgroundStateAndTimelinesIfNeeded() {
+        let repairedBackgroundStyleMirrors = WidgetPlannerPreferenceStore
+            .synchronizeWidgetBackgroundStyleMirrors(platform: .iOS)
+        let storedBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+        let normalizedBackgroundStyle = normalizeStoredIOSWidgetBackgroundStyleIfNeeded()
+        widgetBackgroundStyle = normalizedBackgroundStyle
+        let normalizedBackgroundStyleChanged = storedBackgroundStyle != normalizedBackgroundStyle
+        let repairedCustomBackgroundMirrors = widgetBackgroundStyle == .customPhoto
+            && WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)
+
+        guard repairedBackgroundStyleMirrors || normalizedBackgroundStyleChanged || repairedCustomBackgroundMirrors else {
+            return
+        }
+
+        scheduleWidgetTimelineReloads()
+    }
+
+    private func scheduleWidgetTimelineReloads() {
+        Task { @MainActor in
+            await reloadWidgetTimelinesRepeatedly()
+        }
+    }
+
+    @MainActor
+    private func reloadWidgetTimelinesRepeatedly() async {
+        WidgetPlannerPreferenceStore.synchronizeWidgetBackgroundStyleMirrors(platform: .iOS)
+        for delay in widgetTimelineReloadDelays {
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            reloadWidgetTimelines()
+        }
     }
 
     private func reloadWidgetTimelines() {
+        WidgetPlannerPreferenceStore.synchronizeWidgetBackgroundStyleMirrors(platform: .iOS)
+        WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    @discardableResult
+    private func normalizeStoredIOSWidgetBackgroundStyleIfNeeded() -> WidgetBackgroundStyle {
+        let storedStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+        let normalizedStyle = normalizedIOSWidgetBackgroundStyle(storedStyle)
+
+        if storedStyle != normalizedStyle {
+            WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(normalizedStyle, platform: .iOS)
+            WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)
+        }
+
+        return normalizedStyle
     }
     #endif
 
@@ -647,6 +756,29 @@ struct SettingsView: View {
                     addEventColor(colorHex)
                 }
             }
+        #if os(iOS)
+        case .widgetPhotoBackgroundEditor:
+            if let pendingWidgetBackgroundPhotoImage {
+                WidgetPhotoBackgroundEditor(
+                    image: pendingWidgetBackgroundPhotoImage,
+                    language: appLanguage,
+                    placement: $widgetCustomPhotoPlacement,
+                    verticalOffset: $widgetCustomPhotoVerticalOffset,
+                    scale: $widgetCustomPhotoScale,
+                    onCancel: {
+                        cancelWidgetBackgroundPhotoEditing()
+                    },
+                    onSave: {
+                        saveWidgetBackgroundPhoto()
+                    }
+                )
+            } else {
+                EmptyView()
+                    .onAppear {
+                        activeSettingsSheet = nil
+                    }
+            }
+        #endif
         case .signIn:
             AccountAuthenticationModalView(
                 accountStore: accountStore,
@@ -724,6 +856,16 @@ struct SettingsView: View {
             }
         }
     }
+
+    #if os(macOS)
+    private var menuBarIconSection: some View {
+        Section(PlannerCopy.text(.menuBarIcon, language: appLanguage)) {
+            Toggle(PlannerCopy.text(.showMenuBarIcon, language: appLanguage), isOn: $showMenuBarIcon)
+                .fufuControlTint()
+        }
+    }
+
+    #endif
 
     #if os(macOS)
     private var dockIconSection: some View {
@@ -1038,8 +1180,8 @@ struct SettingsView: View {
     #if os(iOS)
     private var widgetDestinationSubtitle: String {
         appLanguage == .chinese
-            ? "外观、背景、相册图片和透明显示"
-            : "Appearance, background, photo, and transparent display"
+            ? "外观、背景和相册图片"
+            : "Appearance, background, and photo"
     }
 
     private var widgetAppearanceSectionTitle: String {
@@ -1054,9 +1196,27 @@ struct SettingsView: View {
         appearanceManualModeTitle
     }
 
+    private var widgetTextColorSectionTitle: String {
+        appLanguage == .chinese ? "小组件文字颜色" : "Widget text color"
+    }
+
+    private var widgetTextColorPickerTitle: String {
+        appLanguage == .chinese ? "文字颜色" : "Text color"
+    }
+
+    private var widgetTextColorResetTitle: String {
+        appLanguage == .chinese ? "重置文字颜色" : "Reset text color"
+    }
+
+    private var widgetTextColorDescription: String {
+        appLanguage == .chinese
+            ? "自定义桌面小组件中的日期、按钮和日程文字颜色；重置后恢复自动配色。"
+            : "Customize date, button, and schedule text colors in Home Screen widgets; reset to restore automatic colors."
+    }
+
     private var widgetBackgroundDescription: String {
         switch widgetBackgroundStyle {
-        case .defaultArtwork:
+        case .defaultArtwork, .wallpaperPhoto:
             appLanguage == .chinese
                 ? "使用 MeowPlanner 默认小组件背景。"
                 : "Use the default MeowPlanner widget background."
@@ -1064,45 +1224,23 @@ struct SettingsView: View {
             appLanguage == .chinese
                 ? "从相册选择的图片会保存到共享空间，仅用于小组件背景。"
                 : "The selected photo is saved to shared storage and used only as the widget background."
-        case .transparent:
-            appLanguage == .chinese
-                ? "不绘制 MeowPlanner 自带背景图案，只保留小组件内容。"
-                : "Do not draw MeowPlanner's background artwork; keep the widget content visible."
-        case .wallpaperPhoto:
-            appLanguage == .chinese
-                ? "使用桌面壁纸截图并通过位置微调模拟透明，同时保持其他 App 原本颜色。"
-                : "Use a Home Screen wallpaper screenshot with alignment controls to simulate transparency while keeping other apps in their original colors."
         }
-    }
-
-    private var widgetWallpaperChooseTitle: String {
-        appLanguage == .chinese ? "选择桌面壁纸截图" : "Choose Home Screen wallpaper"
-    }
-
-    private var widgetWallpaperHorizontalOffsetTitle: String {
-        appLanguage == .chinese ? "水平位置" : "Horizontal position"
-    }
-
-    private var widgetWallpaperPlacementTitle: String {
-        appLanguage == .chinese ? "小组件位置" : "Widget position"
-    }
-
-    private var widgetWallpaperVerticalOffsetTitle: String {
-        appLanguage == .chinese ? "垂直位置" : "Vertical position"
-    }
-
-    private var widgetWallpaperScaleTitle: String {
-        appLanguage == .chinese ? "缩放" : "Scale"
-    }
-
-    private var widgetWallpaperResetTitle: String {
-        appLanguage == .chinese ? "重置壁纸位置" : "Reset wallpaper position"
     }
 
     private var widgetPhotoImportFailureMessage: String {
         appLanguage == .chinese
             ? "无法导入这张图片，请重新选择。"
             : "Could not import this image. Choose another photo."
+    }
+
+    private var widgetMissingCustomPhotoMessage: String {
+        appLanguage == .chinese
+            ? "请先选择一张相册图片，再应用相册背景。"
+            : "Choose a photo before applying the photo background."
+    }
+
+    private var widgetCustomPhotoEditTitle: String {
+        appLanguage == .chinese ? "编辑图片位置" : "Edit photo position"
     }
     #endif
 
@@ -1145,13 +1283,11 @@ struct SettingsView: View {
         eventColorHexes = preference.eventColorHexes
         eventColorEditorHex = eventColorHexes.first ?? PlannerPreference.defaultEventColorHexes[0]
         #if os(iOS)
-        widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)
+        widgetBackgroundStyle = normalizeStoredIOSWidgetBackgroundStyleIfNeeded()
         widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue
-        let wallpaperAdjustment = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS)
-        widgetWallpaperPlacement = wallpaperAdjustment.placement
-        widgetWallpaperHorizontalOffset = wallpaperAdjustment.horizontalOffset
-        widgetWallpaperVerticalOffset = wallpaperAdjustment.verticalOffset
-        widgetWallpaperScale = wallpaperAdjustment.scale
+        widgetTextColor = MeowPlannerTheme.color(hex: WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) ?? WidgetPlannerPreferenceStore.defaultWidgetTextColorHex)
+        hasCustomWidgetTextColor = WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) != nil
+        loadWidgetCustomPhotoAdjustmentState()
         #endif
         WidgetPlannerPreferenceStore.weekStartPreference = preference.weekStartPreference
         WidgetPlannerPreferenceStore.showChineseCalendar = preference.showChineseCalendar
@@ -1383,6 +1519,214 @@ struct SettingsView: View {
         savePreferenceUpdate()
     }
 }
+
+#if os(iOS)
+private struct WidgetPhotoBackgroundEditor: View {
+    var image: UIImage
+    var language: AppLanguage
+    @Binding var placement: WidgetCustomPhotoBackgroundPlacement
+    @Binding var verticalOffset: Double
+    @Binding var scale: Double
+    var onCancel: () -> Void
+    var onSave: () -> Void
+
+    @State private var dragStartVerticalOffset: Double?
+
+    var body: some View {
+        NavigationStack {
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    GeometryReader { previewProxy in
+                        let previewSize = CGSize(
+                            width: max(1, previewProxy.size.width),
+                            height: max(1, previewProxy.size.height)
+                        )
+
+                        editorPreview(screenSize: previewSize)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+
+                    editorControls
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, max(0, proxy.safeAreaInsets.bottom))
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .background(Color.black.opacity(0.04))
+            }
+            .navigationTitle(editorTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(PlannerCopy.text(.cancel, language: language)) {
+                        onCancel()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(confirmTitle) {
+                        onSave()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    private func editorPreview(screenSize: CGSize) -> some View {
+        let widgetSize = referenceWidgetSize(in: screenSize)
+        let screenMetrics = WidgetCustomPhotoBackgroundScreenMetrics(
+            width: Double(screenSize.width),
+            height: Double(screenSize.height),
+            scale: Double(UIScreen.main.scale)
+        )
+        let widgetOrigin = WidgetCustomPhotoBackgroundLayout.widgetOrigin(
+            screenMetrics: screenMetrics,
+            widgetSize: widgetSize,
+            adjustment: currentAdjustment
+        )
+
+        return ZStack(alignment: .topLeading) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .scaleEffect(CGFloat(scale), anchor: .topLeading)
+                .frame(width: screenSize.width, height: screenSize.height)
+                .clipped()
+
+            Color.black.opacity(0.18)
+
+            widgetReferenceFrame(size: widgetSize)
+                .position(
+                    x: CGFloat(widgetOrigin.x) + CGFloat(widgetSize.width / 2),
+                    y: CGFloat(widgetOrigin.y) + CGFloat(widgetSize.height / 2)
+                )
+                .gesture(widgetVerticalDragGesture)
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+        .clipped()
+    }
+
+    private var currentAdjustment: WidgetCustomPhotoBackgroundAdjustment {
+        WidgetCustomPhotoBackgroundAdjustment(
+            placement: placement,
+            horizontalOffset: 0,
+            verticalOffset: verticalOffset,
+            scale: scale
+        )
+    }
+
+    private var widgetVerticalDragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if dragStartVerticalOffset == nil {
+                    dragStartVerticalOffset = verticalOffset
+                }
+
+                let proposedOffset = (dragStartVerticalOffset ?? verticalOffset) + Double(value.translation.height)
+                verticalOffset = clamped(
+                    proposedOffset,
+                    minimum: WidgetCustomPhotoBackgroundAdjustment.minimumOffset,
+                    maximum: WidgetCustomPhotoBackgroundAdjustment.maximumOffset
+                )
+            }
+            .onEnded { _ in
+                dragStartVerticalOffset = nil
+            }
+    }
+
+    private var editorControls: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker(placementTitle, selection: $placement) {
+                ForEach(WidgetCustomPhotoBackgroundPlacement.allCases) { option in
+                    Text(option.title(language: language)).tag(option)
+                }
+            }
+            .fufuSegmentedPickerStyle()
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(scaleTitle)
+                    Spacer()
+                    Text("\(Int((scale * 100).rounded()))%")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+
+                Slider(
+                    value: $scale,
+                    in: WidgetCustomPhotoBackgroundAdjustment.minimumScale...WidgetCustomPhotoBackgroundAdjustment.maximumScale
+                )
+            }
+
+            Text(editorHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 18)
+        .padding(.bottom, 14)
+    }
+
+    private func widgetReferenceFrame(size: WidgetCustomPhotoBackgroundWidgetSize) -> some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(Color.white.opacity(0.16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.92), lineWidth: 2)
+            }
+            .overlay(alignment: .center) {
+                VStack(spacing: 6) {
+                    Image(systemName: "rectangle.on.rectangle.angled")
+                        .font(.title3.weight(.semibold))
+                    Text(optionTitle)
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            }
+            .frame(width: CGFloat(size.width), height: CGFloat(size.height))
+            .shadow(color: .black.opacity(0.22), radius: 16, y: 8)
+    }
+
+    private func referenceWidgetSize(in screenSize: CGSize) -> WidgetCustomPhotoBackgroundWidgetSize {
+        let width = min(max(240, screenSize.width - 48), 342)
+        let height = max(110, width * 0.47)
+        return WidgetCustomPhotoBackgroundWidgetSize(width: Double(width), height: Double(height))
+    }
+
+    private func clamped(_ value: Double, minimum: Double, maximum: Double) -> Double {
+        min(max(value, minimum), maximum)
+    }
+
+    private var editorTitle: String {
+        language == .chinese ? "编辑图片位置" : "Edit Photo Position"
+    }
+
+    private var confirmTitle: String {
+        language == .chinese ? "完成" : "Done"
+    }
+
+    private var placementTitle: String {
+        language == .chinese ? "小组件位置" : "Widget position"
+    }
+
+    private var scaleTitle: String {
+        language == .chinese ? "图片缩放" : "Photo scale"
+    }
+
+    private var editorHint: String {
+        language == .chinese
+            ? "选择小组件在桌面上的上方、中间或下方位置；拖动白色框可上下微调。"
+            : "Choose the widget's top, middle, or bottom Home Screen position; drag the white frame vertically for fine tuning."
+    }
+
+    private var optionTitle: String {
+        language == .chinese ? "小组件区域" : "Widget area"
+    }
+}
+#endif
 
 private extension View {
     @ViewBuilder

@@ -79,6 +79,38 @@ struct XcodeWidgetProjectTests {
         #expect(project.contains("Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift"))
     }
 
+    @Test("macOS menu bar icon visibility is independently configurable and shown by default")
+    func macOSMenuBarIconVisibilityIsConfigurable() throws {
+        let root = try packageRoot()
+        let appSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift"),
+            encoding: .utf8
+        )
+        let preferenceSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Support/AppDockIconController.swift"),
+            encoding: .utf8
+        )
+        let settingsSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift"),
+            encoding: .utf8
+        )
+        let languageSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift"),
+            encoding: .utf8
+        )
+
+        #expect(preferenceSource.contains("static let storageKey = \"meowplanner.showMenuBarIcon\""))
+        #expect(preferenceSource.contains("static let defaultShowMenuBarIcon = true"))
+        #expect(appSource.contains("@AppStorage(AppMenuBarIconPreference.storageKey) private var showMenuBarIcon"))
+        #expect(appSource.contains("MenuBarExtra(isInserted: $showMenuBarIcon)"))
+        #expect(settingsSource.contains("private var menuBarIconSection: some View"))
+        #expect(settingsSource.contains("Toggle(PlannerCopy.text(.showMenuBarIcon"))
+        #expect(settingsSource.contains("isOn: $showMenuBarIcon"))
+        #expect(languageSource.contains(".showMenuBarIcon: \"Show icon in menu bar\""))
+        #expect(languageSource.contains(".showMenuBarIcon: \"在菜单栏中显示图标\""))
+        #expect(preferenceSource.contains("static let storageKey = \"meowplanner.showDockIcon\""))
+    }
+
     @Test("today widget supports large desktop sizes")
     func todayWidgetSupportsLargeDesktopSizes() throws {
         let root = try packageRoot()
@@ -556,8 +588,8 @@ struct XcodeWidgetProjectTests {
         #expect(languageSource.contains(".restoreDefault: \"恢复默认\""))
     }
 
-    @Test("iOS settings can choose widget background image or transparent mode")
-    func iosSettingsCanChooseWidgetBackgroundImageOrTransparentMode() throws {
+    @Test("iOS settings can choose only default or photo widget background")
+    func iosSettingsCanChooseOnlyDefaultOrPhotoWidgetBackground() throws {
         let root = try packageRoot()
         let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
         let languageFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/AppLanguage.swift")
@@ -571,111 +603,553 @@ struct XcodeWidgetProjectTests {
         let widgetSettingsSource = try sourceWindow(
             in: settingsSource,
             from: "private var widgetSettingsPage",
-            length: 10_500
+            length: 7_000
         )
+        let backgroundSectionSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetBackgroundSection",
+            to: "private var widgetBackgroundStyleBinding"
+        ))
         let widgetConfigurationSource = try #require(sourceBlock(
             in: widgetSource,
             from: "public var body: some WidgetConfiguration",
             to: "private struct MeowPlannerTodayWidgetView"
         ))
+        let widgetProviderSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "private static func nextRefreshDate"
+        ))
 
         #expect(settingsSource.contains("import PhotosUI"))
+        #expect(settingsSource.contains("import UIKit"))
         #expect(settingsSource.contains("case widget"))
         #expect(settingsSource.contains("NavigationLink(value: SettingsDestination.widget)"))
         #expect(settingsSource.contains("@State private var selectedWidgetBackgroundPhotoItem: PhotosPickerItem?"))
-        #expect(settingsSource.contains("@State private var selectedWidgetWallpaperPhotoItem: PhotosPickerItem?"))
-        #expect(settingsSource.contains("@State private var widgetBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)"))
+        #expect(!settingsSource.contains("selectedWidgetWallpaperPhotoItem"))
+        #expect(!settingsSource.contains("WidgetBackgroundReferencePreview"))
+        #expect(!settingsSource.contains("WidgetBackgroundImageEditingMode"))
+        #expect(!settingsSource.contains("widgetWallpaper"))
+        #expect(!settingsSource.contains("壁纸透明"))
+        #expect(!settingsSource.contains("wallpaper transparency"))
+        #expect(!settingsSource.contains("Choose Home Screen wallpaper"))
+        #expect(settingsSource.contains("appLanguage == .chinese\n            ? \"外观、背景和相册图片\"\n            : \"Appearance, background, and photo\""))
+        #expect(settingsSource.contains("@State private var widgetBackgroundStyle = normalizedIOSWidgetBackgroundStyle(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS))"))
         #expect(settingsSource.contains("@State private var widgetAppearanceID = WidgetPlannerPreferenceStore.widgetAppearancePreference(platform: .iOS).rawValue"))
-        #expect(settingsSource.contains("@State private var widgetWallpaperHorizontalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).horizontalOffset"))
-        #expect(settingsSource.contains("@State private var widgetWallpaperVerticalOffset = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).verticalOffset"))
-        #expect(settingsSource.contains("@State private var widgetWallpaperScale = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).scale"))
-        #expect(settingsSource.contains("@State private var widgetWallpaperPlacement = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment(platform: .iOS).placement"))
+        #expect(settingsSource.contains(".onAppear(perform: refreshWidgetBackgroundStateAndTimelinesIfNeeded)"))
         #expect(widgetSettingsSource.contains("widgetAppearanceSection"))
+        #expect(widgetSettingsSource.contains("widgetTextColorSection"))
+        #expect(widgetSettingsSource.contains("widgetBackgroundSection"))
         #expect(widgetSettingsSource.contains("Section(widgetAppearanceSectionTitle)"))
         #expect(settingsSource.contains("appLanguage == .chinese ? \"小组件外观\" : \"Widget appearance\""))
-        #expect(!settingsSource.contains("appLanguage == .chinese ? \"外观\" : \"Appearance\"\n    }\n\n    private var widgetAppearanceSystemModeTitle"))
         #expect(widgetSettingsSource.contains("Picker(widgetAppearanceSystemModeTitle"))
         #expect(widgetSettingsSource.contains("Picker(widgetAppearanceManualModeTitle"))
         #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetAppearancePreference(AppAppearancePreference(storedValue: newValue), platform: .iOS)"))
         #expect(settingsSource.contains("persistWidgetAppearancePreference(newValue)"))
-        #expect(widgetSettingsSource.contains("WidgetBackgroundStyle.allCases"))
-        #expect(widgetSettingsSource.contains(".pickerStyle(.menu)"))
-        #expect(widgetSettingsSource.contains("PhotosPicker("))
-        #expect(widgetSettingsSource.contains("PhotosPicker(selection: $selectedWidgetWallpaperPhotoItem, matching: .images)"))
-        #expect(widgetSettingsSource.contains("Picker(widgetWallpaperPlacementTitle, selection: $widgetWallpaperPlacement)"))
-        #expect(widgetSettingsSource.contains("WidgetWallpaperBackgroundPlacement.allCases"))
-        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperHorizontalOffset, in: -160...160, step: 1)"))
-        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperVerticalOffset, in: -160...160, step: 1)"))
-        #expect(widgetSettingsSource.contains("Slider(value: $widgetWallpaperScale, in: 0.8...2, step: 0.01)"))
-        #expect(widgetSettingsSource.contains("Button(widgetWallpaperResetTitle)"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(newValue, platform: .iOS)"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(data, platform: .iOS)"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.saveWallpaperBackgroundImageData(data, platform: .iOS)"))
-        #expect(widgetSettingsSource.contains("WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundScreenMetrics("))
-        #expect(widgetSettingsSource.contains("UIScreen.main.bounds"))
-        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetWallpaperBackgroundAdjustment("))
-        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.resetWidgetWallpaperBackgroundAdjustment(platform: .iOS)"))
-        #expect(widgetSettingsSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
+        #expect(settingsSource.contains("private let iosWidgetBackgroundStyles: [WidgetBackgroundStyle] = [.defaultArtwork, .customPhoto]"))
+        #expect(backgroundSectionSource.contains(".pickerStyle(.menu)"))
+        #expect(backgroundSectionSource.contains("ForEach(iosWidgetBackgroundStyles)"))
+        #expect(backgroundSectionSource.contains("PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images)"))
+        #expect(!backgroundSectionSource.contains("WidgetBackgroundStyle.allCases"))
+        #expect(!backgroundSectionSource.contains(".wallpaperPhoto"))
+        #expect(settingsSource.contains("case .defaultArtwork, .wallpaperPhoto:"))
+        #expect(settingsSource.contains("private var widgetBackgroundStyleBinding: Binding<WidgetBackgroundStyle>"))
+        #expect(settingsSource.contains("Picker(PlannerCopy.text(.widgetBackground, language: appLanguage), selection: widgetBackgroundStyleBinding)"))
+        #expect(!settingsSource.contains(".onChange(of: widgetBackgroundStyle)"))
+        #expect(settingsSource.contains("scheduleWidgetTimelineReloads()"))
+        #expect(settingsSource.contains("widgetTimelineReloadDelays"))
+        #expect(settingsSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
         #expect(languageSource.contains("case widgetSettings"))
         #expect(languageSource.contains("case widgetBackground"))
         #expect(languageSource.contains("case chooseBackgroundImage"))
+
         #expect(widgetPreferenceSource.contains("public enum WidgetBackgroundStyle"))
-        #expect(widgetPreferenceSource.contains("case transparent"))
         #expect(widgetPreferenceSource.contains("case wallpaperPhoto"))
-        #expect(widgetPreferenceSource.contains("public var isSeeThroughWidgetBackground: Bool"))
-        #expect(widgetPreferenceSource.contains("public struct WidgetWallpaperBackgroundAdjustment"))
-        #expect(widgetPreferenceSource.contains("public enum WidgetWallpaperBackgroundPlacement"))
-        #expect(widgetPreferenceSource.contains("public struct WidgetWallpaperBackgroundScreenMetrics"))
-        #expect(widgetPreferenceSource.contains("public enum WidgetPreferencePlatform"))
-        #expect(widgetPreferenceSource.contains("case .macOS: .defaultArtwork"))
-        #expect(widgetPreferenceSource.contains("case .iOS: .defaultArtwork"))
-        #expect(widgetPreferenceSource.contains("case (.macOS, .transparent), (.macOS, .wallpaperPhoto):"))
-        #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey"))
-        #expect(widgetPreferenceSource.contains("widgetBackgroundStyleKey(for: platform)"))
-        #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey"))
-        #expect(widgetPreferenceSource.contains("widgetAppearancePreferenceKey(for: platform)"))
-        #expect(widgetPreferenceSource.contains("public static var widgetAppearancePreference: AppAppearancePreference"))
-        #expect(widgetPreferenceSource.contains("isDarkWidgetAppearance(systemIsDark:"))
+        #expect(!widgetPreferenceSource.contains("case transparent"))
+        #expect(!widgetPreferenceSource.contains("No Background"))
+        #expect(!widgetPreferenceSource.contains("无背景模板"))
         #expect(widgetPreferenceSource.contains("customBackgroundImageURL"))
+        #expect(widgetPreferenceSource.contains("customBackgroundImageURLs"))
         #expect(widgetPreferenceSource.contains("saveCustomBackgroundImageData"))
-        #expect(widgetPreferenceSource.contains("wallpaperBackgroundImageURL"))
-        #expect(widgetPreferenceSource.contains("saveWallpaperBackgroundImageData"))
-        #expect(widgetPreferenceSource.contains("widgetWallpaperBackgroundAdjustment"))
-        #expect(widgetPreferenceSource.contains("widgetWallpaperBackgroundScreenMetrics"))
+        #expect(widgetPreferenceSource.contains("repairCustomBackgroundImageMirrors"))
         #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
-        #expect(widgetSource.contains("case .transparent:"))
-        #expect(widgetSource.contains("case .wallpaperPhoto:"))
-        #expect(widgetSource.contains("@Environment(\\.showsWidgetContainerBackground)"))
-        #expect(widgetSource.contains(".meowPlannerWidgetContainerBackground()"))
-        #expect(widgetSource.contains("containerBackground(for: .widget)"))
-        #expect(!widgetSource.contains("if WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent {\n            self"))
-        #expect(widgetConfigurationSource.contains("#if os(iOS)\n        .containerBackgroundRemovable(true)\n        #else"))
-        #expect(widgetConfigurationSource.contains(".containerBackgroundRemovable(WidgetPlannerPreferenceStore.widgetBackgroundStyle == .transparent)\n        #endif"))
-        #expect(widgetSource.contains("!showsWidgetContainerBackground || WidgetPlannerPreferenceStore.widgetBackgroundStyle.isSeeThroughWidgetBackground"))
-        #expect(widgetSource.contains("WidgetWallpaperBackgroundImageView(image: Image(uiImage: image))"))
-        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetWallpaperBackgroundAdjustment"))
-        let wallpaperImageViewSource = try #require(sourceBlock(
-            in: widgetSource,
-            from: "private struct WidgetWallpaperBackgroundImageView",
-            to: "private struct WidgetContainerBackgroundView"
+        #expect(widgetProviderSource.contains("Self.iOSSupportedWidgetBackgroundStyle("))
+        #expect(widgetSource.contains("private static func iOSSupportedWidgetBackgroundStyle(_ style: WidgetBackgroundStyle) -> WidgetBackgroundStyle"))
+        #expect(widgetSource.contains("case .customPhoto:\n            return .customPhoto\n        default:\n            return .defaultArtwork"))
+        #expect(widgetConfigurationSource.contains("#if os(iOS)\n        .containerBackgroundRemovable(false)\n        #else"))
+        #expect(!widgetConfigurationSource.contains("#if os(iOS)\n        .containerBackgroundRemovable(true)\n        #else"))
+        #expect(widgetConfigurationSource.contains(".containerBackgroundRemovable(false)\n        #endif"))
+    }
+
+    @Test("iOS widget photo background import saves album image and refreshes timelines")
+    func iosWidgetPhotoBackgroundImportSavesAlbumImageAndRefreshesTimelines() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let widgetPreferenceFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let widgetPreferenceSource = try String(contentsOf: widgetPreferenceFile, encoding: .utf8)
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let customImportSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private func importWidgetBackgroundPhoto",
+            to: "private func refreshWidgetBackgroundStateAndTimelinesIfNeeded"
         ))
-        #expect(wallpaperImageViewSource.contains("let screenMetrics = WidgetPlannerPreferenceStore.widgetWallpaperBackgroundScreenMetrics"))
-        #expect(wallpaperImageViewSource.contains("let screenSize = CGSize("))
-        #expect(wallpaperImageViewSource.contains("let widgetOrigin = widgetOrigin(in: screenSize, widgetSize: proxy.size, adjustment: adjustment)"))
-        #expect(wallpaperImageViewSource.contains(".frame(width: screenSize.width, height: screenSize.height)"))
-        #expect(wallpaperImageViewSource.contains(".offset(x: -widgetOrigin.x * adjustmentScale, y: -widgetOrigin.y * adjustmentScale)"))
-        #expect(!wallpaperImageViewSource.contains(".scaledToFill()"))
-        #expect(widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklyGlassFill(isDark: isDarkBackground)"))
-        #expect(widgetSource.contains("usesTransparentWidgetBackground ? WidgetPalette.weeklyTransparentSeparator(isDark: isDarkBackground) : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
-        #expect(!widgetSource.contains("usesTransparentWidgetBackground ? Color.clear : WidgetPalette.weeklySeparator(isDark: isDarkBackground)"))
-        #expect(widgetSource.contains("if !hasSchedules && !usesTransparentWidgetBackground"))
-        #expect(widgetSource.contains("usesTransparentBackground: usesTransparentWidgetBackground"))
-        #expect(widgetSource.contains("var usesTransparentBackground: Bool"))
-        #expect(widgetSource.contains("if day.events.isEmpty && !usesTransparentBackground"))
-        #expect(widgetSource.contains("customBackgroundImage()"))
-        #expect(widgetSource.contains("wallpaperBackgroundImage()"))
-        #expect(widgetSource.contains("UIImage(data: data)"))
-        #expect(!widgetSource.contains("if let image = WidgetBackgroundImageLoader.image(isDark: colorScheme == .dark)"))
+        let persistBackgroundStyleSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private func persistWidgetBackgroundStyle",
+            to: "private func persistWidgetAppearancePreference"
+        ))
+        let persistAppearanceSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private func persistWidgetAppearancePreference",
+            to: "private var widgetTextColorBinding"
+        ))
+        let refreshSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private func refreshWidgetBackgroundStateAndTimelinesIfNeeded",
+            to: "private func scheduleWidgetTimelineReloads"
+        ))
+        let widgetEntrySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "public struct MeowPlannerTodayEntry",
+            to: "public struct MeowPlannerTodayProvider"
+        ))
+        let widgetProviderSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "private static func nextRefreshDate"
+        ))
+        let widgetViewSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MeowPlannerTodayWidgetView",
+            to: "private extension View"
+        ))
+        let contentBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContentBackgroundView",
+            to: "private struct WidgetScheduleBackgroundView"
+        ))
+        let summaryWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct SummaryWidgetView",
+            to: "private struct MonthWidgetView"
+        ))
+        let monthWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(customImportSource.contains("defer {\n            selectedWidgetBackgroundPhotoItem = nil\n        }"))
+        #expect(customImportSource.contains("guard let image = UIImage(data: data)"))
+        #expect(customImportSource.contains("pendingWidgetBackgroundPhotoImage = image"))
+        #expect(customImportSource.contains("pendingWidgetBackgroundPhotoData = data"))
+        #expect(customImportSource.contains("activeSettingsSheet = .widgetPhotoBackgroundEditor"))
+        #expect(!customImportSource.contains("saveWallpaperBackgroundImageData"))
+        #expect(!customImportSource.contains("saveCustomBackgroundImageData(data, platform: .iOS)"))
+        #expect(!settingsSource.contains("private func importWidgetWallpaperBackgroundPhoto"))
+        #expect(settingsSource.contains("private func saveWidgetBackgroundPhoto()"))
+        #expect(settingsSource.contains("try WidgetPlannerPreferenceStore.saveCustomBackgroundImageData(imageData, platform: .iOS)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetCustomPhotoBackgroundAdjustment("))
+        #expect(settingsSource.contains("horizontalOffset: 0"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetCustomPhotoBackgroundScreenMetrics("))
+        #expect(settingsSource.contains("widgetBackgroundStyle = .customPhoto"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(.customPhoto, platform: .iOS)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)"))
+        #expect(settingsSource.contains("scheduleWidgetTimelineReloads()"))
+
+        #expect(persistBackgroundStyleSource.contains("let normalizedValue = normalizedIOSWidgetBackgroundStyle(newValue)"))
+        #expect(persistBackgroundStyleSource.contains("WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)"))
+        #expect(!persistBackgroundStyleSource.contains("WidgetPlannerPreferenceStore.repairWallpaperBackgroundImageMirrors(platform: .iOS)"))
+        #expect(!persistBackgroundStyleSource.contains("widgetPhotoImportError = widgetMissingCustomPhotoMessage"))
+        #expect(!persistBackgroundStyleSource.contains("widgetMissingWallpaperPhotoMessage"))
+        #expect(persistBackgroundStyleSource.contains("WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(normalizedValue, platform: .iOS)"))
+        #expect(persistBackgroundStyleSource.contains("scheduleWidgetTimelineReloads()"))
+        #expect(!persistBackgroundStyleSource.contains("markWallpaperRenderCurrent"))
+        #expect(persistAppearanceSource.contains("if widgetBackgroundStyle == .defaultArtwork"))
+        #expect(persistAppearanceSource.contains("WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)"))
+        #expect(persistAppearanceSource.contains("scheduleWidgetTimelineReloads()"))
+
+        #expect(refreshSource.contains("let storedBackgroundStyle = WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS)"))
+        #expect(refreshSource.contains("let normalizedBackgroundStyleChanged = storedBackgroundStyle != normalizedBackgroundStyle"))
+        #expect(refreshSource.contains("WidgetPlannerPreferenceStore.repairCustomBackgroundImageMirrors(platform: .iOS)"))
+        #expect(!refreshSource.contains("repairWallpaperBackgroundImageMirrors"))
+        #expect(!refreshSource.contains("widgetWallpaperBackgroundRenderRefreshRequired"))
+        #expect(settingsSource.contains("WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.requestWidgetBackgroundRefresh(platform: .iOS)"))
+
+        #expect(widgetPreferenceSource.contains("widgetBackgroundRevisionKey"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundRefreshTokenKey"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundRefreshRequestIDKey"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundRefreshSignature(platform:"))
+        #expect(widgetPreferenceSource.contains("widgetBackgroundRefreshRequestID(platform:"))
+        #expect(widgetPreferenceSource.contains("requestWidgetBackgroundRefresh(platform:"))
+        #expect(widgetPreferenceSource.contains("sha256Hex"))
+        #expect(widgetPreferenceSource.contains("backgroundImageMetadataSignature"))
+        #expect(widgetPreferenceSource.contains("customBackgroundImageURLs(platform: platform"))
+        #expect(widgetPreferenceSource.contains("bumpWidgetBackgroundRevision(platform:"))
+        #expect(widgetPreferenceSource.contains("bumpWidgetBackgroundRefreshToken(platform:"))
+        #expect(widgetEntrySource.contains("public let widgetBackgroundRefreshToken: Double"))
+        #expect(widgetEntrySource.contains("widgetBackgroundRefreshToken: Double = 0"))
+        #expect(widgetEntrySource.contains("public let widgetBackgroundRefreshRequestID: String"))
+        #expect(widgetEntrySource.contains("widgetBackgroundRefreshRequestID: String = \"\""))
+        #expect(widgetEntrySource.contains("public let widgetBackgroundRefreshSignature: String"))
+        #expect(widgetEntrySource.contains("widgetBackgroundRefreshSignature: String = \"\""))
+        #expect(widgetEntrySource.contains("public let widgetContentRefreshSignature: String"))
+        #expect(widgetEntrySource.contains("widgetContentRefreshSignature: String = \"\""))
+        #expect(widgetProviderSource.contains("widgetBackgroundRefreshToken: WidgetPlannerPreferenceStore.widgetBackgroundRefreshToken(platform: .current)"))
+        #expect(widgetProviderSource.contains("widgetBackgroundRefreshRequestID: WidgetPlannerPreferenceStore.widgetBackgroundRefreshRequestID(platform: .current)"))
+        #expect(widgetProviderSource.contains("let widgetBackgroundRefreshSignature = WidgetPlannerPreferenceStore.widgetBackgroundRefreshSignature(platform: .current)"))
+        #expect(widgetProviderSource.contains("widgetContentRefreshSignature: widgetContentRefreshSignature"))
+        #expect(widgetViewSource.contains(".id(entry.widgetContentRefreshSignature)"))
+        #expect(widgetEntrySource.contains("public let customPhotoWidgetBackgroundImageData: Data?"))
+        #expect(widgetEntrySource.contains("public let widgetCustomPhotoBackgroundAdjustment: WidgetCustomPhotoBackgroundAdjustment"))
+        #expect(widgetEntrySource.contains("public let widgetCustomPhotoBackgroundScreenMetrics: WidgetCustomPhotoBackgroundScreenMetrics"))
+        #expect(widgetProviderSource.contains("let customPhotoWidgetBackgroundImageData = WidgetPlannerPreferenceStore.customBackgroundImageData(platform: .current)"))
+        #expect(!widgetProviderSource.contains("widgetBackgroundRefreshToken: WidgetPlannerPreferenceStore.widgetWallpaperBackgroundRefreshToken(platform: .current)"))
+        #expect(contentBackgroundSource.contains("entry.customPhotoWidgetBackgroundImage"))
+        #expect(contentBackgroundSource.contains("WidgetCustomPhotoBackgroundImageView("))
+        #expect(contentBackgroundSource.contains(".id(entry.widgetBackgroundRefreshSignature)"))
+        #expect(summaryWidgetSource.contains("WidgetContentBackgroundView(entry: entry)"))
+        #expect(monthWidgetSource.contains("WidgetContentBackgroundView(entry: entry)"))
+    }
+
+    @Test("iOS widget photo background selection keeps upload entry visible before first photo")
+    func iOSWidgetPhotoBackgroundSelectionKeepsUploadEntryVisibleBeforeFirstPhoto() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let backgroundSectionSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetBackgroundSection",
+            to: "private var widgetBackgroundStyleBinding"
+        ))
+        let persistBackgroundStyleSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private func persistWidgetBackgroundStyle",
+            to: "private func persistWidgetAppearancePreference"
+        ))
+
+        #expect(backgroundSectionSource.contains("if widgetBackgroundStyle == .customPhoto"))
+        #expect(backgroundSectionSource.contains("PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images)"))
+        let persistedSelectionRange = try #require(
+            persistBackgroundStyleSource.range(
+                of: "WidgetPlannerPreferenceStore.setWidgetBackgroundStyle(normalizedValue, platform: .iOS)"
+            )
+        )
+        let validationRange = try #require(
+            persistBackgroundStyleSource.range(
+                of: "guard WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS) else"
+            )
+        )
+        #expect(persistedSelectionRange.lowerBound < validationRange.lowerBound)
+        #expect(persistBackgroundStyleSource.contains("guard WidgetPlannerPreferenceStore.validateCustomBackgroundImageData(platform: .iOS) else"))
+        #expect(persistBackgroundStyleSource.contains("widgetBackgroundStyle = normalizedValue"))
+        #expect(persistBackgroundStyleSource.contains("widgetPhotoImportError = nil"))
+        #expect(!persistBackgroundStyleSource.contains("widgetBackgroundStyle = normalizedIOSWidgetBackgroundStyle(WidgetPlannerPreferenceStore.widgetBackgroundStyle(platform: .iOS))"))
+        #expect(!persistBackgroundStyleSource.contains("widgetPhotoImportError = widgetMissingCustomPhotoMessage"))
+    }
+
+    @Test("iOS widget photo background editor supports placement and scale for all widget sizes")
+    func iOSWidgetPhotoBackgroundEditorSupportsPlacementAndScaleForAllWidgetSizes() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let widgetPreferenceFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let widgetPreferenceSource = try String(contentsOf: widgetPreferenceFile, encoding: .utf8)
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let backgroundSectionSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetBackgroundSection",
+            to: "private var widgetBackgroundStyleBinding"
+        ))
+        let customPhotoImageViewSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetCustomPhotoBackgroundImageView",
+            to: "#endif\n\n@available(iOS 17.0, macOS 14.0, *)"
+        ))
+        let contentBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContentBackgroundView",
+            to: "private struct WidgetScheduleBackgroundView"
+        ))
+        let scheduleBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetScheduleBackgroundView",
+            to: "private struct WeeklyScheduleCalendarDayColumn"
+        ))
+        let monthWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(settingsSource.contains("import UIKit"))
+        #expect(settingsSource.contains("case widgetPhotoBackgroundEditor"))
+        #expect(settingsSource.contains("@State private var pendingWidgetBackgroundPhotoImage: UIImage?"))
+        #expect(settingsSource.contains("@State private var pendingWidgetBackgroundPhotoData: Data?"))
+        #expect(settingsSource.contains("@State private var widgetCustomPhotoPlacement = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).placement"))
+        #expect(settingsSource.contains("@State private var widgetCustomPhotoVerticalOffset = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).verticalOffset"))
+        #expect(settingsSource.contains("@State private var widgetCustomPhotoScale = WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment(platform: .iOS).scale"))
+        #expect(backgroundSectionSource.contains("PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images)"))
+        #expect(backgroundSectionSource.contains("openWidgetPhotoBackgroundEditor()"))
+        #expect(settingsSource.contains("WidgetPhotoBackgroundEditor("))
+        #expect(settingsSource.contains("placement: $widgetCustomPhotoPlacement"))
+        #expect(settingsSource.contains("verticalOffset: $widgetCustomPhotoVerticalOffset"))
+        #expect(settingsSource.contains("scale: $widgetCustomPhotoScale"))
+        #expect(settingsSource.contains("UIScreen.main.bounds"))
+        #expect(!settingsSource.contains("selectedWidgetWallpaperPhotoItem"))
+        #expect(!settingsSource.contains("WidgetBackgroundReferencePreview"))
+        #expect(!settingsSource.contains("WidgetBackgroundImageEditingMode"))
+        #expect(!settingsSource.contains("壁纸透明"))
+
+        #expect(widgetPreferenceSource.contains("public typealias WidgetCustomPhotoBackgroundAdjustment = WidgetWallpaperBackgroundAdjustment"))
+        #expect(widgetPreferenceSource.contains("public typealias WidgetCustomPhotoBackgroundPlacement = WidgetWallpaperBackgroundPlacement"))
+        #expect(widgetPreferenceSource.contains("public enum WidgetCustomPhotoBackgroundLayout"))
+        #expect(widgetPreferenceSource.contains("public static func widgetOrigin("))
+        #expect(widgetPreferenceSource.contains("WidgetWallpaperBackgroundLayout.mediumWidgetOrigin("))
+        #expect(widgetPreferenceSource.contains("public static func widgetCustomPhotoBackgroundAdjustment("))
+        #expect(widgetPreferenceSource.contains("public static func setWidgetCustomPhotoBackgroundAdjustment("))
+        #expect(widgetPreferenceSource.contains("public static func widgetCustomPhotoBackgroundScreenMetrics("))
+        #expect(widgetPreferenceSource.contains("public static func setWidgetCustomPhotoBackgroundScreenMetrics("))
+
+        #expect(customPhotoImageViewSource.contains("var adjustment: WidgetCustomPhotoBackgroundAdjustment"))
+        #expect(customPhotoImageViewSource.contains("var screenMetrics: WidgetCustomPhotoBackgroundScreenMetrics"))
+        #expect(!customPhotoImageViewSource.contains("WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundAdjustment"))
+        #expect(!customPhotoImageViewSource.contains("WidgetPlannerPreferenceStore.widgetCustomPhotoBackgroundScreenMetrics"))
+        #expect(customPhotoImageViewSource.contains("WidgetCustomPhotoBackgroundLayout.widgetOrigin("))
+        #expect(customPhotoImageViewSource.contains("renderedWidgetImage("))
+        #expect(!customPhotoImageViewSource.contains(".scaledToFill()"))
+        #expect(contentBackgroundSource.contains("entry.customPhotoWidgetBackgroundImage"))
+        #expect(contentBackgroundSource.contains("WidgetCustomPhotoBackgroundImageView("))
+        #expect(scheduleBackgroundSource.contains("entry.customPhotoWidgetBackgroundImage"))
+        #expect(scheduleBackgroundSource.contains("WidgetCustomPhotoBackgroundImageView("))
+        #expect(scheduleBackgroundSource.contains(".id(entry.widgetBackgroundRefreshSignature)"))
+        #expect(monthWidgetSource.contains("WidgetContentBackgroundView(entry: entry)"))
+    }
+
+    @Test("iOS widget photo background editor reserves visible bottom controls")
+    func iOSWidgetPhotoBackgroundEditorReservesVisibleBottomControls() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let editorSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private struct WidgetPhotoBackgroundEditor",
+            to: "#endif\n\nprivate extension View"
+        ))
+
+        #expect(!editorSource.contains(".safeAreaInset(edge: .bottom"))
+        #expect(editorSource.contains("VStack(spacing: 0)"))
+        #expect(editorSource.contains("editorPreview("))
+        #expect(editorSource.contains("editorControls\n                        .frame(maxWidth: .infinity"))
+    }
+
+    @Test("iOS widgets render transparent background state from timeline entry")
+    func iosWidgetsRenderTransparentBackgroundStateFromTimelineEntry() throws {
+        let root = try packageRoot()
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let widgetEntrySource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "public struct MeowPlannerTodayEntry",
+            to: "public struct MeowPlannerTodayProvider"
+        ))
+        let widgetProviderSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "private static func nextRefreshDate"
+        ))
+        let widgetViewSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MeowPlannerTodayWidgetView",
+            to: "private extension View"
+        ))
+        let containerBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContainerBackgroundView",
+            to: "private var defaultBackground"
+        ))
+        let weeklyScheduleWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleWidgetView",
+            to: "private struct WidgetContentBackgroundView"
+        ))
+        let contentBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContentBackgroundView",
+            to: "private struct WidgetScheduleBackgroundView"
+        ))
+        let scheduleBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetScheduleBackgroundView",
+            to: "private struct WeeklyScheduleCalendarDayColumn"
+        ))
+        let monthWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(widgetEntrySource.contains("public let widgetBackgroundStyle: WidgetBackgroundStyle"))
+        #expect(widgetEntrySource.contains("public let hasWallpaperWidgetBackgroundImage: Bool"))
+        #expect(widgetEntrySource.contains("public let hasCustomPhotoWidgetBackgroundImage: Bool"))
+        #expect(widgetProviderSource.contains("let hasWallpaperWidgetBackgroundImage = WidgetBackgroundImageLoader.wallpaperBackgroundImage() != nil"))
+        #expect(widgetProviderSource.contains("let customPhotoWidgetBackgroundImageData = WidgetPlannerPreferenceStore.customBackgroundImageData(platform: .current)"))
+        #expect(widgetProviderSource.contains("let hasCustomPhotoWidgetBackgroundImage = customPhotoWidgetBackgroundImageData.flatMap { UIImage(data: $0) } != nil"))
+        #expect(widgetProviderSource.contains(".widgetBackgroundStyle(platform: .current)"))
+        #expect(widgetProviderSource.contains(".fallbackIfImageUnavailable("))
+        #expect(widgetProviderSource.contains("hasCustomPhotoImage: hasCustomPhotoWidgetBackgroundImage"))
+        #expect(widgetProviderSource.contains("hasWallpaperPhotoImage: hasWallpaperWidgetBackgroundImage"))
+        #expect(widgetProviderSource.contains("widgetBackgroundStyle: widgetBackgroundStyle"))
+        #expect(widgetProviderSource.contains("hasWallpaperWidgetBackgroundImage: hasWallpaperWidgetBackgroundImage"))
+        #expect(widgetProviderSource.contains("hasCustomPhotoWidgetBackgroundImage: hasCustomPhotoWidgetBackgroundImage"))
+        #expect(widgetViewSource.contains(".meowPlannerWidgetContainerBackground(entry: entry)"))
+        #expect(containerBackgroundSource.contains("var entry: MeowPlannerTodayEntry"))
+        #expect(containerBackgroundSource.contains("switch entry.widgetBackgroundStyle"))
+        #expect(containerBackgroundSource.contains("case .customPhoto:\n                #if os(iOS)\n                if entry.hasCustomPhotoWidgetBackgroundImage,"))
+        #expect(containerBackgroundSource.contains("let image = entry.customPhotoWidgetBackgroundImage"))
+        #expect(containerBackgroundSource.contains("WidgetCustomPhotoBackgroundImageView("))
+        #expect(containerBackgroundSource.contains("adjustment: entry.widgetCustomPhotoBackgroundAdjustment"))
+        #expect(containerBackgroundSource.contains("screenMetrics: entry.widgetCustomPhotoBackgroundScreenMetrics"))
+        #expect(!containerBackgroundSource.contains("case .customPhoto:\n                #if os(iOS)\n                defaultBackground"))
+        #expect(contentBackgroundSource.contains("var entry: MeowPlannerTodayEntry"))
+        #expect(contentBackgroundSource.contains("switch entry.widgetBackgroundStyle"))
+        #expect(scheduleBackgroundSource.contains("var entry: MeowPlannerTodayEntry"))
+        #expect(scheduleBackgroundSource.contains("entry.widgetBackgroundStyle == .wallpaperPhoto"))
+        #expect(scheduleBackgroundSource.contains("entry.hasWallpaperWidgetBackgroundImage"))
+        #expect(scheduleBackgroundSource.contains("entry.hasCustomPhotoWidgetBackgroundImage"))
+        #expect(weeklyScheduleWidgetSource.contains("WidgetScheduleBackgroundView(entry: entry)"))
+        #expect(weeklyScheduleWidgetSource.contains("entry.widgetBackgroundStyle == .wallpaperPhoto"))
+        #expect(weeklyScheduleWidgetSource.contains("entry.widgetBackgroundStyle == .customPhoto"))
+        #expect(monthWidgetSource.contains("WidgetContentBackgroundView(entry: entry)"))
+        #expect(monthWidgetSource.contains("entry.widgetBackgroundStyle == .wallpaperPhoto"))
+        #expect(monthWidgetSource.contains("entry.widgetBackgroundStyle == .customPhoto"))
+        #expect(!weeklyScheduleWidgetSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle == .wallpaperPhoto"))
+        #expect(!monthWidgetSource.contains("WidgetPlannerPreferenceStore.widgetBackgroundStyle == .wallpaperPhoto"))
+    }
+
+    @Test("iOS widget settings expose only default and photo backgrounds")
+    func iOSWidgetSettingsExposeOnlyDefaultAndPhotoBackgrounds() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let backgroundSectionSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetBackgroundSection",
+            to: "private var widgetBackgroundStyleBinding"
+        ))
+        let providerSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private func makeEntry",
+            to: "private static func nextRefreshDate"
+        ))
+
+        #expect(settingsSource.contains("private let iosWidgetBackgroundStyles: [WidgetBackgroundStyle] = [.defaultArtwork, .customPhoto]"))
+        #expect(backgroundSectionSource.contains("ForEach(iosWidgetBackgroundStyles)"))
+        #expect(backgroundSectionSource.contains("PhotosPicker(selection: $selectedWidgetBackgroundPhotoItem, matching: .images)"))
+        #expect(!backgroundSectionSource.contains("selectedWidgetWallpaperPhotoItem"))
+        #expect(!backgroundSectionSource.contains(".wallpaperPhoto"))
+        #expect(settingsSource.contains("normalizedIOSWidgetBackgroundStyle"))
+        #expect(providerSource.contains("Self.iOSSupportedWidgetBackgroundStyle("))
+        #expect(widgetSource.contains("private static func iOSSupportedWidgetBackgroundStyle(_ style: WidgetBackgroundStyle) -> WidgetBackgroundStyle"))
+        #expect(widgetSource.contains("case .customPhoto:\n            return .customPhoto\n        default:\n            return .defaultArtwork"))
+    }
+
+    @Test("iOS widget text color can be customized from widget settings")
+    func iosWidgetTextColorCanBeCustomizedFromWidgetSettings() throws {
+        let root = try packageRoot()
+        let settingsFile = root.appendingPathComponent("Sources/MeowPlannerApp/Views/Settings/SettingsView.swift")
+        let widgetPreferenceFile = root.appendingPathComponent("Sources/MeowPlannerCore/Support/WeekStartPreference.swift")
+        let widgetFile = root.appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
+
+        let settingsSource = try String(contentsOf: settingsFile, encoding: .utf8)
+        let widgetPreferenceSource = try String(contentsOf: widgetPreferenceFile, encoding: .utf8)
+        let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
+        let widgetSettingsSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetSettingsPage",
+            to: "    private var widgetAppearanceSection"
+        ))
+        let textColorSectionSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetTextColorSection",
+            to: "    private var widgetBackgroundSection"
+        ))
+        let weeklyScheduleWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleWidgetView",
+            to: "private struct WidgetScheduleBackgroundView"
+        ))
+        let weeklyScheduleColumnSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WeeklyScheduleCalendarDayColumn",
+            to: "private struct SummaryWidgetView"
+        ))
+        let summaryWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct SummaryWidgetView",
+            to: "private struct MonthWidgetView"
+        ))
+        let monthWidgetSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct MonthWidgetView",
+            to: "private enum WidgetFuFuImageLoader"
+        ))
+
+        #expect(settingsSource.contains("@State private var widgetTextColor = MeowPlannerTheme.color(hex: WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) ?? WidgetPlannerPreferenceStore.defaultWidgetTextColorHex)"))
+        #expect(settingsSource.contains("@State private var hasCustomWidgetTextColor = WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS) != nil"))
+        #expect(widgetSettingsSource.contains("widgetTextColorSection"))
+        #expect(textColorSectionSource.contains("ColorPicker(widgetTextColorPickerTitle, selection: widgetTextColorBinding, supportsOpacity: false)"))
+        #expect(textColorSectionSource.contains("if hasCustomWidgetTextColor {"))
+        #expect(textColorSectionSource.contains("Button(widgetTextColorResetTitle)"))
+        #expect(settingsSource.contains("private var widgetTextColorBinding: Binding<Color>"))
+        #expect(settingsSource.contains("persistWidgetTextColor(newValue)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.setWidgetTextColorHex(hex, platform: .iOS)"))
+        #expect(settingsSource.contains("WidgetPlannerPreferenceStore.clearWidgetTextColorHex(platform: .iOS)"))
+        #expect(settingsSource.contains("widgetTextColor = MeowPlannerTheme.color(hex: WidgetPlannerPreferenceStore.defaultWidgetTextColorHex)"))
+        #expect(settingsSource.contains("hasCustomWidgetTextColor = false"))
+        #expect(settingsSource.contains("scheduleWidgetTimelineReloads()"))
+        #expect(settingsSource.contains("appLanguage == .chinese ? \"小组件文字颜色\" : \"Widget text color\""))
+        #expect(settingsSource.contains("appLanguage == .chinese ? \"重置文字颜色\" : \"Reset text color\""))
+
+        #expect(widgetPreferenceSource.contains("public static let widgetTextColorHexKey = \"widgetTextColorHex\""))
+        #expect(widgetPreferenceSource.contains("public static let defaultWidgetTextColorHex = \"#3D261A\""))
+        #expect(widgetPreferenceSource.contains("public var widgetTextColorHexKey: String"))
+        #expect(widgetPreferenceSource.contains("public static func widgetTextColorHexKey(for platform: WidgetPreferencePlatform) -> String"))
+        #expect(widgetPreferenceSource.contains("public static func widgetTextColorHex(platform: WidgetPreferencePlatform, defaults: UserDefaults) -> String?"))
+        #expect(widgetPreferenceSource.contains("public static func setWidgetTextColorHex(\n        _ hex: String?,\n        platform: WidgetPreferencePlatform,\n        defaults: UserDefaults\n    )"))
+        #expect(widgetPreferenceSource.contains("public static func clearWidgetTextColorHex(platform: WidgetPreferencePlatform, defaults: UserDefaults)"))
+        #expect(widgetPreferenceSource.contains("normalizedWidgetTextColorHex"))
+
+        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.widgetTextColorHex(platform: .iOS)"))
+        #expect(widgetSource.contains("WidgetPalette.widgetTextColor(hex:"))
+        #expect(widgetSource.contains("WidgetPalette.secondaryWidgetTextColor(from:"))
+        #expect(weeklyScheduleWidgetSource.contains("private var customWidgetTextColor: Color?"))
+        #expect(weeklyScheduleWidgetSource.contains("if let customWidgetTextColor {\n            return customWidgetTextColor\n        }"))
+        #expect(weeklyScheduleWidgetSource.contains("if let customWidgetTextColor {\n            return WidgetPalette.secondaryWidgetTextColor(from: customWidgetTextColor)\n        }"))
+        #expect(weeklyScheduleColumnSource.contains("var customWidgetTextColor: Color?"))
+        #expect(weeklyScheduleColumnSource.contains("return customWidgetTextColor"))
+        #expect(weeklyScheduleColumnSource.contains("WidgetPalette.secondaryWidgetTextColor(from: customWidgetTextColor)"))
+        #expect(summaryWidgetSource.contains("private var customWidgetTextColor: Color?"))
+        #expect(summaryWidgetSource.contains(".foregroundStyle(primaryTextColor)"))
+        #expect(summaryWidgetSource.contains(".foregroundStyle(secondaryTextColor)"))
+        #expect(monthWidgetSource.contains("private var customWidgetTextColor: Color?"))
+        #expect(monthWidgetSource.contains("if let customWidgetTextColor {\n            return customWidgetTextColor\n        }"))
+        #expect(monthWidgetSource.contains("if let customWidgetTextColor {\n            return WidgetPalette.secondaryWidgetTextColor(from: customWidgetTextColor)\n        }"))
+        #expect(monthWidgetSource.contains("if let customWidgetTextColor {\n            return customWidgetTextColor.opacity(0.48)\n        }"))
     }
 
     @Test("iOS settings hide inner system chrome and remove Dock personalization controls")
@@ -693,6 +1167,11 @@ struct XcodeWidgetProjectTests {
             in: settingsSource,
             from: "private var personalizationSettingsPage",
             to: "    #if os(iOS)\n    private var widgetSettingsPage"
+        ))
+        let widgetSettingsPageSource = try #require(sourceBlock(
+            in: settingsSource,
+            from: "private var widgetSettingsPage",
+            to: "    private var widgetAppearanceSection"
         ))
         let personalizationSubtitleSource = try sourceWindow(
             in: settingsSource,
@@ -737,6 +1216,7 @@ struct XcodeWidgetProjectTests {
         #expect(settingsSource.contains("PlannerIOSImageBackground(gradientOpacity: 0.86)"))
         #expect(settingsSource.contains(".ignoresSafeArea()"))
         #expect(personalizationSettingsPageSource.contains("settingsForm(\n            bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion,\n            hidesContentBehindBottomNavigation: true"))
+        #expect(widgetSettingsPageSource.contains("settingsForm(\n            bottomScrollExpansion: settingsPersonalizationBottomScrollExpansion,\n            hidesContentBehindBottomNavigation: true"))
         #expect(personalizationSettingsPageSource.contains("iosBottomNavigationSection"))
         #expect(!personalizationSettingsPageSource.contains("settingsBackButton"))
         #expect(settingsFormSource.contains(".tint(MeowPlannerTheme.pawButtonBrown)"))
@@ -1240,8 +1720,25 @@ struct XcodeWidgetProjectTests {
         #expect(plist["CFBundleVersion"] as? String == "22")
     }
 
-    @Test("month widget has interactive paw refresh navigation")
-    func monthWidgetHasInteractivePawRefreshNavigation() throws {
+    @Test("iOS app and widget bundle versions are bumped for WidgetKit refresh")
+    func iOSAppAndWidgetBundleVersionsAreBumpedForWidgetKitRefresh() throws {
+        let root = try packageRoot()
+        let plistFiles = [
+            root.appendingPathComponent("Config/MeowPlanner-iOS-Info.plist"),
+            root.appendingPathComponent("Config/MeowPlannerWidget-iOS-Info.plist")
+        ]
+
+        for plistFile in plistFiles {
+            let data = try Data(contentsOf: plistFile)
+            let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+
+            #expect(plist["CFBundleShortVersionString"] as? String == "2.0.11")
+            #expect(plist["CFBundleVersion"] as? String == "31")
+        }
+    }
+
+    @Test("month widget uses one paw control for today navigation and refresh")
+    func monthWidgetUsesOnePawControlForTodayNavigationAndRefresh() throws {
         let root = try packageRoot()
         let widgetFile = root
             .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerTodayWidget.swift")
@@ -1265,14 +1762,24 @@ struct XcodeWidgetProjectTests {
             from: "private struct MonthWidgetView",
             to: "private enum WidgetFuFuImageLoader"
         ))
-        let monthRefreshButtonSource = try sourceWindow(
+        let monthIOSActionSource = try #require(sourceBlock(
             in: monthSource,
-            from: "Button(intent: RefreshWidgetTimelineIntent())",
-            length: 360
+            from: "Button(intent: ReturnWidgetToTodayIntent())",
+            to: "#else\n            Button(intent: RefreshWidgetTimelineIntent())"
+        ))
+        let monthMacOSActionSource = try #require(sourceBlock(
+            in: monthSource,
+            from: "#else\n            Button(intent: RefreshWidgetTimelineIntent())",
+            to: "#endif"
+        ))
+        let monthPawButtonSource = try sourceWindow(
+            in: monthIOSActionSource,
+            from: "Button(intent: ReturnWidgetToTodayIntent())",
+            length: 520
         )
 
         #expect(widgetSource.contains("import AppIntents"))
-        #expect(widgetSource.contains("ChangeWidgetMonthIntent"))
+        #expect(!widgetSource.contains("MeowPlannerWidgetChangeMonthIntent"))
         #expect(widgetSource.contains("Button(intent: ChangeWidgetMonthIntent"))
         #expect(widgetSource.contains(".contentMarginsDisabled()"))
         #expect(widgetSource.contains("private var monthHeader"))
@@ -1299,21 +1806,35 @@ struct XcodeWidgetProjectTests {
         #expect(coreIntentSource.contains("public struct MeowPlannerCoreAppIntentsPackage: AppIntentsPackage"))
         #expect(coreIntentSource.contains("public struct ChangeWidgetMonthIntent: AppIntent"))
         #expect(coreIntentSource.contains("public struct RefreshWidgetTimelineIntent: AppIntent"))
+        #expect(coreIntentSource.contains("public struct ReturnWidgetToTodayIntent: AppIntent"))
         #expect(coreIntentSource.contains("public enum WidgetMonthSelectionStore"))
         #expect(appIntentPackageSource.contains("struct MeowPlannerAppIntentsPackage: AppIntentsPackage"))
         #expect(appIntentPackageSource.contains("MeowPlannerCoreAppIntentsPackage.self"))
         #expect(widgetIntentPackageSource.contains("struct MeowPlannerWidgetIntentsPackage: AppIntentsPackage"))
-        #expect(widgetIntentPackageSource.contains("MeowPlannerCoreAppIntentsPackage.self"))
+        #expect(widgetIntentPackageSource.contains("#if os(iOS)\n        []\n        #else\n        [MeowPlannerCoreAppIntentsPackage.self]\n        #endif"))
+        #expect(widgetIntentPackageSource.contains("enum MeowPlannerWidgetScheduleDisplayRule: String, AppEnum"))
+        #expect(widgetIntentPackageSource.contains("struct MeowPlannerWidgetLocalConfigurationIntent: WidgetConfigurationIntent"))
+        #expect(widgetIntentPackageSource.contains("@Parameter(title: \"显示规则\", default: MeowPlannerWidgetScheduleDisplayRule.nextSevenDays)"))
+        #expect(!widgetIntentPackageSource.contains("struct MeowPlannerWidgetChangeMonthIntent: AppIntent"))
+        #expect(!widgetIntentPackageSource.contains("struct MeowPlannerWidgetChangeWeekIntent: AppIntent"))
+        #expect(!widgetIntentPackageSource.contains("struct MeowPlannerWidgetReturnToTodayIntent: AppIntent"))
+        #expect(!widgetIntentPackageSource.contains("MeowPlannerWidgetTimelineReloader"))
         #expect(projectSource.contains("Sources/MeowPlannerCore/Support/WidgetAppIntents.swift"))
         #expect(projectSource.contains("Sources/MeowPlannerApp/Support/MeowPlannerAppIntentsPackage.swift"))
         #expect(projectSource.contains("Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift"))
-        #expect(monthRefreshButtonSource.contains("Image(systemName: \"pawprint.fill\")"))
-        #expect(monthRefreshButtonSource.contains(".font((family == .systemExtraLarge ? Font.body : Font.caption).weight(.bold))"))
-        #expect(monthRefreshButtonSource.contains(".foregroundStyle(monthPrimaryTextColor)"))
-        #expect(monthRefreshButtonSource.contains(".contentShape(Rectangle())"))
-        #expect(!monthRefreshButtonSource.contains("fufuWidgetMascot"))
-        #expect(!monthRefreshButtonSource.contains(".background("))
-        #expect(!monthRefreshButtonSource.contains(".overlay {"))
+        #expect(!monthSource.contains("private var monthRefreshSystemImage: String"))
+        #expect(!monthIOSActionSource.contains("Button(intent: RefreshWidgetTimelineIntent())"))
+        #expect(!monthIOSActionSource.contains("Image(systemName: \"arrow.clockwise\")"))
+        #expect(monthSource.contains("#if os(iOS)\n            Button(intent: ReturnWidgetToTodayIntent())"))
+        #expect(monthMacOSActionSource.contains("Button(intent: RefreshWidgetTimelineIntent())"))
+        #expect(monthMacOSActionSource.contains("Image(systemName: \"pawprint.fill\")"))
+        #expect(monthPawButtonSource.contains("Image(systemName: \"pawprint.fill\")"))
+        #expect(monthPawButtonSource.contains(".font((family == .systemExtraLarge ? Font.body : Font.caption).weight(.bold))"))
+        #expect(monthPawButtonSource.contains(".foregroundStyle(monthPrimaryTextColor)"))
+        #expect(monthPawButtonSource.contains(".accessibilityLabel(\"回到今日并刷新小组件\")"))
+        #expect(!monthPawButtonSource.contains("fufuWidgetMascot"))
+        #expect(!monthPawButtonSource.contains(".background("))
+        #expect(!monthPawButtonSource.contains(".overlay {"))
 
         let changeMonthIntentSource = try #require(
             coreIntentSource.range(of: "public struct ChangeWidgetMonthIntent")
@@ -1322,14 +1843,39 @@ struct XcodeWidgetProjectTests {
                         .map { endRange in String(coreIntentSource[startRange.lowerBound..<endRange.lowerBound]) }
                 }
         )
-        #expect(changeMonthIntentSource.contains("WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.todayKind)"))
-        #expect(!changeMonthIntentSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
+        #expect(changeMonthIntentSource.contains("public static let openAppWhenRun = false"))
+        #expect(changeMonthIntentSource.contains("WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()"))
+        #expect(changeMonthIntentSource.contains("WidgetIntentTimelineReloader.reloadAllTimelinesRepeatedly()"))
+        #expect(changeMonthIntentSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
 
-        let refreshIntentSource = try #require(
-            coreIntentSource.range(of: "public struct RefreshWidgetTimelineIntent")
-                .map { String(coreIntentSource[$0.lowerBound...]) }
-        )
+        let refreshIntentSource = try #require(sourceBlock(
+            in: coreIntentSource,
+            from: "public struct RefreshWidgetTimelineIntent",
+            to: "public struct ReturnWidgetToTodayIntent"
+        ))
+        let returnTodayIntentSource = try #require(sourceBlock(
+            in: coreIntentSource,
+            from: "public struct ReturnWidgetToTodayIntent",
+            to: "public enum WidgetWeekSelectionStore"
+        ))
+        #expect(refreshIntentSource.contains("WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()"))
+        #expect(!refreshIntentSource.contains("WidgetWeekSelectionStore.resetWeekOffset()"))
+        #expect(!refreshIntentSource.contains("WidgetMonthSelectionStore.resetMonthOffset()"))
         #expect(refreshIntentSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
+        #expect(returnTodayIntentSource.contains("WidgetWeekSelectionStore.resetWeekOffset()"))
+        #expect(returnTodayIntentSource.contains("WidgetMonthSelectionStore.resetMonthOffset()"))
+        #expect(returnTodayIntentSource.contains("WidgetCenter.shared.reloadAllTimelines()"))
+        #expect(returnTodayIntentSource.contains("WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()"))
+        #expect(coreIntentSource.contains("private enum WidgetIntentTimelineReloader"))
+        #expect(coreIntentSource.contains("static func reloadAllTimelinesRepeatedly() async"))
+        #expect(coreIntentSource.contains("private enum WidgetDateOffsetStore"))
+        #expect(coreIntentSource.contains("UserDefaults(suiteName: WidgetConstants.appGroupName) ?? .standard"))
+        #expect(coreIntentSource.contains("legacyDefaults.object(forKey: key)"))
+        #expect(coreIntentSource.contains("sharedDefaults.set(value, forKey: key)"))
+        #expect(coreIntentSource.contains("WidgetDateOffsetStore.currentOffset(forKey: widgetMonthOffsetKey, platform: platform)"))
+        #expect(coreIntentSource.contains("WidgetDateOffsetStore.setOffset(0, forKey: widgetMonthOffsetKey, platform: platform)"))
+        #expect(!coreIntentSource.contains("private static var defaults: UserDefaults {\n        .standard\n    }"))
+        #expect(coreIntentSource.contains("public static func resetMonthOffset()"))
     }
 
     @Test("widget placeholder avoids shared preferences")
@@ -1400,6 +1946,8 @@ struct XcodeWidgetProjectTests {
             .appendingPathComponent("Sources/MeowPlannerCore/Support/WidgetAppIntents.swift")
         let widgetConstantsFile = root
             .appendingPathComponent("Sources/MeowPlannerCore/Support/WidgetConstants.swift")
+        let widgetIntentPackageFile = root
+            .appendingPathComponent("Sources/MeowPlannerWidget/MeowPlannerWidgetIntentsPackage.swift")
         let appFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
         let rootViewFile = root
@@ -1410,6 +1958,7 @@ struct XcodeWidgetProjectTests {
         let widgetSource = try String(contentsOf: widgetFile, encoding: .utf8)
         let coreIntentSource = try String(contentsOf: coreIntentFile, encoding: .utf8)
         let widgetConstantsSource = try String(contentsOf: widgetConstantsFile, encoding: .utf8)
+        let widgetIntentPackageSource = try String(contentsOf: widgetIntentPackageFile, encoding: .utf8)
         let appSource = try String(contentsOf: appFile, encoding: .utf8)
         let rootViewSource = try String(contentsOf: rootViewFile, encoding: .utf8)
         let calendarHomeSource = try String(contentsOf: calendarHomeFile, encoding: .utf8)
@@ -1438,10 +1987,10 @@ struct XcodeWidgetProjectTests {
             from: "private struct WeeklyScheduleCalendarDayColumn",
             to: "private struct SummaryWidgetView"
         ))
-        let refreshButtonSource = try sourceWindow(
+        let pawButtonSource = try sourceWindow(
             in: weeklyScheduleWidgetSource,
-            from: "Button(intent: RefreshWidgetTimelineIntent())",
-            length: 700
+            from: "Button(intent: ReturnWidgetToTodayIntent())",
+            length: 440
         )
         let eventPillSource = try sourceWindow(
             in: weeklyScheduleColumnSource,
@@ -1456,33 +2005,62 @@ struct XcodeWidgetProjectTests {
         #expect(coreIntentSource.contains("DisplayRepresentation(title: \"自然周\")"))
         #expect(coreIntentSource.contains("public struct MeowPlannerWidgetConfigurationIntent: WidgetConfigurationIntent"))
         #expect(coreIntentSource.contains("@Parameter(title: \"显示规则\", default: WidgetScheduleDisplayRule.nextSevenDays)"))
+        #expect(widgetIntentPackageSource.contains("enum MeowPlannerWidgetScheduleDisplayRule: String, AppEnum"))
+        #expect(widgetIntentPackageSource.contains("case nextSevenDays"))
+        #expect(widgetIntentPackageSource.contains("case calendarWeek"))
+        #expect(widgetIntentPackageSource.contains("struct MeowPlannerWidgetLocalConfigurationIntent: WidgetConfigurationIntent"))
+        #expect(widgetIntentPackageSource.contains("@Parameter(title: \"显示规则\", default: MeowPlannerWidgetScheduleDisplayRule.nextSevenDays)"))
+        #expect(widgetSource.contains("typealias MeowPlannerTodayConfigurationIntent = MeowPlannerWidgetLocalConfigurationIntent"))
+        #expect(widgetSource.contains("typealias MeowPlannerTodayConfigurationIntent = MeowPlannerWidgetConfigurationIntent"))
         #expect(coreIntentSource.contains("public struct ChangeWidgetWeekIntent: AppIntent"))
         #expect(coreIntentSource.contains("WidgetWeekSelectionStore.adjustWeekOffset(by: weekDelta)"))
+        #expect(!widgetIntentPackageSource.contains("struct MeowPlannerWidgetChangeWeekIntent: AppIntent"))
         #expect(coreIntentSource.contains("public enum WidgetWeekSelectionStore"))
+        #expect(coreIntentSource.contains("public static let openAppWhenRun = false"))
+        #expect(coreIntentSource.contains("public static func resetWeekOffset()"))
+        #expect(coreIntentSource.contains("WidgetPlannerSnapshotStore.refreshSharedSnapshotForWidgetExtension()"))
+        #expect(coreIntentSource.contains("WidgetIntentTimelineReloader.reloadAllTimelinesRepeatedly()"))
+        #expect(coreIntentSource.contains("WidgetDateOffsetStore.currentOffset(forKey: widgetWeekOffsetKey, platform: platform)"))
+        #expect(coreIntentSource.contains("WidgetDateOffsetStore.setOffset(0, forKey: widgetWeekOffsetKey, platform: platform)"))
         #expect(widgetConstantsSource.contains("public static let newScheduleURL = URL(string: \"meowplanner://schedule/new\")!"))
         #expect(widgetConstantsSource.contains("public static let widgetWeekOffsetKey = \"widgetWeekOffset\""))
         #expect(widgetSource.contains("public let scheduleDisplayRule: WidgetScheduleDisplayRule"))
         #expect(widgetSource.contains("public let weeklyScheduleDays: [WidgetWeeklyScheduleDay]"))
+        #expect(widgetSource.contains("public let widgetContentRefreshSignature: String"))
         #expect(widgetSource.contains("AppIntentTimelineProvider"))
-        #expect(widgetBodySource.contains("AppIntentConfiguration(kind: kind, intent: MeowPlannerWidgetConfigurationIntent.self, provider: MeowPlannerTodayProvider())"))
-        #expect(makeEntrySource.contains("displayRule: configuration.scheduleDisplayRule"))
-        #expect(makeEntrySource.contains("weekOffset: includeSamplePlans ? 0 : WidgetWeekSelectionStore.currentWeekOffset"))
+        #expect(widgetBodySource.contains("AppIntentConfiguration(kind: kind, intent: MeowPlannerTodayConfigurationIntent.self, provider: MeowPlannerTodayProvider())"))
+        #expect(makeEntrySource.contains("let scheduleDisplayRule = configuration.scheduleDisplayRule.coreDisplayRule"))
+        #expect(makeEntrySource.contains("displayRule: scheduleDisplayRule"))
+        #expect(makeEntrySource.contains("let weekOffset = includeSamplePlans ? 0 : WidgetWeekSelectionStore.currentWeekOffset"))
+        #expect(makeEntrySource.contains("weekOffset: weekOffset"))
         #expect(makeEntrySource.contains("WidgetWeeklySchedulePlanner.days("))
         #expect(widgetViewSource.contains("case .systemMedium:"))
         #expect(widgetViewSource.contains("#if os(iOS)\n                WeeklyScheduleWidgetView(entry: entry)"))
         #expect(widgetSource.contains("private struct WeeklyScheduleWidgetView"))
         #expect(widgetSource.contains("weekNavigationButton(delta: -1, systemImage: \"chevron.left\")"))
         #expect(widgetSource.contains("weekNavigationButton(delta: 1, systemImage: \"chevron.right\")"))
-        #expect(widgetSource.contains("Link(destination: WidgetConstants.newScheduleURL)"))
-        #expect(widgetSource.contains("Button(intent: RefreshWidgetTimelineIntent())"))
+        #expect(widgetSource.contains("Button(intent: ChangeWidgetWeekIntent(weekDelta: delta))"))
+        #expect(!weeklyScheduleWidgetSource.contains("Link(destination: WidgetConstants.newScheduleURL)"))
+        #expect(!weeklyScheduleWidgetSource.contains("Image(systemName: \"plus\")"))
+        #expect(!weeklyScheduleWidgetSource.contains("Button(intent: RefreshWidgetTimelineIntent())"))
+        #expect(widgetSource.contains("Button(intent: ReturnWidgetToTodayIntent())"))
         #expect(weeklyScheduleWidgetSource.contains(".frame(height: 28)"))
-        #expect(weeklyScheduleWidgetSource.contains("Image(systemName: \"arrow.clockwise\")"))
+        #expect(!weeklyScheduleWidgetSource.contains("Image(systemName: \"arrow.clockwise\")"))
+        #expect(weeklyScheduleWidgetSource.contains("#if os(iOS)\n            Button(intent: ReturnWidgetToTodayIntent())"))
+        #expect(pawButtonSource.contains("Image(systemName: \"pawprint.fill\")"))
+        #expect(pawButtonSource.contains(".accessibilityLabel(\"回到今日并刷新小组件\")"))
         #expect(!weeklyScheduleWidgetSource.contains("Image(systemName: \"gearshape\")"))
-        #expect(refreshButtonSource.contains(".font(.system(size: 14, weight: .medium))"))
-        #expect(refreshButtonSource.contains(".contentShape(Circle())"))
-        #expect(!refreshButtonSource.contains(".background("))
-        #expect(!refreshButtonSource.contains(".overlay {"))
-        #expect(weeklyScheduleWidgetSource.contains(".accessibilityLabel(\"刷新小组件\")"))
+        #expect(pawButtonSource.contains(".font(.system(size: 14, weight: .medium))"))
+        #expect(pawButtonSource.contains(".contentShape(Circle())"))
+        #expect(!pawButtonSource.contains(".background("))
+        #expect(!pawButtonSource.contains(".overlay {"))
+        #expect(!weeklyScheduleWidgetSource.contains(".accessibilityLabel(\"刷新小组件\")"))
+        #expect(widgetSource.contains("static let widgetTodayHighlightFill = caramel.opacity(0.92)"))
+        #expect(widgetSource.contains("static let weeklyLiveTransparentTodayFill = widgetTodayHighlightFill"))
+        #expect(widgetSource.contains("static let weeklyWallpaperTodayFill = widgetTodayHighlightFill"))
+        #expect(weeklyScheduleColumnSource.contains(".background(WidgetPalette.widgetTodayHighlightFill, in: Circle())"))
+        #expect(!weeklyScheduleColumnSource.contains(".background(WidgetPalette.orange, in: Circle())"))
+        #expect(!widgetSource.contains("Color(red: 0.74, green: 0.10, blue: 0.10).opacity(0.92)"))
         #expect(widgetSource.contains("private struct WeeklyScheduleCalendarDayColumn"))
         #expect(widgetSource.contains("Text(\"今\")"))
         #expect(!weeklyScheduleColumnSource.contains("todayColumnFill"))
@@ -1504,6 +2082,13 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains(".onOpenURL { url in"))
         #expect(appSource.contains("NotificationCenter.default.post(name: .meowPlannerExternalOpenURL, object: url)"))
         #expect(rootViewSource.contains("handleExternalURL"))
+        #expect(!widgetViewSource.contains(".widgetURL(WidgetConstants.appLaunchURL)"))
+        #expect(widgetSource.contains("Link(destination: WidgetConstants.appLaunchURL)"))
+        #expect(widgetSource.contains(".id(entry.widgetContentRefreshSignature)"))
+        #expect(widgetSource.contains("\"weekOffset:\\(weekOffset)\""))
+        #expect(widgetSource.contains("\"monthOffset:\\(monthOffset)\""))
+        #expect(widgetSource.contains("\"snapshot:\\(snapshot?.updatedAt.timeIntervalSinceReferenceDate ?? 0)\""))
+        #expect(!widgetSource.contains("WidgetConstants.newScheduleURL"))
         #expect(rootViewSource.contains("WidgetConstants.newScheduleURL.host"))
         #expect(rootViewSource.contains("calendarAddScheduleRequestToken = UUID()"))
         #expect(calendarHomeSource.contains("newScheduleRequestToken: UUID?"))
@@ -1532,34 +2117,50 @@ struct XcodeWidgetProjectTests {
             from: "private struct WeeklyScheduleWidgetView",
             to: "private struct WeeklyScheduleCalendarDayColumn"
         ))
+        let contentBackgroundSource = try #require(sourceBlock(
+            in: widgetSource,
+            from: "private struct WidgetContentBackgroundView",
+            to: "private struct WidgetScheduleBackgroundView"
+        ))
         let macOSWidgetResourcesPhase = try #require(sourceBlock(
             in: projectSource,
-            from: "1939428BF237C1AFB440C3B2 = {",
+            from: "1939428BF237C1AFB440C3B2 /* Resources */ = {",
             to: "\n\t};"
         ))
 
         #expect(FileManager.default.fileExists(atPath: lightBackgroundFile.path))
         #expect(FileManager.default.fileExists(atPath: darkBackgroundFile.path))
+        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("Resources/WidgetTransparentBackground.png").path))
         #expect(packageSource.contains(".copy(\"../../Resources/WidgetBackgroundLight.png\")"))
         #expect(packageSource.contains(".copy(\"../../Resources/WidgetBackgroundDark.png\")"))
+        #expect(!packageSource.contains("WidgetTransparentBackground.png"))
         #expect(generatorSource.contains("WIDGET_BACKGROUND_RESOURCE_FILES"))
         #expect(generatorSource.contains("\"Resources/WidgetBackgroundLight.png\""))
         #expect(generatorSource.contains("\"Resources/WidgetBackgroundDark.png\""))
+        #expect(!generatorSource.contains("WidgetTransparentBackground.png"))
         #expect(generatorSource.contains("WIDGET_RESOURCE_FOLDERS"))
         #expect(generatorSource.contains("resources_phase(\"MeowPlannerWidgetExtension\", [build_file(\"MeowPlannerWidgetExtension\", path, folder=path in WIDGET_RESOURCE_FOLDERS) for path in WIDGET_BACKGROUND_RESOURCE_FILES + WIDGET_RESOURCE_FOLDERS])"))
         #expect(generatorSource.contains("resources_phase(\"MeowPlannerWidgetExtension-iOS\", [build_file(\"MeowPlannerWidgetExtension-iOS\", path) for path in WIDGET_BACKGROUND_RESOURCE_FILES])"))
         #expect(projectSource.contains("Resources/WidgetBackgroundLight.png"))
         #expect(projectSource.contains("Resources/WidgetBackgroundDark.png"))
+        #expect(!projectSource.contains("Resources/WidgetTransparentBackground.png"))
         #expect(projectSource.contains("Resources/FuFu"))
         #expect(macOSWidgetResourcesPhase.contains("22C1DF4C09ECAF7DDA3D2736"))
         #expect(macOSWidgetResourcesPhase.contains("1ABF2C0AD136C89DBA5FBA41"))
         #expect(macOSWidgetResourcesPhase.contains("6C98680694770A7E7E373EBF"))
-        #expect(weeklyScheduleWidgetSource.contains("WidgetScheduleBackgroundView()"))
+        #expect(contentBackgroundSource.contains("#if os(iOS)"))
+        #expect(contentBackgroundSource.contains("switch entry.widgetBackgroundStyle"))
+        #expect(contentBackgroundSource.contains("case .customPhoto:"))
+        #expect(contentBackgroundSource.contains("case .wallpaperPhoto:"))
+        #expect(contentBackgroundSource.contains("entry.customPhotoWidgetBackgroundImage"))
+        #expect(contentBackgroundSource.contains("WidgetBackgroundImageLoader.wallpaperBackgroundImage()"))
+        #expect(weeklyScheduleWidgetSource.contains("WidgetScheduleBackgroundView(entry: entry)"))
         #expect(weeklyScheduleWidgetSource.contains("weeklyScheduleCardFill"))
-        #expect(widgetSource.contains("WidgetBackgroundImageLoader.image(\n                    style: WidgetPlannerPreferenceStore.widgetBackgroundStyle"))
-        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)"))
+        #expect(widgetSource.contains("WidgetBackgroundImageLoader.image(\n                    style: entry.widgetBackgroundStyle"))
+        #expect(widgetSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(\n            systemIsDark: colorScheme == .dark,\n            backgroundStyle: entry.widgetBackgroundStyle\n        )"))
         #expect(widgetSource.contains("isDark: isDarkBackground"))
-        #expect(widgetSource.contains("case .transparent:"))
+        #expect(!widgetSource.contains("case .transparent:"))
+        #expect(!widgetSource.contains("transparentBackgroundImage()"))
         #expect(widgetSource.contains("forResource: isDark ? \"WidgetBackgroundDark\" : \"WidgetBackgroundLight\""))
         #expect(!widgetSource.contains("isDark: colorScheme == .dark"))
         #expect(!widgetSource.contains("WidgetPalette.weeklyFallbackBackground(isDark: colorScheme == .dark)"))
@@ -1722,11 +2323,11 @@ struct XcodeWidgetProjectTests {
         )
 
         #expect(monthSource.contains("private var monthTodayCellHighlightColor: Color"))
-        #expect(monthSource.contains("#if os(macOS)\n        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayCellHighlight(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.16)\n        #else\n        return WidgetPalette.blue.opacity(0.12)\n        #endif"))
+        #expect(monthSource.contains("#if os(macOS)\n        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayCellHighlight(isDark: isDarkBackground) : WidgetPalette.blue.opacity(0.16)\n        #else\n        return WidgetPalette.widgetTodayHighlightSoftFill\n        #endif"))
         #expect(monthSource.contains("private var showsTodayIndicator: Bool"))
         #expect(monthSource.contains("#if os(macOS)\n        return true\n        #else\n        return false\n        #endif"))
         #expect(monthSource.contains("private var monthTodayIndicatorColor: Color"))
-        #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush"))
+        #expect(monthSource.contains("#if os(macOS)\n        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.blush\n        #else\n        return usesMacOSGlassBackground ? WidgetPalette.macOSGlassTodayIndicator(isDark: isDarkBackground) : WidgetPalette.widgetTodayIndicatorFill\n        #endif"))
         #expect(widgetSource.contains("static func macOSGlassTodayCellHighlight(isDark: Bool) -> Color"))
         #expect(widgetSource.contains("static func macOSGlassTodayIndicator(isDark: Bool) -> Color"))
         #expect(widgetSource.contains("isDark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)"))
@@ -1757,7 +2358,7 @@ struct XcodeWidgetProjectTests {
         #expect(monthSource.contains("private var usesMacOSGlassBackground: Bool"))
         #expect(monthSource.contains("#if os(macOS)\n        showsWidgetContainerBackground && WidgetPlannerPreferenceStore.widgetBackgroundStyle == .defaultArtwork"))
         #expect(monthSource.contains("private var isDarkBackground: Bool"))
-        #expect(monthSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(systemIsDark: colorScheme == .dark)"))
+        #expect(monthSource.contains("WidgetPlannerPreferenceStore.isDarkWidgetAppearance(\n            systemIsDark: colorScheme == .dark,\n            backgroundStyle: entry.widgetBackgroundStyle\n        )"))
         #expect(monthSource.contains("private var monthPrimaryTextColor: Color"))
         #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassPrimaryText(isDark: isDarkBackground) : WidgetPalette.cocoa"))
         #expect(monthSource.contains("usesMacOSGlassBackground ? WidgetPalette.macOSGlassSecondaryText(isDark: isDarkBackground) : WidgetPalette.caramel"))
@@ -1801,7 +2402,8 @@ struct XcodeWidgetProjectTests {
         let urlTypes = try #require(plist["CFBundleURLTypes"] as? [[String: Any]])
         let schemes = urlTypes.flatMap { ($0["CFBundleURLSchemes"] as? [String]) ?? [] }
 
-        #expect(widgetSource.contains(".widgetURL(WidgetConstants.appLaunchURL)"))
+        #expect(!widgetSource.contains(".widgetURL(WidgetConstants.appLaunchURL)"))
+        #expect(widgetSource.contains("Link(destination: WidgetConstants.appLaunchURL)"))
         #expect(widgetSource.contains("static let appLaunchURL") == false)
         #expect(schemes.contains("meowplanner"))
     }
@@ -5024,6 +5626,17 @@ struct XcodeWidgetProjectTests {
             | Int(data[23])
 
         return CGSizePixels(width: width, height: height)
+    }
+
+    private func pngColorType(at url: URL) throws -> UInt8 {
+        let data = try Data(contentsOf: url)
+        let pngSignature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+
+        guard data.count >= 26, data.prefix(8) == pngSignature else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        return data[25]
     }
 }
 
