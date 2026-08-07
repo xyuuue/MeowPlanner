@@ -157,7 +157,6 @@ struct MeowPlannerApp: App {
     @AppStorage(AppDockIconController.storageKey) private var showDockIcon = AppDockIconController.defaultShowDockIcon
     @StateObject private var focusTimerStore: FocusTimerStore
     #if os(macOS)
-    @AppStorage(AppMenuBarIconPreference.storageKey) private var showMenuBarIcon = AppMenuBarIconPreference.defaultShowMenuBarIcon
     @NSApplicationDelegateAdaptor(MeowPlannerApplicationDelegate.self) private var appDelegate
     #endif
 
@@ -192,6 +191,10 @@ struct MeowPlannerApp: App {
 
         #if os(macOS)
         AppMainWindowPresenter.shared.configure(
+            legacyModelContainer: legacyModelContainer,
+            focusTimerStore: focusTimerStore
+        )
+        AppMenuBarController.shared.configure(
             legacyModelContainer: legacyModelContainer,
             focusTimerStore: focusTimerStore
         )
@@ -237,20 +240,6 @@ struct MeowPlannerApp: App {
         #endif
 
         #if os(macOS)
-        MenuBarExtra(isInserted: $showMenuBarIcon) {
-            MeowPlannerMenuBarView(
-                legacyModelContainer: legacyModelContainer,
-                openAppKitMainWindow: openAppKitMainWindow
-            )
-                .environment(\.appLanguage, appLanguage)
-                .environmentObject(focusTimerStore)
-        } label: {
-            MeowPlannerMenuBarLabel(openAppKitMainWindow: openAppKitMainWindow)
-                .environment(\.appLanguage, appLanguage)
-                .environmentObject(focusTimerStore)
-        }
-        .menuBarExtraStyle(.window)
-
         Settings {
             AccountGatedSettingsView(legacyModelContainer: legacyModelContainer)
                 .environment(\.appLanguage, appLanguage)
@@ -336,9 +325,6 @@ private final class AppMainWindowPresenter {
     }
 
     private func show(_ window: NSWindow) {
-        let showDockIcon = AppDockIconController.currentShowDockIconPreference
-        AppDockIconController.prepareForMainWindowPresentation(showDockIcon: showDockIcon)
-
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
@@ -346,13 +332,126 @@ private final class AppMainWindowPresenter {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         NSApplication.shared.activate(ignoringOtherApps: true)
-        AppDockIconController.restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: showDockIcon)
     }
 
     private func existingMainWindow() -> NSWindow? {
         NSApplication.shared.windows.first { window in
             window.identifier?.rawValue == "main" || window.title == "MeowPlanner"
         }
+    }
+}
+
+@MainActor
+private final class AppMenuBarController: NSObject {
+    static let shared = AppMenuBarController()
+
+    private var statusItem: NSStatusItem?
+    private var popover: NSPopover?
+    private var defaultsObserver: NSObjectProtocol?
+    private var legacyModelContainer: ModelContainer?
+    private var focusTimerStore: FocusTimerStore?
+
+    func configure(legacyModelContainer: ModelContainer, focusTimerStore: FocusTimerStore) {
+        self.legacyModelContainer = legacyModelContainer
+        self.focusTimerStore = focusTimerStore
+
+        if defaultsObserver == nil {
+            defaultsObserver = NotificationCenter.default.addObserver(
+                forName: UserDefaults.didChangeNotification,
+                object: UserDefaults.standard,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.applyPreference()
+                }
+            }
+        }
+
+        applyPreference()
+    }
+
+    private func applyPreference() {
+        let shouldShow = UserDefaults.standard.object(forKey: AppMenuBarIconPreference.storageKey) as? Bool
+            ?? AppMenuBarIconPreference.defaultShowMenuBarIcon
+
+        if shouldShow {
+            installStatusItemIfNeeded()
+        } else {
+            removeStatusItem()
+        }
+    }
+
+    private func installStatusItemIfNeeded() {
+        guard statusItem == nil,
+              let legacyModelContainer,
+              let focusTimerStore
+        else {
+            return
+        }
+
+        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "calendar.badge.clock", accessibilityDescription: "MeowPlanner")
+            button.toolTip = "MeowPlanner"
+            button.target = self
+            button.action = #selector(togglePopover(_:))
+        }
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentViewController = NSHostingController(
+            rootView: AppMenuBarHostedContent(
+                legacyModelContainer: legacyModelContainer,
+                focusTimerStore: focusTimerStore
+            )
+        )
+
+        self.statusItem = statusItem
+        self.popover = popover
+    }
+
+    private func removeStatusItem() {
+        popover?.performClose(nil)
+        popover = nil
+
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        statusItem = nil
+    }
+
+    @objc private func togglePopover(_ sender: NSStatusBarButton) {
+        guard let popover else {
+            return
+        }
+
+        if popover.isShown {
+            popover.performClose(sender)
+        } else {
+            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+    }
+}
+
+private struct AppMenuBarHostedContent: View {
+    let legacyModelContainer: ModelContainer
+    @ObservedObject var focusTimerStore: FocusTimerStore
+    @AppStorage(AppLanguage.storageKey) private var appLanguageID = AppLanguage.english.rawValue
+
+    var body: some View {
+        MeowPlannerMenuBarView(
+            legacyModelContainer: legacyModelContainer,
+            openAppKitMainWindow: {
+                AppMainWindowPresenter.shared.open(
+                    legacyModelContainer: legacyModelContainer,
+                    focusTimerStore: focusTimerStore
+                )
+            }
+        )
+            .environment(\.appLanguage, AppLanguage(storedValue: appLanguageID))
+            .environmentObject(focusTimerStore)
     }
 }
 

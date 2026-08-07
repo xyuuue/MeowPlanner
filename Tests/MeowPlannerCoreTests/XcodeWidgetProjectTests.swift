@@ -59,8 +59,8 @@ struct XcodeWidgetProjectTests {
         #expect(!entitlements.contains("com.apple.security.app-sandbox"))
     }
 
-    @Test("macOS app declares a menu bar extra")
-    func macOSAppDeclaresMenuBarExtra() throws {
+    @Test("macOS app declares an AppKit status item")
+    func macOSAppDeclaresAppKitStatusItem() throws {
         let root = try packageRoot()
         let appFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
@@ -73,7 +73,8 @@ struct XcodeWidgetProjectTests {
         let appSource = try String(contentsOf: appFile, encoding: .utf8)
         let project = try String(contentsOf: projectFile, encoding: .utf8)
 
-        #expect(appSource.contains("MenuBarExtra"))
+        #expect(appSource.contains("NSStatusBar.system.statusItem"))
+        #expect(appSource.contains("NSStatusBar.system.removeStatusItem"))
         #expect(appSource.contains("MeowPlannerMenuBarView"))
         #expect(FileManager.default.fileExists(atPath: menuBarFile.path))
         #expect(project.contains("Sources/MeowPlannerApp/Views/MenuBar/MeowPlannerMenuBarView.swift"))
@@ -101,8 +102,11 @@ struct XcodeWidgetProjectTests {
 
         #expect(preferenceSource.contains("static let storageKey = \"meowplanner.showMenuBarIcon\""))
         #expect(preferenceSource.contains("static let defaultShowMenuBarIcon = true"))
-        #expect(appSource.contains("@AppStorage(AppMenuBarIconPreference.storageKey) private var showMenuBarIcon"))
-        #expect(appSource.contains("MenuBarExtra(isInserted: $showMenuBarIcon)"))
+        #expect(appSource.contains("private final class AppMenuBarController: NSObject"))
+        #expect(appSource.contains("UserDefaults.didChangeNotification"))
+        #expect(appSource.contains("NSStatusBar.system.statusItem"))
+        #expect(appSource.contains("NSStatusBar.system.removeStatusItem"))
+        #expect(!appSource.contains("MenuBarExtra(isInserted:"))
         #expect(settingsSource.contains("private var menuBarIconSection: some View"))
         #expect(settingsSource.contains("Toggle(PlannerCopy.text(.showMenuBarIcon"))
         #expect(settingsSource.contains("isOn: $showMenuBarIcon"))
@@ -1716,8 +1720,8 @@ struct XcodeWidgetProjectTests {
         let data = try Data(contentsOf: widgetPlist)
         let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
 
-        #expect(plist["CFBundleShortVersionString"] as? String == "2.0.2")
-        #expect(plist["CFBundleVersion"] as? String == "22")
+        #expect(plist["CFBundleShortVersionString"] as? String == "2.0.3")
+        #expect(plist["CFBundleVersion"] as? String == "23")
     }
 
     @Test("iOS app and widget bundle versions are bumped for WidgetKit refresh")
@@ -2645,9 +2649,9 @@ struct XcodeWidgetProjectTests {
         #expect(appSource.contains("@StateObject private var focusTimerStore: FocusTimerStore"))
         #expect(appSource.contains("_focusTimerStore = StateObject(wrappedValue: focusTimerStore)"))
         #expect(appSource.contains(".environmentObject(focusTimerStore)"))
-        #expect(appSource.contains("MeowPlannerMenuBarLabel(openAppKitMainWindow: openAppKitMainWindow)"))
+        #expect(appSource.contains("private struct AppMenuBarHostedContent: View"))
         #expect(appSource.contains("legacyModelContainer: legacyModelContainer"))
-        #expect(appSource.contains(".menuBarExtraStyle(.window)"))
+        #expect(appSource.contains("popover.contentViewController = NSHostingController"))
         #expect(navigationSource.contains("AppNavigationRequest.open(.focus)"))
         #expect(navigationSource.contains("AppNavigationRequest.open(.calendar)"))
         #expect(navigationSource.contains("AppNavigationRequest.open(.settings)"))
@@ -4901,8 +4905,8 @@ struct XcodeWidgetProjectTests {
         #expect(!agendaRowSource.contains("Image(systemName: \"pencil\")"))
     }
 
-    @Test("hidden Dock launch temporarily promotes activation policy before showing the main window")
-    func hiddenDockLaunchTemporarilyPromotesActivationPolicyBeforeShowingMainWindow() throws {
+    @Test("hidden Dock launch shows the main window without activation policy cycling")
+    func hiddenDockLaunchShowsMainWindowWithoutActivationPolicyCycling() throws {
         let root = try packageRoot()
         let appFile = root
             .appendingPathComponent("Sources/MeowPlannerApp/App/MeowPlannerApp.swift")
@@ -4912,14 +4916,12 @@ struct XcodeWidgetProjectTests {
         let appSource = try String(contentsOf: appFile, encoding: .utf8)
         let dockControllerSource = try String(contentsOf: dockControllerFile, encoding: .utf8)
 
-        #expect(dockControllerSource.contains("static var currentShowDockIconPreference: Bool"))
-        #expect(dockControllerSource.contains("prepareForMainWindowPresentation(showDockIcon:"))
-        #expect(dockControllerSource.contains("restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon:"))
-        #expect(dockControllerSource.contains("application.setActivationPolicy(.regular)"))
-        #expect(dockControllerSource.contains("application.setActivationPolicy(.accessory)"))
-        #expect(appSource.contains("AppDockIconController.currentShowDockIconPreference"))
-        #expect(appSource.contains("AppDockIconController.prepareForMainWindowPresentation(showDockIcon: showDockIcon)"))
-        #expect(appSource.contains("AppDockIconController.restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: showDockIcon)"))
+        #expect(appSource.contains("window.makeKeyAndOrderFront(nil)"))
+        #expect(appSource.contains("window.orderFrontRegardless()"))
+        #expect(appSource.contains("NSApplication.shared.activate(ignoringOtherApps: true)"))
+        #expect(!appSource.contains("prepareForMainWindowPresentation(showDockIcon:"))
+        #expect(!appSource.contains("restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon:"))
+        #expect(!dockControllerSource.contains("try? await Task.sleep(nanoseconds: 700_000_000)"))
     }
 
     @Test("Dock icon visibility can be hidden and customized from settings")

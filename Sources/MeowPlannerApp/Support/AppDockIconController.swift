@@ -12,10 +12,6 @@ enum AppDockIconController {
     static let storageKey = "meowplanner.showDockIcon"
     static let defaultShowDockIcon = false
 
-    static var currentShowDockIconPreference: Bool {
-        UserDefaults.standard.object(forKey: storageKey) as? Bool ?? defaultShowDockIcon
-    }
-
     @MainActor
     static func apply(showDockIcon: Bool, relaunchIfNeeded: Bool = false) {
         let application = NSApplication.shared
@@ -28,37 +24,6 @@ enum AppDockIconController {
 
         if showDockIcon && relaunchIfNeeded && previousActivationPolicy != .regular {
             scheduleRelaunchForDockRegistrationIfNeeded()
-        }
-    }
-
-    @MainActor
-    static func prepareForMainWindowPresentation(showDockIcon: Bool) {
-        guard !showDockIcon else {
-            return
-        }
-
-        let application = NSApplication.shared
-        guard application.activationPolicy() != .regular else {
-            return
-        }
-
-        _ = application.setActivationPolicy(.regular)
-    }
-
-    @MainActor
-    static func restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: Bool) {
-        guard !showDockIcon else {
-            return
-        }
-
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 700_000_000)
-            guard currentShowDockIconPreference == false else {
-                return
-            }
-
-            let application = NSApplication.shared
-            _ = application.setActivationPolicy(.accessory)
         }
     }
 
@@ -91,10 +56,6 @@ enum AppDockIconController {
 enum AppDockIconController {
     static let storageKey = "meowplanner.showDockIcon"
     static let defaultShowDockIcon = false
-    static var currentShowDockIconPreference: Bool { defaultShowDockIcon }
-
     static func apply(showDockIcon: Bool, relaunchIfNeeded: Bool = false) {}
-    static func prepareForMainWindowPresentation(showDockIcon: Bool) {}
-    static func restorePreferredActivationPolicyAfterMainWindowPresentation(showDockIcon: Bool) {}
 }
 #endif
