@@ -175,6 +175,8 @@ public enum PlannerTextKey: String, Sendable {
     case defaultFocus
     case weekStartsOn
     case localReminders
+    case menuBarIcon
+    case showMenuBarIcon
     case dockIcon
     case showDockIcon
     case defaultAllDaySchedule
@@ -385,6 +387,8 @@ public enum PlannerCopy {
         .defaultFocus: "Default focus",
         .weekStartsOn: "Week starts on",
         .localReminders: "Local reminders",
+        .menuBarIcon: "Menu bar icon",
+        .showMenuBarIcon: "Show icon in menu bar",
         .dockIcon: "Dock icon",
         .showDockIcon: "Show icon in Dock",
         .defaultAllDaySchedule: "New schedules default to all-day",
@@ -594,6 +598,8 @@ public enum PlannerCopy {
         .defaultFocus: "默认专注",
         .weekStartsOn: "每周开始于",
         .localReminders: "本地提醒",
+        .menuBarIcon: "菜单栏图标",
+        .showMenuBarIcon: "在菜单栏中显示图标",
         .dockIcon: "Dock 图标",
         .showDockIcon: "在 Dock 中显示图标",
         .defaultAllDaySchedule: "新日程默认全天计划",

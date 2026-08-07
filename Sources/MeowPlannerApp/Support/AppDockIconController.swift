@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum AppMenuBarIconPreference {
+    static let storageKey = "meowplanner.showMenuBarIcon"
+    static let defaultShowMenuBarIcon = true
+}
+
 #if os(macOS)
 import AppKit
 
